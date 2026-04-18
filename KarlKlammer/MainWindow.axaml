@@ -1,0 +1,124 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="KarlKlammer.MainWindow"
+        Title="Karl Klammer"
+        Width="360"
+        Height="440"
+        MinWidth="320"
+        MinHeight="380"
+        WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        CanResize="True"
+        Topmost="False">
+  <Border Margin="16"
+          CornerRadius="16"
+          Background="#F5F5F0"
+          BorderBrush="#C8C8C0"
+          BorderThickness="1"
+          BoxShadow="0 8 24 0 #40000000">
+    <Grid RowDefinitions="Auto,*">
+      <Grid Grid.Row="0"
+            Margin="12,10,8,4"
+            ColumnDefinitions="*,Auto">
+        <TextBlock Text="Karl Klammer"
+                   VerticalAlignment="Center"
+                   FontSize="12"
+                   Foreground="#666"
+                   IsHitTestVisible="False" />
+        <Button Grid.Column="1"
+                Padding="8,2"
+                Content="&#215;"
+                FontSize="12"
+                ToolTip.Tip="Schließen"
+                Click="OnCloseClick" />
+      </Grid>
+
+      <ScrollViewer Grid.Row="1"
+                    Margin="12,0,12,12"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="10">
+          <Border Padding="0"
+                  Background="Transparent"
+                  PointerPressed="OnDragPointerPressed"
+                  Cursor="SizeAll">
+            <StackPanel Spacing="0">
+              <Border Padding="14,12"
+                      CornerRadius="14"
+                      Background="#FFFACD"
+                      BorderBrush="#C4B896"
+                      BorderThickness="1">
+                <TextBlock x:Name="HintText"
+                           FontSize="14"
+                           Foreground="#2a2a2a"
+                           TextWrapping="Wrap"
+                           LineHeight="20" />
+              </Border>
+              <Path Margin="0,-1,0,0"
+                    HorizontalAlignment="Center"
+                    Data="M 0,0 L 22,0 L 11,12 Z"
+                    Fill="#FFFACD"
+                    Stroke="#C4B896"
+                    StrokeThickness="1"
+                    Stretch="None" />
+            </StackPanel>
+          </Border>
+
+          <Grid Height="220"
+                PointerPressed="OnDragPointerPressed"
+                Cursor="SizeAll">
+            <Viewbox x:Name="ClipViewbox"
+                     Width="140"
+                     Height="220"
+                     HorizontalAlignment="Center">
+              <Viewbox.RenderTransform>
+                <TranslateTransform />
+              </Viewbox.RenderTransform>
+              <Canvas Width="120"
+                      Height="200"
+                      ClipToBounds="False">
+                <Path Fill="#E8E8E8"
+                      Stroke="#5C5C5C"
+                      StrokeThickness="2.2"
+                      StrokeJoin="Round"
+                      Data="M 58 6 C 78 6 94 22 94 44 L 94 158 C 94 180 76 196 54 196 C 32 196 14 180 14 158 L 14 48 C 14 26 32 8 54 8 C 72 8 86 22 86 42 L 86 150 C 86 164 74 176 58 176 C 42 176 30 164 30 150 L 30 52 C 30 40 40 30 54 30 C 68 30 78 40 78 52 L 78 138 C 78 146 70 152 60 152 C 50 152 44 146 44 138 L 44 62 C 44 56 48 52 54 52 C 60 52 64 56 64 62 L 64 128 C 64 130 62 132 60 132 C 58 132 56 130 56 128 L 56 68 C 56 66 57 65 59 65 C 61 65 62 66 62 68 L 62 118" />
+                <Ellipse Canvas.Left="64"
+                         Canvas.Top="18"
+                         Width="18"
+                         Height="22"
+                         Fill="White"
+                         Stroke="#333"
+                         StrokeThickness="1" />
+                <Ellipse Canvas.Left="82"
+                         Canvas.Top="20"
+                         Width="18"
+                         Height="22"
+                         Fill="White"
+                         Stroke="#333"
+                         StrokeThickness="1" />
+                <Ellipse Canvas.Left="70"
+                         Canvas.Top="26"
+                         Width="7"
+                         Height="7"
+                         Fill="#1a1a1a" />
+                <Ellipse Canvas.Left="88"
+                         Canvas.Top="28"
+                         Width="7"
+                         Height="7"
+                         Fill="#1a1a1a" />
+              </Canvas>
+            </Viewbox>
+          </Grid>
+
+          <Button HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Center"
+                  Padding="12,8"
+                  Content="Noch ein Tipp…"
+                  Click="OnNextTipClick" />
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Border>
+</Window>
