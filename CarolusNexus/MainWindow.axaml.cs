@@ -4,11 +4,14 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using System.Linq;
 
-namespace KarlKlammer;
+namespace CarolusNexus;
 
 public partial class MainWindow : Window
 {
+    private KarlCompanionWindow? _companion;
     private readonly TranslateTransform _bobTransform;
 
     private readonly string[] _tips =
@@ -28,7 +31,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        _bobTransform = (TranslateTransform)ClipViewbox.RenderTransform!;
+        _bobTransform = (TranslateTransform)SceneBob.RenderTransform!;
         _tipIndex = Random.Shared.Next(_tips.Length);
         HintText.Text = _tips[_tipIndex];
 
@@ -39,6 +42,50 @@ public partial class MainWindow : Window
             _bobTransform.Y = Math.Sin(_bobPhase) * 5;
         };
         _bobTimer.Start();
+
+        Loaded += OnMainWindowLoaded;
+        Closing += (_, _) =>
+        {
+            _companion?.Close();
+            _companion = null;
+        };
+    }
+
+    private void OnMainWindowLoaded(object? sender, RoutedEventArgs e)
+    {
+        ApplyKarlCursor();
+
+        if (!OperatingSystem.IsWindows())
+        {
+            CompanionToggle.IsChecked = false;
+            CompanionToggle.IsEnabled = false;
+            return;
+        }
+
+        _companion = new KarlCompanionWindow();
+        CompanionToggle.IsCheckedChanged += OnCompanionToggleChanged;
+        if (CompanionToggle.IsChecked == true)
+            _companion.Show();
+    }
+
+    private void OnCompanionToggleChanged(object? sender, RoutedEventArgs e)
+    {
+        if (_companion == null)
+            return;
+        if (CompanionToggle.IsChecked == true)
+            _companion.Show();
+        else
+            _companion.Hide();
+    }
+
+    private void ApplyKarlCursor()
+    {
+        var karl = KarlCursorFactory.Create();
+        Cursor = karl;
+        foreach (var button in this.GetVisualDescendants().OfType<Button>())
+            button.Cursor = karl;
+        foreach (var scene in this.GetVisualDescendants().OfType<OfficeScene3D>())
+            scene.Cursor = karl;
     }
 
     private void OnDragPointerPressed(object? sender, PointerPressedEventArgs e)

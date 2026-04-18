@@ -1,7 +1,8 @@
-﻿using Avalonia;
+using Avalonia;
+using Avalonia.Win32;
 using System;
 
-namespace KarlKlammer;
+namespace CarolusNexus;
 
 class Program
 {
@@ -16,6 +17,7 @@ class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            .With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Wgl] })
             .WithInterFont()
             .LogToTrace();
 }

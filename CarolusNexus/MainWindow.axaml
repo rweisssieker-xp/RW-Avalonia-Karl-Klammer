@@ -1,11 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="KarlKlammer.MainWindow"
+        xmlns:local="clr-namespace:CarolusNexus"
+        x:Class="CarolusNexus.MainWindow"
         Title="Karl Klammer"
-        Width="360"
-        Height="440"
+        Width="400"
+        Height="560"
         MinWidth="320"
-        MinHeight="380"
+        MinHeight="480"
         WindowStartupLocation="CenterScreen"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -21,13 +22,21 @@
     <Grid RowDefinitions="Auto,*">
       <Grid Grid.Row="0"
             Margin="12,10,8,4"
-            ColumnDefinitions="*,Auto">
+            ColumnDefinitions="*,Auto,Auto">
         <TextBlock Text="Karl Klammer"
                    VerticalAlignment="Center"
                    FontSize="12"
                    Foreground="#666"
                    IsHitTestVisible="False" />
-        <Button Grid.Column="1"
+        <CheckBox x:Name="CompanionToggle"
+                  Grid.Column="1"
+                  Margin="8,0,8,0"
+                  VerticalAlignment="Center"
+                  Content="Begleiter am Cursor"
+                  FontSize="11"
+                  IsChecked="True"
+                  ToolTip.Tip="Zeigt Karl neben der Maus (Windows, klick-durchlässig)." />
+        <Button Grid.Column="2"
                 Padding="8,2"
                 Content="&#215;"
                 FontSize="12"
@@ -42,8 +51,7 @@
         <StackPanel Spacing="10">
           <Border Padding="0"
                   Background="Transparent"
-                  PointerPressed="OnDragPointerPressed"
-                  Cursor="SizeAll">
+                  PointerPressed="OnDragPointerPressed">
             <StackPanel Spacing="0">
               <Border Padding="14,12"
                       CornerRadius="14"
@@ -66,51 +74,26 @@
             </StackPanel>
           </Border>
 
-          <Grid Height="220"
-                PointerPressed="OnDragPointerPressed"
-                Cursor="SizeAll">
-            <Viewbox x:Name="ClipViewbox"
-                     Width="140"
-                     Height="220"
-                     HorizontalAlignment="Center">
-              <Viewbox.RenderTransform>
-                <TranslateTransform />
-              </Viewbox.RenderTransform>
-              <Canvas Width="120"
-                      Height="200"
-                      ClipToBounds="False">
-                <Path Fill="#E8E8E8"
-                      Stroke="#5C5C5C"
-                      StrokeThickness="2.2"
-                      StrokeJoin="Round"
-                      Data="M 58 6 C 78 6 94 22 94 44 L 94 158 C 94 180 76 196 54 196 C 32 196 14 180 14 158 L 14 48 C 14 26 32 8 54 8 C 72 8 86 22 86 42 L 86 150 C 86 164 74 176 58 176 C 42 176 30 164 30 150 L 30 52 C 30 40 40 30 54 30 C 68 30 78 40 78 52 L 78 138 C 78 146 70 152 60 152 C 50 152 44 146 44 138 L 44 62 C 44 56 48 52 54 52 C 60 52 64 56 64 62 L 64 128 C 64 130 62 132 60 132 C 58 132 56 130 56 128 L 56 68 C 56 66 57 65 59 65 C 61 65 62 66 62 68 L 62 118" />
-                <Ellipse Canvas.Left="64"
-                         Canvas.Top="18"
-                         Width="18"
-                         Height="22"
-                         Fill="White"
-                         Stroke="#333"
-                         StrokeThickness="1" />
-                <Ellipse Canvas.Left="82"
-                         Canvas.Top="20"
-                         Width="18"
-                         Height="22"
-                         Fill="White"
-                         Stroke="#333"
-                         StrokeThickness="1" />
-                <Ellipse Canvas.Left="70"
-                         Canvas.Top="26"
-                         Width="7"
-                         Height="7"
-                         Fill="#1a1a1a" />
-                <Ellipse Canvas.Left="88"
-                         Canvas.Top="28"
-                         Width="7"
-                         Height="7"
-                         Fill="#1a1a1a" />
-              </Canvas>
-            </Viewbox>
-          </Grid>
+          <Border x:Name="SceneBob"
+                  Height="300"
+                  CornerRadius="12"
+                  ClipToBounds="True"
+                  Background="#1a1c20"
+                  BorderBrush="#3d4450"
+                  BorderThickness="1"
+                  PointerPressed="OnDragPointerPressed">
+            <Border.RenderTransform>
+              <TranslateTransform />
+            </Border.RenderTransform>
+            <local:OfficeScene3D HorizontalAlignment="Stretch"
+                                 VerticalAlignment="Stretch" />
+          </Border>
+
+          <TextBlock Text="OpenGL-3D: Papier, „Klammer“ und kleiner Akzent — alles mit Licht und Rotation."
+                     FontSize="11"
+                     Foreground="#777"
+                     TextWrapping="Wrap"
+                     LineHeight="16" />
 
           <Button HorizontalAlignment="Stretch"
                   HorizontalContentAlignment="Center"
