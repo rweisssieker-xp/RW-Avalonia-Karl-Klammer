@@ -1,11 +1,18 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:CarolusNexus.Models"
              x:Class="CarolusNexus.Views.RitualsTab">
   <Grid ColumnDefinitions="*,*,*" MinHeight="420">
     <DockPanel Grid.Column="0" Margin="0,0,8,0">
       <TextBlock DockPanel.Dock="Top" Text="Ritual Library" FontWeight="SemiBold" Margin="0,0,0,6" />
       <TextBox x:Name="LibFilter" DockPanel.Dock="Top" Watermark="Suche…" Margin="0,0,0,6" />
-      <ListBox x:Name="RitualList" />
+      <ListBox x:Name="RitualList">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="models:AutomationRecipe">
+            <TextBlock Text="{Binding Name}" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
     </DockPanel>
     <DockPanel Grid.Column="1" Margin="0,0,8,0">
       <TextBlock DockPanel.Dock="Top" Text="Ritual Builder" FontWeight="SemiBold" Margin="0,0,0,6" />
@@ -37,7 +44,7 @@
       </ScrollViewer>
     </DockPanel>
     <DockPanel Grid.Column="2">
-      <TextBlock DockPanel.Dock="Top" Text="Structured Steps (Stub)" FontWeight="SemiBold" Margin="0,0,0,6" />
+      <TextBlock DockPanel.Dock="Top" Text="Structured Steps (JSON)" FontWeight="SemiBold" Margin="0,0,0,6" />
       <TextBox x:Name="StepsEditor" AcceptsReturn="True" FontFamily="Consolas,Courier New,monospace"
                Watermark="JSON / Schritte — Persistenz: automation-recipes.json (Stub)" />
     </DockPanel>

@@ -1,0 +1,142 @@
+using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Windows.Forms;
+using CarolusNexus.Models;
+
+namespace CarolusNexus.Services;
+
+/// <summary>Experimentelle Ausführung einzelner Plan-Tokens (nur Windows, nur mit power-user + PlanGuard).</summary>
+public static class Win32AutomationExecutor
+{
+    private static readonly Regex ActionRx = new(@"\[ACTION:(\w+)(?:\|([^\]]*))?\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex BrowserOpen = new(@"browser\.open\s*:\s*(.+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex ExplorerPath = new(@"explorer\.open_path\s*:\s*(.+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    public static string Execute(RecipeStep step, NexusSettings settings)
+    {
+        if (!OperatingSystem.IsWindows())
+            return "[SKIP] nicht Windows";
+
+        var arg = step.ActionArgument?.Trim() ?? "";
+        if (string.IsNullOrEmpty(arg))
+            return "[SKIP] leer";
+
+        if (!PlanGuard.IsAllowed(settings, arg))
+            return "[BLOCKED] Safety-Policy";
+
+        try
+        {
+            var m = ActionRx.Match(arg);
+            if (m.Success)
+            {
+                var kind = m.Groups[1].Value.ToLowerInvariant();
+                var payload = m.Groups[2].Success ? m.Groups[2].Value : "";
+                return kind switch
+                {
+                    "hotkey" => SendHotkey(payload),
+                    "type" => SendType(payload),
+                    "open" => OpenTarget(payload),
+                    "click" => DoClick(),
+                    "move" => "[SKIP] move nicht implementiert",
+                    _ => $"[SKIP] ACTION:{kind}"
+                };
+            }
+
+            if (BrowserOpen.IsMatch(arg))
+            {
+                var url = BrowserOpen.Match(arg).Groups[1].Value.Trim();
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                return "[OK] browser.open";
+            }
+
+            if (ExplorerPath.IsMatch(arg))
+            {
+                var path = ExplorerPath.Match(arg).Groups[1].Value.Trim();
+                Process.Start("explorer.exe", path);
+                return "[OK] explorer.open_path";
+            }
+
+            if (arg.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                arg.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                Process.Start(new ProcessStartInfo(arg) { UseShellExecute = true });
+                return "[OK] URL";
+            }
+
+            return "[SKIP] Token nicht ausführbar: " + arg;
+        }
+        catch (Exception ex)
+        {
+            return "[ERR] " + ex.Message;
+        }
+    }
+
+    private static string SendHotkey(string combo)
+    {
+        if (string.IsNullOrWhiteSpace(combo))
+            return "[SKIP] hotkey leer";
+        var sk = ToSendKeys(combo);
+        SendKeys.SendWait(sk);
+        return "[OK] hotkey " + combo;
+    }
+
+    private static string ToSendKeys(string combo)
+    {
+        var parts = combo.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var prefix = "";
+        string? key = null;
+        foreach (var p in parts)
+        {
+            if (p.Equals("Ctrl", StringComparison.OrdinalIgnoreCase) ||
+                p.Equals("Control", StringComparison.OrdinalIgnoreCase))
+                prefix += "^";
+            else if (p.Equals("Alt", StringComparison.OrdinalIgnoreCase))
+                prefix += "%";
+            else if (p.Equals("Shift", StringComparison.OrdinalIgnoreCase))
+                prefix += "+";
+            else
+                key = p;
+        }
+
+        if (string.IsNullOrEmpty(key))
+            return prefix;
+        if (key.Length == 1)
+            return prefix + key.ToLowerInvariant();
+        return prefix + "{" + key + "}";
+    }
+
+    private static string SendType(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return "[SKIP] type leer";
+        Thread.Sleep(30);
+        Clipboard.SetText(text);
+        Thread.Sleep(30);
+        SendKeys.SendWait("^v");
+        return "[OK] type (Clipboard)";
+    }
+
+    private static string OpenTarget(string target)
+    {
+        if (string.IsNullOrWhiteSpace(target))
+            return "[SKIP] open leer";
+        Process.Start(new ProcessStartInfo(target.Trim()) { UseShellExecute = true });
+        return "[OK] open";
+    }
+
+    private static string DoClick()
+    {
+        mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
+        mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+        return "[OK] click";
+    }
+
+    private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+    private const uint MOUSEEVENTF_LEFTUP = 0x0004;
+
+    [DllImport("user32.dll")]
+    private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
+}

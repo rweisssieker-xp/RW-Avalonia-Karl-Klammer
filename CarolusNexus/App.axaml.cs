@@ -19,6 +19,7 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             desktop.MainWindow = new MainWindow();
             Shell = desktop.MainWindow as MainWindow;
         }
@@ -37,6 +38,7 @@ public partial class App : Application
 
     private void OnTrayQuit(object? sender, EventArgs e)
     {
+        AppLifecycle.UserRequestedExit = true;
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime d)
             d.Shutdown();
     }

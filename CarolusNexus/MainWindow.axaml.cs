@@ -27,7 +27,7 @@ public partial class MainWindow : Window
         AppPaths.DiscoverRepoRoot();
         AppPaths.EnsureDataTree();
 
-        NexusShell.AppendGlobalLog = line => TabDiagnostics!.Append(line);
+        NexusShell.AppendGlobalLog = line => TabDiagnostics.Append(line);
 
         _dashboardTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
         _dashboardTimer.Tick += (_, _) => RefreshDashboard();
@@ -35,13 +35,7 @@ public partial class MainWindow : Window
         _f8Timer.Tick += OnF8Poll;
 
         Loaded += OnLoaded;
-        Closing += (_, _) =>
-        {
-            _companion?.Close();
-            _companion = null;
-            _dashboardTimer.Stop();
-            _f8Timer.Stop();
-        };
+        Closing += OnWindowClosing;
 
         BtnRefreshAll.Click += OnRefreshAll;
         BtnSaveSettings.Click += OnSaveSettings;
@@ -58,6 +52,9 @@ public partial class MainWindow : Window
         _settings = _settingsStore.LoadOrDefault();
         TabSetup.Apply(_settings);
         TabSetup.RefreshEnvSummary();
+        TabAsk.SetSettingsProvider(() => _settings);
+        NexusContext.GetSettings = () => _settings;
+        DotEnvStore.Invalidate();
         RefreshDashboard();
         RefreshHeaderBadges();
         ApplyKarlCursor();
@@ -75,7 +72,23 @@ public partial class MainWindow : Window
                 _companion.Show();
         }
 
-        NexusShell.Log("Carolus Nexus gestartet — UI gemäß Handbuch; Provider/Automation/RAG sind Stubs.");
+        NexusShell.Log("Carolus Nexus — Tray aktiv; „power-user“: echte Plan-Schritte (Hotkey/Type/Open/Click). Schließen → Tray.");
+    }
+
+    private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (!AppLifecycle.UserRequestedExit)
+        {
+            e.Cancel = true;
+            Hide();
+            NexusShell.Log("Fenster ins Tray — Beenden: Tray-Menü.");
+            return;
+        }
+
+        _companion?.Close();
+        _companion = null;
+        _dashboardTimer.Stop();
+        _f8Timer.Stop();
     }
 
     private void OnF8Poll(object? sender, EventArgs e)
@@ -86,7 +99,7 @@ public partial class MainWindow : Window
         if (down && !_f8Down)
             NexusShell.LogStub("Push-to-Talk Hotkey F8 gedrückt (Aufnahme-Stub)");
         if (!down && _f8Down)
-            NexusShell.LogStub("Push-to-Talk F8 losgelassen (STT+Ask Stub)");
+            _ = TabAsk.RunAskFromHotkeyAsync();
         _f8Down = down;
     }
 
@@ -117,23 +130,31 @@ public partial class MainWindow : Window
         TabSetup.RefreshEnvSummary();
         TabKnowledge.RefreshList();
         TabHistory.Refresh();
+        TabRituals.ReloadLibrary();
+        DotEnvStore.Invalidate();
+        TabAsk.SetSettingsProvider(() => _settings);
+        NexusContext.GetSettings = () => _settings;
         RefreshDashboard();
         RefreshHeaderBadges();
-        NexusShell.LogStub("refresh all");
+        NexusShell.Log("refresh all — .env neu eingelesen.");
     }
 
     private void OnSaveSettings(object? sender, RoutedEventArgs e)
     {
         _settings = TabSetup.Gather();
         _settingsStore.Save(_settings);
+        TabAsk.SetSettingsProvider(() => _settings);
+        NexusContext.GetSettings = () => _settings;
         NexusShell.Log("settings.json gespeichert.");
         RefreshHeaderBadges();
     }
 
     private void OnReindex(object? sender, RoutedEventArgs e)
     {
-        NexusShell.LogStub("reindex knowledge");
+        KnowledgeIndexService.Rebuild();
         TabKnowledge.RefreshList();
+        TabRituals.ReloadLibrary();
+        NexusShell.Log("reindex knowledge → knowledge-index.json");
     }
 
     private void OnRefreshApp(object? sender, RoutedEventArgs e)
@@ -145,6 +166,9 @@ public partial class MainWindow : Window
     private void RefreshHeaderBadges()
     {
         BadgeEnv.Text = $"Environment: {_settings.Provider} / {_settings.Mode}";
+        BadgeSpeech.Text = DotEnvStore.HasProviderKey(_settings.Provider)
+            ? "LLM: .env Key OK"
+            : "LLM: Key fehlt";
         BadgeKnow.Text = $"Knowledge: {(_settings.UseLocalKnowledge ? "ein" : "aus")}";
         TileEnv.Text = $"Provider {_settings.Provider}, Modell „{_settings.Model}“, Safety {_settings.Safety.Profile}";
         TileMemory.Text = $"RAG-Index: {AppPaths.KnowledgeIndex} — {(File.Exists(AppPaths.KnowledgeIndex) ? "vorhanden" : "noch nicht erzeugt")}";
@@ -172,7 +196,7 @@ public partial class MainWindow : Window
         );
     }
 
-    private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();
+    private void OnCloseClick(object? sender, RoutedEventArgs e) => Hide();
 
     private void OnOpenHandbookClick(object? sender, RoutedEventArgs e)
     {
