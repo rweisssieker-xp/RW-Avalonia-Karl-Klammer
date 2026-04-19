@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -18,8 +19,16 @@ public partial class MainWindow : Window
     private readonly SettingsStore _settingsStore = new();
     private NexusSettings _settings = new();
     private readonly DispatcherTimer _dashboardTimer;
-    private readonly DispatcherTimer _f8Timer;
-    private bool _f8Down;
+    private readonly DispatcherTimer _releasePollTimer;
+    private readonly DispatcherTimer _pollFallbackTimer;
+    private PushToTalkHotkeyWindow? _hotkeyWindow;
+    private bool _pollFallbackDown;
+    private int _pttVk = PushToTalkKey.DefaultVirtualKey;
+    private DateTime _lastWatchUtc = DateTime.MinValue;
+    private LocalToolHost? _toolHost;
+    private DateTime _lastProactiveUtc = DateTime.MinValue;
+    private string _proactiveHintCache = "";
+    private bool _proactiveBusy;
 
     public MainWindow()
     {
@@ -31,8 +40,10 @@ public partial class MainWindow : Window
 
         _dashboardTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
         _dashboardTimer.Tick += (_, _) => RefreshDashboard();
-        _f8Timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
-        _f8Timer.Tick += OnF8Poll;
+        _releasePollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
+        _releasePollTimer.Tick += OnReleasePollTick;
+        _pollFallbackTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+        _pollFallbackTimer.Tick += OnPollFallbackTick;
 
         Loaded += OnLoaded;
         Closing += OnWindowClosing;
@@ -44,7 +55,78 @@ public partial class MainWindow : Window
         BtnExportDiag.Click += (_, _) => TabDiagnostics.ExportDiagnostics();
 
         _dashboardTimer.Start();
-        _f8Timer.Start();
+        SetupPushToTalk();
+    }
+
+    private void RefreshPushToTalkKey() =>
+        _pttVk = PushToTalkKey.ResolveVirtualKey(DotEnvStore.Get("PUSH_TO_TALK_KEY"));
+
+    private void SetupPushToTalk()
+    {
+        _releasePollTimer.Stop();
+        _pollFallbackTimer.Stop();
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        RefreshPushToTalkKey();
+        try
+        {
+            _hotkeyWindow?.Dispose();
+            _hotkeyWindow = new PushToTalkHotkeyWindow(() =>
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    TabAsk.NotifyGlobalPushToTalkPressed();
+                    if (TabAsk.AwaitsGlobalHotkeyRelease)
+                        _releasePollTimer.Start();
+                });
+            });
+
+            if (_hotkeyWindow.TryRegister(_pttVk))
+            {
+                NexusShell.Log($"PTT: globaler Hotkey (VK 0x{_pttVk:X}, MOD_NOREPEAT).");
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("PTT Hotkey: " + ex.Message);
+        }
+
+        _hotkeyWindow?.Dispose();
+        _hotkeyWindow = null;
+        _pollFallbackTimer.Start();
+        NexusShell.Log("PTT: Fallback-Polling (Hotkey konnte nicht registriert werden).");
+    }
+
+    private void OnReleasePollTick(object? sender, EventArgs e)
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+        if (!TabAsk.AwaitsGlobalHotkeyRelease)
+        {
+            _releasePollTimer.Stop();
+            return;
+        }
+
+        if ((Win32AsyncKey.GetAsyncKeyState(_pttVk) & 0x8000) == 0)
+        {
+            _releasePollTimer.Stop();
+            _ = TabAsk.NotifyGlobalPushToTalkReleasedAsync();
+        }
+    }
+
+    private void OnPollFallbackTick(object? sender, EventArgs e)
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+        var down = (Win32AsyncKey.GetAsyncKeyState(_pttVk) & 0x8000) != 0;
+        if (down && !_pollFallbackDown)
+            TabAsk.NotifyGlobalPushToTalkPressed();
+
+        if (!down && _pollFallbackDown)
+            _ = TabAsk.NotifyGlobalPushToTalkReleasedAsync();
+        _pollFallbackDown = down;
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -55,6 +137,7 @@ public partial class MainWindow : Window
         TabAsk.SetSettingsProvider(() => _settings);
         NexusContext.GetSettings = () => _settings;
         DotEnvStore.Invalidate();
+        SetupPushToTalk();
         RefreshDashboard();
         RefreshHeaderBadges();
         ApplyKarlCursor();
@@ -72,7 +155,34 @@ public partial class MainWindow : Window
                 _companion.Show();
         }
 
-        NexusShell.Log("Carolus Nexus — Tray aktiv; „power-user“: echte Plan-Schritte (Hotkey/Type/Open/Click). Schließen → Tray.");
+        NexusShell.Log("Carolus Nexus — Tray-Icon; Schließen minimiert ins Tray. „power-user“: echte Plan-Schritte.");
+        ApplyLocalToolHost();
+    }
+
+    public async Task AskFromClipboardAsync()
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+
+        var board = Clipboard;
+        if (board == null)
+        {
+            NexusShell.Log("Tray Ask: Zwischenablage nicht verfügbar.");
+            MainTabs.SelectedIndex = 0;
+            return;
+        }
+
+        var clipText = await board.GetTextAsync().ConfigureAwait(true);
+        if (string.IsNullOrWhiteSpace(clipText))
+        {
+            NexusShell.Log("Tray Ask: Zwischenablage leer oder kein Text.");
+            MainTabs.SelectedIndex = 0;
+            return;
+        }
+
+        MainTabs.SelectedIndex = 0;
+        await TabAsk.RunAskFromExternalAsync(clipText.Trim()).ConfigureAwait(true);
     }
 
     private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
@@ -81,26 +191,19 @@ public partial class MainWindow : Window
         {
             e.Cancel = true;
             Hide();
-            NexusShell.Log("Fenster ins Tray — Beenden: Tray-Menü.");
+            NexusShell.Log("Fenster ins Tray — Beenden: Tray-Menü „Beenden“.");
             return;
         }
 
         _companion?.Close();
         _companion = null;
         _dashboardTimer.Stop();
-        _f8Timer.Stop();
-    }
-
-    private void OnF8Poll(object? sender, EventArgs e)
-    {
-        if (!OperatingSystem.IsWindows())
-            return;
-        var down = (Win32AsyncKey.GetAsyncKeyState(Win32AsyncKey.VkF8) & 0x8000) != 0;
-        if (down && !_f8Down)
-            NexusShell.LogStub("Push-to-Talk Hotkey F8 gedrückt (Aufnahme-Stub)");
-        if (!down && _f8Down)
-            _ = TabAsk.RunAskFromHotkeyAsync();
-        _f8Down = down;
+        _releasePollTimer.Stop();
+        _pollFallbackTimer.Stop();
+        _hotkeyWindow?.Dispose();
+        _hotkeyWindow = null;
+        _toolHost?.Dispose();
+        _toolHost = null;
     }
 
     private void OnCompanionToggleChanged(object? sender, RoutedEventArgs e)
@@ -132,11 +235,13 @@ public partial class MainWindow : Window
         TabHistory.Refresh();
         TabRituals.ReloadLibrary();
         DotEnvStore.Invalidate();
+        SetupPushToTalk();
         TabAsk.SetSettingsProvider(() => _settings);
         NexusContext.GetSettings = () => _settings;
         RefreshDashboard();
         RefreshHeaderBadges();
         NexusShell.Log("refresh all — .env neu eingelesen.");
+        ApplyLocalToolHost();
     }
 
     private void OnSaveSettings(object? sender, RoutedEventArgs e)
@@ -147,6 +252,7 @@ public partial class MainWindow : Window
         NexusContext.GetSettings = () => _settings;
         NexusShell.Log("settings.json gespeichert.");
         RefreshHeaderBadges();
+        ApplyLocalToolHost();
     }
 
     private void OnReindex(object? sender, RoutedEventArgs e)
@@ -154,13 +260,23 @@ public partial class MainWindow : Window
         KnowledgeIndexService.Rebuild();
         TabKnowledge.RefreshList();
         TabRituals.ReloadLibrary();
-        NexusShell.Log("reindex knowledge → knowledge-index.json");
+        RefreshHeaderBadges();
+        _ = EmbeddingRagService.RebuildIfConfiguredAsync(default);
+        NexusShell.Log("reindex knowledge → Index + Chunks; Embeddings werden im Hintergrund gebaut (OPENAI_API_KEY + RAG).");
     }
 
     private void OnRefreshApp(object? sender, RoutedEventArgs e)
     {
-        NexusShell.LogStub("refresh active app");
-        TileLive.Text = $"Aktives Fenster (Stub) @ {DateTime.Now:T}";
+        if (!OperatingSystem.IsWindows())
+        {
+            NexusShell.Log("Aktives Fenster: nur unter Windows.");
+            return;
+        }
+
+        var (title, proc) = ForegroundWindowInfo.TryRead();
+        var fam = OperatorAdapterRegistry.ResolveFamily(proc, title);
+        TileLive.Text = $"Aktiv: {proc} · „{title}“ → Adapter-Familie: {fam} @ {DateTime.Now:T}";
+        NexusShell.Log("Live Context: " + TileLive.Text);
     }
 
     private void RefreshHeaderBadges()
@@ -170,8 +286,16 @@ public partial class MainWindow : Window
             ? "LLM: .env Key OK"
             : "LLM: Key fehlt";
         BadgeKnow.Text = $"Knowledge: {(_settings.UseLocalKnowledge ? "ein" : "aus")}";
+        BadgeAuto.Text = OperatingSystem.IsWindows() &&
+                         string.Equals(_settings.Safety.Profile, "power-user", StringComparison.OrdinalIgnoreCase)
+            ? "Automation: Win32 (power-user)"
+            : "Automation: Simulation";
         TileEnv.Text = $"Provider {_settings.Provider}, Modell „{_settings.Model}“, Safety {_settings.Safety.Profile}";
-        TileMemory.Text = $"RAG-Index: {AppPaths.KnowledgeIndex} — {(File.Exists(AppPaths.KnowledgeIndex) ? "vorhanden" : "noch nicht erzeugt")}";
+        var idx = File.Exists(AppPaths.KnowledgeIndex);
+        var ch = File.Exists(AppPaths.KnowledgeChunks);
+        var emb = File.Exists(AppPaths.KnowledgeEmbeddings);
+        TileMemory.Text =
+            $"Index: {(idx ? "ja" : "nein")}, Chunks: {(ch ? "ja" : "nein")}, Embeddings: {(emb ? "ja" : "nein")} — {AppPaths.DataDir}";
     }
 
     private void RefreshDashboard()
@@ -185,15 +309,155 @@ public partial class MainWindow : Window
             return s.Length <= max ? s : s[..max] + "\n…";
         }
 
+        MaybeAppendWatchSnapshot();
+
+        if (!string.Equals(_settings.Mode, "watch", StringComparison.OrdinalIgnoreCase) ||
+            !_settings.ProactiveDashboardLlm)
+            _proactiveHintCache = "";
+
+        if (_settings.ProactiveDashboardLlm
+            && string.Equals(_settings.Mode, "watch", StringComparison.OrdinalIgnoreCase)
+            && DotEnvStore.HasProviderKey(_settings.Provider))
+            _ = TryProactiveHintAsync();
+
+        string proactive;
+        if (string.Equals(_settings.Mode, "watch", StringComparison.OrdinalIgnoreCase))
+        {
+            if (_settings.ProactiveDashboardLlm && DotEnvStore.HasProviderKey(_settings.Provider))
+            {
+                proactive = string.IsNullOrWhiteSpace(_proactiveHintCache)
+                    ? $"Watch: Snapshots alle {Math.Clamp(_settings.WatchSnapshotIntervalSeconds, 15, 600)}s. Proaktiver LLM-Hinweis wird geladen …"
+                    : _proactiveHintCache;
+            }
+            else
+            {
+                proactive =
+                    $"Watch: Snapshots alle {Math.Clamp(_settings.WatchSnapshotIntervalSeconds, 15, 600)}s → {Path.GetFileName(AppPaths.WatchSessions)}";
+            }
+        }
+        else
+        {
+            proactive =
+                "Modus „watch“ + optional proaktiver LLM-Hinweis in Setup für Dashboard-Tipps.";
+        }
+
         TabDashboard.RefreshSummaries(
             env: $"Provider: {_settings.Provider}\nModus: {_settings.Mode}\nModell: {_settings.Model}\n.env: {(DotEnvSummary.FileExists ? "ja" : "fehlt")}",
-            know: $"Dateien in knowledge\\: {knowCount}\nIndex: {(File.Exists(AppPaths.KnowledgeIndex) ? "ja" : "nein")}",
+            know: $"Dateien in knowledge\\: {knowCount}\nIndex: {(File.Exists(AppPaths.KnowledgeIndex) ? "ja" : "nein")}\nChunks: {(File.Exists(AppPaths.KnowledgeChunks) ? "ja" : "nein")}\nEmbeddings: {(File.Exists(AppPaths.KnowledgeEmbeddings) ? "ja" : "nein")}",
             live: TileLive.Text ?? "—",
-            proactive: "(Stub) Keine proaktiven Vorschläge ohne LLM-Backend.",
+            proactive,
             gov: $"Profil: {_settings.Safety.Profile}\nPanic: {_settings.Safety.PanicStopEnabled}",
             rituals: Cap(File.Exists(AppPaths.AutomationRecipes) ? File.ReadAllText(AppPaths.AutomationRecipes) : null),
             watch: Cap(File.Exists(AppPaths.WatchSessions) ? File.ReadAllText(AppPaths.WatchSessions) : null)
         );
+    }
+
+    private async Task TryProactiveHintAsync()
+    {
+        if (_proactiveBusy)
+            return;
+        var minSec = Math.Clamp(_settings.ProactiveLlmMinIntervalSeconds, 60, 3600);
+        if ((DateTime.UtcNow - _lastProactiveUtc).TotalSeconds < minSec)
+            return;
+
+        _proactiveBusy = true;
+        try
+        {
+            string hash;
+            try
+            {
+                hash = OperatingSystem.IsWindows()
+                    ? ScreenCaptureWin.PrimaryMonitorSha256Prefix16() ?? "?"
+                    : "?";
+            }
+            catch
+            {
+                hash = "?";
+            }
+
+            var (title, proc) = OperatingSystem.IsWindows()
+                ? ForegroundWindowInfo.TryRead()
+                : ("", "");
+
+            var prompt =
+                "Watch-Arbeitskontext. Antworte mit genau einem knappen, hilfreichen Satz auf Deutsch (max. 220 Zeichen, keine Begrüßung). " +
+                $"Aktive App: {proc}. Fenster: {title}. Bildschirm-Hash-Präfix: {hash}.";
+
+            var text = await LlmChatService.CompleteAsync(_settings, prompt, false, false, default)
+                .ConfigureAwait(false);
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _proactiveHintCache = text.Trim();
+                _lastProactiveUtc = DateTime.UtcNow;
+            });
+        }
+        catch (Exception ex)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _proactiveHintCache = "(Proaktiv-LLM Fehler: " + ex.Message + ")";
+                _lastProactiveUtc = DateTime.UtcNow;
+            });
+        }
+        finally
+        {
+            _proactiveBusy = false;
+        }
+    }
+
+    private void ApplyLocalToolHost()
+    {
+        _toolHost?.Dispose();
+        _toolHost = null;
+        if (!_settings.EnableLocalToolHost)
+            return;
+        if (!OperatingSystem.IsWindows())
+        {
+            NexusShell.Log("Local tool host: nur unter Windows.");
+            return;
+        }
+
+        try
+        {
+            var port = Math.Clamp(_settings.LocalToolHostPort, 1024, 65535);
+            DotEnvStore.Invalidate();
+            var tok = DotEnvStore.Get("LOCAL_TOOL_TOKEN")?.Trim();
+            var h = new LocalToolHost();
+            h.Start(port, string.IsNullOrEmpty(tok) ? null : tok);
+            _toolHost = h;
+            if (string.IsNullOrEmpty(tok))
+                NexusShell.Log("Local tool host: ohne LOCAL_TOOL_TOKEN (nur localhost).");
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("Local tool host Start: " + ex.Message);
+        }
+    }
+
+    private void MaybeAppendWatchSnapshot()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+        if (!string.Equals(_settings.Mode, "watch", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var now = DateTime.UtcNow;
+        var interval = Math.Clamp(_settings.WatchSnapshotIntervalSeconds, 15, 600);
+        if ((now - _lastWatchUtc).TotalSeconds < interval)
+            return;
+        _lastWatchUtc = now;
+
+        try
+        {
+            var hash = ScreenCaptureWin.PrimaryMonitorSha256Prefix16();
+            WatchSessionService.AppendSnapshot($"watch · Dashboard {DateTime.Now:T}", hash);
+            NexusShell.Log("watch · Snapshot (primärer Monitor-Hash) protokolliert.");
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("watch · Snapshot fehlgeschlagen: " + ex.Message);
+        }
     }
 
     private void OnCloseClick(object? sender, RoutedEventArgs e) => Hide();

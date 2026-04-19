@@ -24,6 +24,19 @@
       <CheckBox x:Name="PanicStop" Content="panic stop enabled" />
       <TextBlock Text="Denylist (kommagetrennt)" />
       <TextBox x:Name="DenylistBox" />
+      <TextBlock Text="Watch &amp; lokaler Tool-Host" FontWeight="SemiBold" Margin="0,8,0,0" />
+      <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+        <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Watch-Intervall (s)" />
+        <TextBox x:Name="WatchIntervalBox" Grid.Row="0" Grid.Column="1" Watermark="15–600, Standard 45" />
+        <CheckBox x:Name="ProactiveLlm" Grid.Row="1" Grid.ColumnSpan="2"
+                  Content="proaktiver LLM-Hinweis (Dashboard, nur Modus watch)" />
+        <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="LLM-Mindestabstand (s)" />
+        <TextBox x:Name="ProactiveIntervalBox" Grid.Row="2" Grid.Column="1" Watermark="60–3600, Standard 180" />
+        <CheckBox x:Name="EnableToolHost" Grid.Row="3" Grid.ColumnSpan="2"
+                  Content="lokalen Tool-Host starten (127.0.0.1, siehe LOCAL_TOOL_TOKEN)" />
+        <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Tool-Host-Port" />
+        <TextBox x:Name="ToolHostPortBox" Grid.Row="4" Grid.Column="1" Watermark="17888" />
+      </Grid>
       <TextBlock Text=".env-Übersicht (nur Schlüssel)" FontWeight="SemiBold" Margin="0,8,0,0" />
       <TextBox x:Name="EnvSummary" IsReadOnly="True" AcceptsReturn="True" MinHeight="100" FontFamily="Consolas,Courier New,monospace" />
       <TextBlock x:Name="EnvPathHint" FontSize="11" Foreground="#666" TextWrapping="Wrap" />

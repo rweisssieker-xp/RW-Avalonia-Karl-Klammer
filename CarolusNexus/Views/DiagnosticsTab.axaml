@@ -5,7 +5,9 @@
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
       <TextBox x:Name="DiagFilter" Width="200" Watermark="Filter…" />
       <Button x:Name="BtnExport" Content="export" />
+      <Button x:Name="BtnCopy" Content="copy all" />
       <Button x:Name="BtnClear" Content="clear logs" />
+      <Button x:Name="BtnAudit" Content="ritual audit" ToolTip.Tip="Lädt die letzten Zeilen aus ritual-step-audit.jsonl." />
     </StackPanel>
     <TextBox x:Name="DiagLog" AcceptsReturn="True" IsReadOnly="True" FontFamily="Consolas,Courier New,monospace"
              TextWrapping="Wrap" />

@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 
 namespace CarolusNexus;
 
@@ -41,5 +42,12 @@ public partial class App : Application
         AppLifecycle.UserRequestedExit = true;
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime d)
             d.Shutdown();
+    }
+
+    private async void OnTrayAskClipboard(object? sender, EventArgs e)
+    {
+        if (Shell is null)
+            return;
+        await Dispatcher.UIThread.InvokeAsync(() => Shell.AskFromClipboardAsync());
     }
 }

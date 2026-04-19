@@ -22,6 +22,25 @@ public sealed class NexusSettings
     [JsonPropertyName("suggestAutomations")]
     public bool SuggestAutomations { get; set; } = true;
 
+    /// <summary>Abstand zwischen Watch-Snapshots in Sekunden (15–600).</summary>
+    [JsonPropertyName("watchSnapshotIntervalSeconds")]
+    public int WatchSnapshotIntervalSeconds { get; set; } = 45;
+
+    /// <summary>Im Watch-Modus: periodisch einen kurzen LLM-Hinweis fürs Dashboard holen.</summary>
+    [JsonPropertyName("proactiveDashboardLlm")]
+    public bool ProactiveDashboardLlm { get; set; }
+
+    /// <summary>Mindestabstand für proaktive LLM-Aufrufe (Sekunden, 60–3600).</summary>
+    [JsonPropertyName("proactiveLlmMinIntervalSeconds")]
+    public int ProactiveLlmMinIntervalSeconds { get; set; } = 180;
+
+    /// <summary>Lokalen Tool-Host (127.0.0.1) starten — siehe LOCAL_TOOL_TOKEN in .env.</summary>
+    [JsonPropertyName("enableLocalToolHost")]
+    public bool EnableLocalToolHost { get; set; }
+
+    [JsonPropertyName("localToolHostPort")]
+    public int LocalToolHostPort { get; set; } = 17888;
+
     [JsonPropertyName("safety")]
     public SafetySettings Safety { get; set; } = new();
 }

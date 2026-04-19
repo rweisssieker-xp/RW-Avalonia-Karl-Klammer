@@ -25,7 +25,8 @@ public partial class KnowledgeTab : UserControl
         {
             KnowledgeIndexService.Rebuild();
             RefreshList();
-            NexusShell.Log("Knowledge-Reindex → knowledge-index.json");
+            _ = EmbeddingRagService.RebuildIfConfiguredAsync(default);
+            NexusShell.Log("Knowledge-Reindex → Index + Chunks; Embeddings im Hintergrund (falls konfiguriert).");
         };
         BtnSuggestRitual.Click += async (_, _) => await SuggestRitualAsync();
         DocList.SelectionChanged += OnSel;
@@ -112,19 +113,14 @@ public partial class KnowledgeTab : UserControl
         }
 
         var path = Path.Combine(AppPaths.KnowledgeDir, name);
-        string doc;
-        try
+        var doc = KnowledgeIndexService.ReadDocumentForPreview(path, 14_000);
+        if (string.IsNullOrWhiteSpace(doc) || doc.StartsWith("(Keine Textvorschau", StringComparison.Ordinal) ||
+            doc.StartsWith("(Datei fehlt", StringComparison.Ordinal) ||
+            doc.StartsWith("Lesen fehlgeschlagen", StringComparison.Ordinal))
         {
-            doc = File.ReadAllText(path);
-        }
-        catch
-        {
-            NexusShell.Log("Datei nicht lesbar (evtl. binär).");
+            NexusShell.Log("Datei nicht als Text nutzbar (Format oder leer).");
             return;
         }
-
-        if (doc.Length > 14_000)
-            doc = doc[..14_000] + "\n…";
 
         var prompt =
             "Extrahiere aus dem folgenden Dokument eine kurze Ritual-Checkliste als **nur** JSON-Array " +
@@ -152,13 +148,6 @@ public partial class KnowledgeTab : UserControl
         if (DocList.SelectedItem is not string fname)
             return;
         var path = Path.Combine(AppPaths.KnowledgeDir, fname);
-        try
-        {
-            Preview.Text = File.ReadAllText(path);
-        }
-        catch
-        {
-            Preview.Text = "(Binär oder nicht lesbar — PDF/DOCX-Parser Stub.)";
-        }
+        Preview.Text = KnowledgeIndexService.ReadDocumentForPreview(path);
     }
 }

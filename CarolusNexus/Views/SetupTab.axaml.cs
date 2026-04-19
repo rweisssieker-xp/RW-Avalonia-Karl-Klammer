@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Avalonia.Controls;
 using CarolusNexus.Models;
@@ -28,10 +29,18 @@ public partial class SetupTab : UserControl
         NeverAutoPost.IsChecked = s.Safety.NeverAutoPostBook;
         PanicStop.IsChecked = s.Safety.PanicStopEnabled;
         DenylistBox.Text = s.Safety.Denylist;
+        WatchIntervalBox.Text = s.WatchSnapshotIntervalSeconds.ToString();
+        ProactiveLlm.IsChecked = s.ProactiveDashboardLlm;
+        ProactiveIntervalBox.Text = s.ProactiveLlmMinIntervalSeconds.ToString();
+        EnableToolHost.IsChecked = s.EnableLocalToolHost;
+        ToolHostPortBox.Text = s.LocalToolHostPort.ToString();
     }
 
     public NexusSettings Gather()
     {
+        static int ParseInt(string? text, int fallback, int lo, int hi) =>
+            int.TryParse(text?.Trim(), out var v) ? Math.Clamp(v, lo, hi) : fallback;
+
         return new NexusSettings
         {
             Provider = ProviderBox.SelectedItem?.ToString() ?? "anthropic",
@@ -40,6 +49,11 @@ public partial class SetupTab : UserControl
             SpeakResponses = SpeakResponses.IsChecked == true,
             UseLocalKnowledge = UseLocalKnowledge.IsChecked == true,
             SuggestAutomations = SuggestAutomations.IsChecked == true,
+            WatchSnapshotIntervalSeconds = ParseInt(WatchIntervalBox.Text, 45, 15, 600),
+            ProactiveDashboardLlm = ProactiveLlm.IsChecked == true,
+            ProactiveLlmMinIntervalSeconds = ParseInt(ProactiveIntervalBox.Text, 180, 60, 3600),
+            EnableLocalToolHost = EnableToolHost.IsChecked == true,
+            LocalToolHostPort = ParseInt(ToolHostPortBox.Text, 17888, 1024, 65535),
             Safety = new SafetySettings
             {
                 Profile = SafetyProfile.SelectedItem?.ToString() ?? "balanced",

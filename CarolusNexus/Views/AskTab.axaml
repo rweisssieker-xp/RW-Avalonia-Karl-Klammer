@@ -24,6 +24,8 @@
         <Button x:Name="BtnClearPlan" Content="clear plan" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnPanic" Content="panic stop" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnSpeak" Content="speak response" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnCopyAnswer" Content="copy answer" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Kopiert die Assistant-Antwort in die Zwischenablage." />
       </WrapPanel>
       <TextBlock Text="AX Fat-Client: ax.*-Aktionen in Plänen — Ausführung über Ritual-Runtime (Stub)." FontSize="11" Foreground="#666" TextWrapping="Wrap" />
     </StackPanel>

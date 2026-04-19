@@ -38,6 +38,7 @@
             <Button x:Name="BtnPromoteHist" Content="promote from history" Margin="0,0,6,6" />
             <Button x:Name="BtnPromoteWatch" Content="promote from watch" Margin="0,0,6,6" />
             <Button x:Name="BtnTeachStart" Content="start teach" Margin="0,0,6,6" />
+            <Button x:Name="BtnTeachCapture" Content="capture foreground step" Margin="0,0,6,6" />
             <Button x:Name="BtnTeachStop" Content="stop teach" Margin="0,0,6,6" />
           </WrapPanel>
         </StackPanel>

@@ -168,6 +168,8 @@ public static class CliAgentRunner
 
         using var proc = new Process { StartInfo = psi };
         proc.Start();
+        var stdoutTask = proc.StandardOutput.ReadToEndAsync(ct);
+        var stderrTask = proc.StandardError.ReadToEndAsync(ct);
         using (ct.Register(() =>
                {
                    try
@@ -181,31 +183,32 @@ public static class CliAgentRunner
                    }
                }))
         {
-        if (stdinText != null)
-        {
-            await proc.StandardInput.WriteAsync(stdinText.AsMemory(), ct).ConfigureAwait(false);
-            await proc.StandardInput.FlushAsync(ct).ConfigureAwait(false);
-            proc.StandardInput.Close();
-        }
+            if (stdinText != null)
+            {
+                await proc.StandardInput.WriteAsync(stdinText.AsMemory(), ct).ConfigureAwait(false);
+                await proc.StandardInput.FlushAsync(ct).ConfigureAwait(false);
+                proc.StandardInput.Close();
+            }
 
-        var stdout = await proc.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
-        var stderr = await proc.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
-        await proc.WaitForExitAsync(ct).ConfigureAwait(false);
+            await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
+            var stdout = await stdoutTask.ConfigureAwait(false);
+            var stderr = await stderrTask.ConfigureAwait(false);
+            await proc.WaitForExitAsync(ct).ConfigureAwait(false);
 
-        var sb = new StringBuilder();
-        sb.Append(header);
-        sb.AppendLine(stdout);
-        if (!string.IsNullOrWhiteSpace(stderr))
-        {
-            sb.AppendLine("--- stderr ---");
-            sb.AppendLine(stderr);
-        }
+            var sb = new StringBuilder();
+            sb.Append(header);
+            sb.AppendLine(stdout);
+            if (!string.IsNullOrWhiteSpace(stderr))
+            {
+                sb.AppendLine("--- stderr ---");
+                sb.AppendLine(stderr);
+            }
 
-        sb.AppendLine($"--- exit {proc.ExitCode} ---");
-        var full = sb.ToString();
-        await File.WriteAllTextAsync(logPath, full, ct).ConfigureAwait(false);
-        var excerpt = full.Length > 8000 ? full[..8000] + "\n…" : full;
-        return (logPath, excerpt);
+            sb.AppendLine($"--- exit {proc.ExitCode} ---");
+            var full = sb.ToString();
+            await File.WriteAllTextAsync(logPath, full, ct).ConfigureAwait(false);
+            var excerpt = full.Length > 8000 ? full[..8000] + "\n…" : full;
+            return (logPath, excerpt);
         }
     }
 }

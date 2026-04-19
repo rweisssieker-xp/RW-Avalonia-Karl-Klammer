@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="CarolusNexus.Views.LiveContextTab">
   <DockPanel MinHeight="420">
-    <TextBlock DockPanel.Dock="Top" Text="Desktop Inspector · Adapter-Stubs (§5.10)" FontWeight="SemiBold" Margin="0,0,0,8" />
+    <TextBlock DockPanel.Dock="Top" Text="Desktop Inspector · Vordergrundfenster + Adapter-Heuristik (§5.10)" FontWeight="SemiBold" Margin="0,0,0,8" />
     <ScrollViewer DockPanel.Dock="Top" Margin="0,0,0,8">
       <WrapPanel>
         <Button x:Name="BExplorer" Content="Explorer" Margin="0,0,6,6" Padding="8,4" />

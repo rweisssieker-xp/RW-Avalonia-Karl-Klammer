@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 using CarolusNexus.Models;
 using CarolusNexus.Services;
 
@@ -15,6 +17,10 @@ public partial class AskTab : UserControl
     private CancellationTokenSource? _cts;
     private List<RecipeStep> _planSteps = new();
     private int _planStepIndex;
+    private WindowsMicRecorder? _mic;
+    private bool _isRecording;
+    private bool _operationBusy;
+    private bool _awaitGlobalHotkeyRelease;
 
     public AskTab()
     {
@@ -24,14 +30,47 @@ public partial class AskTab : UserControl
 
     public void SetSettingsProvider(Func<NexusSettings> getSettings) => _getSettings = getSettings;
 
+    /// <summary>Tray / extern: Prompt setzen und gleichen Ask-Flow wie „ask now“ ausführen.</summary>
+    public async Task RunAskFromExternalAsync(string promptText)
+    {
+        PromptBox.Text = promptText;
+        await RunAskAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Loslassen der System-Hotkey-Taste wird über GetAsyncKeyState gepollt (nur dann true).</summary>
+    public bool AwaitsGlobalHotkeyRelease => _isRecording && _awaitGlobalHotkeyRelease;
+
+    public void NotifyGlobalPushToTalkPressed()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+        StartMicRecording("(Hotkey)", awaitGlobalHotkeyRelease: true);
+    }
+
+    public async Task NotifyGlobalPushToTalkReleasedAsync()
+    {
+        if (!_isRecording)
+            return;
+        await StopMicTranscribeAndAskAsync().ConfigureAwait(true);
+    }
+
     private void Wire()
     {
         BtnAskNow.Click += async (_, _) => await RunAskAsync();
         BtnSmoke.Click += async (_, _) => await RunSmokeAsync();
-        BtnImportAudio.Click += (_, _) => Stub("import audio + transcribe");
-        BtnPttStart.Click += (_, _) => Stub("start push-to-talk");
-        BtnPttStop.Click += (_, _) => Stub("stop + ask");
-        BtnCancelRec.Click += (_, _) => Stub("cancel recording");
+        BtnImportAudio.Click += async (_, _) => await ImportAudioAndTranscribeAsync();
+        BtnPttStart.Click += (_, _) =>
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                NexusShell.Log("Push-to-Talk: nur unter Windows.");
+                return;
+            }
+
+            StartMicRecording("(Button)", awaitGlobalHotkeyRelease: false);
+        };
+        BtnPttStop.Click += async (_, _) => await StopMicTranscribeAndAskAsync();
+        BtnCancelRec.Click += (_, _) => CancelMicRecording();
         BtnClearConv.Click += (_, _) =>
         {
             AssistantOut.Text = "";
@@ -58,12 +97,232 @@ public partial class AskTab : UserControl
             _cts?.Cancel();
             NexusShell.Log("panic stop — Abbruch angefordert.");
         };
-        BtnSpeak.Click += (_, _) => Stub("speak response");
+        BtnSpeak.Click += async (_, _) => await SpeakAssistantResponseAsync();
+        BtnCopyAnswer.Click += async (_, _) => await CopyAssistantAnswerAsync();
     }
 
-    public async Task RunAskFromHotkeyAsync()
+    private async Task CopyAssistantAnswerAsync()
     {
-        await RunAskAsync();
+        var top = TopLevel.GetTopLevel(this);
+        if (top?.Clipboard == null)
+        {
+            NexusShell.Log("Zwischenablage nicht verfügbar.");
+            return;
+        }
+
+        var t = AssistantOut.Text ?? "";
+        if (string.IsNullOrWhiteSpace(t))
+        {
+            NexusShell.Log("Keine Assistant-Antwort zum Kopieren.");
+            return;
+        }
+
+        await top.Clipboard.SetTextAsync(t).ConfigureAwait(true);
+        NexusShell.Log("Assistant-Antwort in Zwischenablage kopiert.");
+    }
+
+    private void StartMicRecording(string source, bool awaitGlobalHotkeyRelease)
+    {
+        if (_isRecording)
+            return;
+        try
+        {
+            _mic ??= new WindowsMicRecorder();
+            _mic.Start();
+            _isRecording = true;
+            _awaitGlobalHotkeyRelease = awaitGlobalHotkeyRelease;
+            TranscriptOut.Text = $"Aufnahme aktiv {source} — loslassen / „stop + ask“ für Transkript.";
+            NexusShell.Log($"Mikrofon Aufnahme gestartet {source}");
+            RefreshInputStates();
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("Mikrofon Start: " + ex.Message);
+            TranscriptOut.Text = "Mikrofon: " + ex.Message;
+            _awaitGlobalHotkeyRelease = false;
+        }
+    }
+
+    private void CancelMicRecording()
+    {
+        if (!_isRecording)
+        {
+            TranscriptOut.Text = "(keine aktive Aufnahme)";
+            return;
+        }
+
+        _isRecording = false;
+        _awaitGlobalHotkeyRelease = false;
+        _mic?.StopSync();
+        TranscriptOut.Text = "Aufnahme abgebrochen.";
+        NexusShell.Log("Mikrofon Aufnahme abgebrochen.");
+        RefreshInputStates();
+    }
+
+    private async Task StopMicTranscribeAndAskAsync()
+    {
+        if (!_isRecording || _mic == null)
+            return;
+
+        _isRecording = false;
+        _awaitGlobalHotkeyRelease = false;
+        string? path = null;
+        try
+        {
+            path = await _mic.StopToFileAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("Mikrofon Stop: " + ex.Message);
+            TranscriptOut.Text = "Mikrofon Stop: " + ex.Message;
+            RefreshInputStates();
+            return;
+        }
+
+        RefreshInputStates();
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+        {
+            TranscriptOut.Text = "Keine Audiodatei erzeugt.";
+            return;
+        }
+
+        SetBusy(true);
+        string? transcript = null;
+        try
+        {
+            _cts = new CancellationTokenSource();
+            transcript = await Task.Run(async () =>
+                    await SpeechTranscriptionService.TranscribeFileAsync(path, _cts.Token).ConfigureAwait(false))
+                .ConfigureAwait(true);
+            TranscriptOut.Text = transcript;
+            if (!string.IsNullOrWhiteSpace(transcript))
+                PromptBox.Text = transcript;
+            NexusShell.Log("Transkript fertig (" + transcript.Length + " Zeichen).");
+        }
+        catch (Exception ex)
+        {
+            TranscriptOut.Text = "Transkription: " + ex.Message;
+            NexusShell.Log("Transkription Fehler: " + ex.Message);
+        }
+        finally
+        {
+            TryDelete(path);
+            SetBusy(false);
+        }
+
+        if (!string.IsNullOrWhiteSpace(transcript) && !LooksLikeTranscriptionFailure(transcript))
+            await RunAskAsync();
+    }
+
+    private static bool LooksLikeTranscriptionFailure(string t)
+    {
+        var s = t.TrimStart();
+        return s.StartsWith("Fehlt ", StringComparison.Ordinal)
+               || s.StartsWith("Keine Audiodatei", StringComparison.Ordinal)
+               || s.StartsWith("Whisper ", StringComparison.Ordinal)
+               || s.StartsWith("Whisper:", StringComparison.Ordinal)
+               || s.StartsWith("ElevenLabs STT HTTP", StringComparison.Ordinal)
+               || s.StartsWith("ElevenLabs:", StringComparison.Ordinal);
+    }
+
+    private async Task ImportAudioAndTranscribeAsync()
+    {
+        var top = TopLevel.GetTopLevel(this);
+        if (top == null)
+            return;
+
+        var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Audio für Transkription",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Audio")
+                {
+                    Patterns = ["*.wav", "*.mp3", "*.m4a", "*.flac", "*.ogg", "*.webm"]
+                }
+            ]
+        }).ConfigureAwait(true);
+
+        var f = files.FirstOrDefault();
+        if (f == null)
+            return;
+
+        string? tmp = null;
+        SetBusy(true);
+        try
+        {
+            _cts = new CancellationTokenSource();
+            await using var stream = await f.OpenReadAsync().ConfigureAwait(true);
+            tmp = Path.Combine(Path.GetTempPath(), "carolus-import-" + Guid.NewGuid().ToString("N") + Path.GetExtension(f.Name));
+            await using (var fs = File.Create(tmp))
+                await stream.CopyToAsync(fs, _cts.Token).ConfigureAwait(true);
+
+            var transcript = await Task.Run(async () =>
+                    await SpeechTranscriptionService.TranscribeFileAsync(tmp, _cts.Token).ConfigureAwait(false))
+                .ConfigureAwait(true);
+            TranscriptOut.Text = transcript;
+            if (!string.IsNullOrWhiteSpace(transcript))
+                PromptBox.Text = transcript;
+            NexusShell.Log("Import + Transkript fertig.");
+        }
+        catch (Exception ex)
+        {
+            TranscriptOut.Text = "Import: " + ex.Message;
+            NexusShell.Log("Import Audio Fehler: " + ex.Message);
+        }
+        finally
+        {
+            TryDelete(tmp);
+            SetBusy(false);
+        }
+    }
+
+    private async Task SpeakAssistantResponseAsync()
+    {
+        var text = AssistantOut.Text?.Trim();
+        if (string.IsNullOrEmpty(text))
+        {
+            NexusShell.Log("TTS: keine Assistant-Antwort.");
+            return;
+        }
+
+        SetBusy(true);
+        try
+        {
+            _cts = new CancellationTokenSource();
+            var err = await TextToSpeechService.SpeakAsync(text, _cts.Token).ConfigureAwait(true);
+            if (!string.IsNullOrEmpty(err))
+            {
+                NexusShell.Log("TTS: " + err);
+                TranscriptOut.Text = err;
+            }
+            else
+                NexusShell.Log("TTS abgeschlossen.");
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("TTS Fehler: " + ex.Message);
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private static void TryDelete(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return;
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch
+        {
+            // ignore
+        }
     }
 
     private async Task RunSmokeAsync()
@@ -107,11 +366,11 @@ public partial class AskTab : UserControl
             var know = UseKnowledgeInAsk.IsChecked == true;
 
             RetrievalOut.Text = know
-                ? KnowledgeSnippetService.BuildContext(6000)
+                ? KnowledgeSnippetService.BuildContext(prompt, 6000)
                 : "(lokales Wissen nicht eingebunden)";
 
             NexusShell.Log($"ask now · screenshots={shots}, knowledge={know}");
-            var text = await LlmChatService.CompleteAsync(s, prompt, shots, know, _cts.Token);
+            var text = await LlmChatService.CompleteAsync(s, prompt, shots, know, _cts.Token).ConfigureAwait(true);
             AssistantOut.Text = text;
 
             var tokens = ActionPlanExtractor.Extract(text);
@@ -119,6 +378,13 @@ public partial class AskTab : UserControl
             _planStepIndex = 0;
             PlanPreview.Text = ActionPlanExtractor.FormatPreview(tokens);
             PlanExec.Text = $"({_planSteps.Count} Schritte erkannt — „run plan“ oder „run next step“)";
+
+            if (s.SpeakResponses)
+            {
+                var ttsErr = await TextToSpeechService.SpeakAsync(text, _cts.Token).ConfigureAwait(true);
+                if (!string.IsNullOrEmpty(ttsErr))
+                    NexusShell.Log("TTS (auto): " + ttsErr);
+            }
 
             NexusShell.Log("ask now abgeschlossen.");
         }
@@ -147,7 +413,7 @@ public partial class AskTab : UserControl
         }
 
         _cts = new CancellationTokenSource();
-        PlanExec.Text = await SimplePlanSimulator.RunAsync(steps, dryRun, _getSettings(), _cts.Token);
+        PlanExec.Text = await SimplePlanSimulator.RunAsync(steps, dryRun, _getSettings(), _cts.Token).ConfigureAwait(true);
         _planStepIndex = 0;
     }
 
@@ -164,7 +430,7 @@ public partial class AskTab : UserControl
 
         _cts ??= new CancellationTokenSource();
         var slice = new List<RecipeStep> { steps[_planStepIndex] };
-        var line = await SimplePlanSimulator.RunAsync(slice, false, _getSettings(), _cts.Token);
+        var line = await SimplePlanSimulator.RunAsync(slice, false, _getSettings(), _cts.Token).ConfigureAwait(true);
         PlanExec.Text += "\n" + line;
         _planStepIndex++;
     }
@@ -203,14 +469,19 @@ public partial class AskTab : UserControl
 
     private void SetBusy(bool busy)
     {
+        _operationBusy = busy;
         BtnAskNow.IsEnabled = !busy;
         BtnSmoke.IsEnabled = !busy;
+        BtnImportAudio.IsEnabled = !busy;
+        BtnSpeak.IsEnabled = !busy;
+        BtnCopyAnswer.IsEnabled = !busy;
+        RefreshInputStates();
     }
 
-    private void Stub(string action)
+    private void RefreshInputStates()
     {
-        NexusShell.LogStub(action);
-        AssistantOut.Text =
-            $"(Stub) Anfrage: „{PromptBox.Text?.Trim()}“\r\nAktion: {action}\r\n— noch nicht angebunden.";
+        BtnPttStart.IsEnabled = !_operationBusy && !_isRecording && OperatingSystem.IsWindows();
+        BtnPttStop.IsEnabled = !_operationBusy && _isRecording;
+        BtnCancelRec.IsEnabled = !_operationBusy && _isRecording;
     }
 }

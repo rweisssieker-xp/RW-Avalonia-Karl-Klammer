@@ -33,12 +33,18 @@ public static class SimplePlanSimulator
             sb.AppendLine(line);
             NexusShell.Log(line);
 
-            if (executeReal && safety != null)
+            string stepResult;
+            if (dryRun)
+            {
+                stepResult = "[DRY-RUN]";
+            }
+            else if (executeReal && safety != null)
             {
                 if (!PlanGuard.IsAllowed(safety, s.ActionArgument))
                 {
                     sb.AppendLine("  → [BLOCKED] Safety-Policy");
                     NexusShell.Log("  → [BLOCKED] Safety-Policy");
+                    stepResult = "[BLOCKED] Safety-Policy";
                 }
                 else
                 {
@@ -46,8 +52,19 @@ public static class SimplePlanSimulator
                         Win32AutomationExecutor.Execute(s, safety));
                     sb.AppendLine("  → " + msg);
                     NexusShell.Log("  → " + msg);
+                    stepResult = msg;
                 }
             }
+            else
+            {
+                stepResult = !System.OperatingSystem.IsWindows()
+                    ? "[SIM] nicht Windows"
+                    : !string.Equals(safety?.Safety.Profile, "power-user", System.StringComparison.OrdinalIgnoreCase)
+                        ? "[SIM] Profil ≠ power-user — kein Win32"
+                        : "[SIM]";
+            }
+
+            RitualStepAudit.Append(i + 1, steps.Count, s, dryRun, stepResult);
 
             if (s.WaitMs > 0)
                 await Task.Delay(s.WaitMs, ct).ConfigureAwait(false);
@@ -59,7 +76,10 @@ public static class SimplePlanSimulator
             !string.Equals(safety.Safety.Profile, "power-user", System.StringComparison.OrdinalIgnoreCase))
             sb.AppendLine("(Hinweis: echte Ausführung nur bei Safety-Profil „power-user“.)");
 
-        return sb.ToString().TrimEnd();
+        var logText = sb.ToString().TrimEnd();
+        ActionHistoryService.AppendPlanRun(steps, dryRun, logText.Length > 4000 ? logText[..4000] + "…" : logText);
+
+        return logText;
     }
 
     public static List<RecipeStep> ParsePlanPreviewLines(string planText)

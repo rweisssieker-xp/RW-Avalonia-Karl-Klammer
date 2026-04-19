@@ -34,7 +34,7 @@ public static class LlmChatService
         var augmented = userPrompt;
         if (useKnowledge)
         {
-            var k = KnowledgeSnippetService.BuildContext();
+            var k = KnowledgeSnippetService.BuildContext(userPrompt, 12000);
             if (!string.IsNullOrWhiteSpace(k))
                 augmented = "Kontext aus lokalem Wissen (Auszüge):\n\n" + k + "\n\n---\n\nNutzeranfrage:\n" + userPrompt;
         }

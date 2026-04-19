@@ -7,10 +7,11 @@
   </Application.Styles>
   <TrayIcon.Icons>
     <TrayIcons>
-      <TrayIcon ToolTipText="Carolus Nexus">
+      <TrayIcon Icon="/Assets/tray.png" ToolTipText="Carolus Nexus" IsVisible="True">
         <TrayIcon.Menu>
           <NativeMenu>
             <NativeMenuItem Header="Carolus Nexus öffnen" Click="OnTrayOpen" />
+            <NativeMenuItem Header="Ask aus Zwischenablage" Click="OnTrayAskClipboard" />
             <NativeMenuItem Header="Beenden" Click="OnTrayQuit" />
           </NativeMenu>
         </TrayIcon.Menu>

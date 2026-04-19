@@ -36,14 +36,127 @@ public partial class RitualsTab : UserControl
         BtnRunRitual.Click += async (_, _) => await RunSelectedAsync(false);
         BtnRunNextStep.Click += async (_, _) => await RunNextStepAsync();
         BtnResume.Click += async (_, _) => await RunSelectedAsync(false);
-        BtnPromoteHist.Click += (_, _) => NexusShell.LogStub("promote from history");
-        BtnPromoteWatch.Click += (_, _) => NexusShell.LogStub("promote from watch");
-        BtnTeachStart.Click += (_, _) => NexusShell.LogStub("start teach");
-        BtnTeachStop.Click += (_, _) => NexusShell.LogStub("stop teach");
+        BtnPromoteHist.Click += (_, _) => PromoteFromHistory();
+        BtnPromoteWatch.Click += (_, _) => PromoteFromWatch();
+        BtnTeachStart.Click += (_, _) => StartTeach();
+        BtnTeachCapture.Click += (_, _) => CaptureForegroundTeachStep();
+        BtnTeachStop.Click += (_, _) => StopTeach();
 
         RitualRecipeStore.Saved += OnRecipesSaved;
         Unloaded += (_, _) => RitualRecipeStore.Saved -= OnRecipesSaved;
 
+        ReloadLibrary();
+    }
+
+    private void PromoteFromHistory()
+    {
+        var entry = ActionHistoryService.GetLatestPlanRunWithSteps();
+        if (entry == null)
+        {
+            NexusShell.Log("promote from history: kein Plan-Lauf mit Schritten — zuerst „run plan“ / Ritual ausführen.");
+            return;
+        }
+
+        var recipe = new AutomationRecipe
+        {
+            Name = $"Promoted History {entry.UtcAt.ToLocalTime():yyyy-MM-dd HH:mm}",
+            Description = "Aus letztem action-history plan_run",
+            Steps = entry.Steps.Select(s => new RecipeStep
+            {
+                ActionType = s.ActionType,
+                ActionArgument = s.ActionArgument,
+                WaitMs = s.WaitMs
+            }).ToList()
+        };
+        RitualRecipeStore.AppendRecipe(recipe);
+        NexusShell.Log($"promote from history: {recipe.Name} ({recipe.Steps.Count} Schritte).");
+        ReloadLibrary();
+    }
+
+    private void PromoteFromWatch()
+    {
+        var doc = WatchSessionService.LoadOrEmpty();
+        if (doc.Entries.Count == 0)
+        {
+            NexusShell.Log("promote from watch: watch-sessions.json leer (Modus „watch“ nutzen).");
+            return;
+        }
+
+        var steps = doc.Entries
+            .Select(e => new RecipeStep
+            {
+                ActionType = "token",
+                ActionArgument = string.IsNullOrWhiteSpace(e.ScreenHash)
+                    ? $"watch|{e.Note}"
+                    : $"watch|{e.Note} [screen:{e.ScreenHash}]",
+                WaitMs = 0
+            })
+            .ToList();
+        var recipe = new AutomationRecipe
+        {
+            Name = $"Promoted Watch {DateTime.Now:yyyy-MM-dd HH:mm}",
+            Description = $"Aus {doc.Entries.Count} Watch-Einträgen",
+            Steps = steps
+        };
+        RitualRecipeStore.AppendRecipe(recipe);
+        NexusShell.Log($"promote from watch: {recipe.Name} ({recipe.Steps.Count} Schritte).");
+        ReloadLibrary();
+    }
+
+    private void StartTeach()
+    {
+        RitualsTeachSession.Start();
+        NexusShell.Log("Teach: gestartet — „capture foreground“, Live-Context „run“ oder Adapter-Klicks erfassen Schritte.");
+    }
+
+    private void CaptureForegroundTeachStep()
+    {
+        if (!RitualsTeachSession.IsActive)
+        {
+            NexusShell.Log("Teach: zuerst „start teach“.");
+            return;
+        }
+
+        if (!OperatingSystem.IsWindows())
+        {
+            NexusShell.Log("Teach: nur unter Windows.");
+            return;
+        }
+
+        var d = ForegroundWindowInfo.TryReadDetail();
+        if (d == null)
+        {
+            NexusShell.Log("Teach: kein Vordergrundfenster.");
+            return;
+        }
+
+        var fam = OperatorAdapterRegistry.ResolveFamily(d.Value.ProcessName, d.Value.Title);
+        var arg = $"context|{fam}|{d.Value.ProcessName}|{d.Value.Title}";
+        RitualsTeachSession.Append(new RecipeStep { ActionType = "token", ActionArgument = arg, WaitMs = 200 });
+        NexusShell.Log($"Teach: Schritt {RitualsTeachSession.BufferedCount} — {d.Value.ProcessName} ({fam}).");
+    }
+
+    private void StopTeach()
+    {
+        var steps = RitualsTeachSession.Stop();
+        if (steps.Count == 0)
+        {
+            NexusShell.Log("Teach: keine Schritte gesammelt.");
+            return;
+        }
+
+        var recipe = new AutomationRecipe
+        {
+            Name = $"Teach {DateTime.Now:yyyy-MM-dd HH:mm}",
+            Description = "Teach-Modus (manuell erfasste Schritte)",
+            Steps = steps.ToList()
+        };
+        RitualRecipeStore.AppendRecipe(recipe);
+        _selected = recipe;
+        RitualName.Text = recipe.Name;
+        RitualDesc.Text = recipe.Description;
+        StepsEditor.Text = JsonSerializer.Serialize(recipe.Steps, new JsonSerializerOptions { WriteIndented = true });
+        NexusShell.Log($"Teach: Ritual gespeichert — {recipe.Name} ({recipe.Steps.Count} Schritte).");
         ReloadLibrary();
     }
 

@@ -1,6 +1,7 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Win32;
 using System;
+using System.Linq;
 
 namespace CarolusNexus;
 
@@ -10,8 +11,17 @@ class Program
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.
     [STAThread]
-    public static void Main(string[] args) => BuildAvaloniaApp()
-        .StartWithClassicDesktopLifetime(args);
+    public static void Main(string[] args)
+    {
+        if (args.Any(static a => string.Equals(a, "--smoke", StringComparison.OrdinalIgnoreCase)))
+        {
+            Environment.Exit(AppSmokeTest.Run());
+            return;
+        }
+
+        BuildAvaloniaApp()
+            .StartWithClassicDesktopLifetime(args);
+    }
 
     // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()

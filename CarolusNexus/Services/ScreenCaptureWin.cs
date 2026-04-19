@@ -5,6 +5,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
+using System.Security.Cryptography;
 using System.Windows.Forms;
 
 namespace CarolusNexus.Services;
@@ -33,5 +34,16 @@ public static class ScreenCaptureWin
         }
 
         return list;
+    }
+
+    /// <summary>Kurzer SHA256-Präfix des primären Monitors (für Watch-Modus / Änderungserkennung).</summary>
+    public static string? PrimaryMonitorSha256Prefix16()
+    {
+        var all = CaptureAllMonitorsPngBase64();
+        if (all.Count == 0)
+            return null;
+        var bytes = Convert.FromBase64String(all[0].Base64Png);
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToHexString(hash)[..16];
     }
 }

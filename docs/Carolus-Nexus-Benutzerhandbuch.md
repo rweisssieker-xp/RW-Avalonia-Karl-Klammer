@@ -67,16 +67,25 @@ Karl Klammer ist die **Identität/Stimme** des Assistenten (siehe [SOUL.md](../S
 
 | Bereich | Stand in `CarolusNexus/` |
 |--------|---------------------------|
-| Tab-Shell, Header, `settings.json`, `.env`-Schlüsselliste (Setup) | umgesetzt |
+| Tab-Shell, Header, `settings.json`, `.env`-Lesen ([DotEnvStore](../CarolusNexus/Services/DotEnvStore.cs), Setup-Tab) | umgesetzt (Werte im RAM; keine Secret-Ausgabe in Logs) |
 | `AppPaths`, `windows/data`-Bäume, Dateipfade laut §20 | umgesetzt |
-| Dashboard inkl. 3D-Vorschau (`OfficeScene3D`), Kacheln | UI umgesetzt; Inhalte teils Stub-Text |
+| Dashboard inkl. 3D-Vorschau (`OfficeScene3D`), Kacheln | UI umgesetzt; Proactive-Kachel teils Platzhalter |
 | Begleiter am Cursor (`KarlCompanionWindow`, Toggle im Header) | umgesetzt (Maus folgen, klick-durchlässig auf Windows) |
-| Globaler **F8**-Poll | erkennt Drücken/Loslassen, loggt Stub-Meldungen (keine echte Aufnahme) |
-| Provider / Vision / RAG / STT / TTS / Plan-Ausführung / echte Automation | **Stubs** (`NexusShell.LogStub`) |
-| AX-/Adapter-Inspector | Buttons und Tabs; Aktionen loggen Stub |
-| Tray-Icon (`NotifyIcon`) | **nicht** im aktuellen Stand |
+| **Tray-Icon** ([App.axaml](../CarolusNexus/App.axaml)) | umgesetzt (Menü Öffnen/Beenden; Schließen minimiert ins Tray) |
+| **PTT / globaler Hotkey** `PUSH_TO_TALK_KEY` ([PushToTalkHotkeyWindow](../CarolusNexus/Services/PushToTalkHotkeyWindow.cs), Fallback-Polling) | umgesetzt: Hold-to-Talk, Loslassen → STT + optional Ask |
+| **STT / TTS** ([SpeechTranscriptionService](../CarolusNexus/Services/SpeechTranscriptionService.cs), [TextToSpeechService](../CarolusNexus/Services/TextToSpeechService.cs), `STT_PROVIDER`, `TTS_PROVIDER`) | umgesetzt (ElevenLabs / Whisper / SAPI-Fallback je nach `.env`) |
+| **Vision-LLM Ask** ([LlmChatService](../CarolusNexus/Services/LlmChatService.cs), Multi-Monitor-Screenshots) | umgesetzt (Provider-Keys vorausgesetzt) |
+| **RAG-light** ([KnowledgeIndexService](../CarolusNexus/Services/KnowledgeIndexService.cs), Chunks + [KnowledgeSnippetService](../CarolusNexus/Services/KnowledgeSnippetService.cs)) | umgesetzt (`knowledge-index.json`, `knowledge-chunks.json`, PDF/DOCX via NuGet) |
+| **Action-Plans** ([ActionPlanExtractor](../CarolusNexus/Services/ActionPlanExtractor.cs), Plan-Vorschau / Run / Save-as-Ritual) | umgesetzt |
+| **Plan-Ausführung** ([SimplePlanSimulator](../CarolusNexus/Services/SimplePlanSimulator.cs), [Win32AutomationExecutor](../CarolusNexus/Services/Win32AutomationExecutor.cs), [PlanGuard](../CarolusNexus/Services/PlanGuard.cs)) | umgesetzt: echte Win32-Schritte nur bei Profil **power-user** + erlaubten Tokens |
+| **CLI-Handoff** ([CliAgentRunner](../CarolusNexus/Services/CliAgentRunner.cs), Console-Tab) | umgesetzt (lokale CLIs, Logs unter `codex output/`) |
+| **Watch-Modus** ([WatchSessionService](../CarolusNexus/Services/WatchSessionService.cs), Dashboard-Snapshots, Bildschirm-Hash) | umgesetzt (Rotation max. 500 Einträge) |
+| **History** ([ActionHistoryService](../CarolusNexus/Services/ActionHistoryService.cs), `action-history.json`) | umgesetzt (Plan-Läufe werden protokolliert) |
+| **Rituals Teach / promote** | umgesetzt: Teach-Session, Promote aus History/Watch, Capture Vordergrund |
+| **Live Context** ([LiveContextTab](../CarolusNexus/Views/LiveContextTab.axaml.cs), [ForegroundWindowInfo](../CarolusNexus/Services/ForegroundWindowInfo.cs), [OperatorAdapterRegistry](../CarolusNexus/Services/OperatorAdapterRegistry.cs)) | umgesetzt: Vordergrundfenster, Familien-Heuristik, AX-Hinweis; **keine** vollständige UIA-Grid-Tiefe für AX |
+| AX Fat-Client UIAutomation (Form/Grid) | **Teilziel** — narrativ und Tokens vorhanden; Live Context liefert Kontext, keine produktionsreife AX-Steuerung |
 
-Details zu Abweichungen stehen bei **§5–§19** und **§22**.
+Details zu Grenzfällen stehen bei **§15**, **§22** und [Carolus-Nexus-ICP-Personas.md](Carolus-Nexus-ICP-Personas.md).
 
 ---
 
@@ -88,7 +97,7 @@ Details zu Abweichungen stehen bei **§5–§19** und **§22**.
 - *Optional:* ElevenLabs (Voice-ID + Key) für STT/TTS
 - *Optional:* Lokales **Whisper** (Python-Installation) für STT ohne Cloud
 - *Optional:* Lokal installierte CLIs **codex**, **claude**, **openclaw**
-- Für PDF-/DOCX-Wissen in der **vollständigen RAG-Runtime** (Zielbild): `UglyToad.PdfPig` und `DocumentFormat.OpenXml` per NuGet — das aktuelle Projekt [CarolusNexus.csproj](../CarolusNexus/CarolusNexus.csproj) referenziert diese Pakete **noch nicht**; der Knowledge-Tab ist UI + Stub.
+- PDF-/DOCX-Wissen: [CarolusNexus.csproj](../CarolusNexus/CarolusNexus.csproj) referenziert `UglyToad.PdfPig` und `DocumentFormat.OpenXml`; der Knowledge-Indexer nutzt sie beim Rebuild ([KnowledgeIndexService](../CarolusNexus/Services/KnowledgeIndexService.cs)).
 
 ---
 
@@ -134,11 +143,11 @@ Beim ersten Start:
 
 1. Sicherstellen, dass der Ordner `windows\` im Repository existiert (liefert [AppPaths.DiscoverRepoRoot](../CarolusNexus/AppPaths.cs) die richtige Wurzel beim Start aus `bin\`).
 2. `windows\.env.example` nach `windows\.env` kopieren (optional; für die Schlüsselübersicht im Setup-Tab).
-3. Keys eintragen — **Zielintegration:** Provider/STT/TTS; im aktuellen Branch werden Werte noch nicht vom Backend gelesen.
+3. Keys eintragen — Provider/STT/TTS werden zur Laufzeit aus `windows/.env` gelesen ([DotEnvStore](../CarolusNexus/Services/DotEnvStore.cs)); Werte erscheinen nicht in Logs.
 4. Optional: Dateien in `windows\data\knowledge\` ablegen.
 5. App starten, im Header **„refresh all"** klicken.
 6. Im Tab **Setup** Provider, Modus und Modell prüfen → **„save settings"**.
-7. Im Tab **Ask** Aktionen ausprobieren (viele Buttons loggen Stub-Meldungen in **Diagnostics**).
+7. Im Tab **Ask** Vision, Wissen, Pläne und Sprache ausprobieren; Details landen bei Bedarf in **Diagnostics**.
 
 ---
 
@@ -146,7 +155,7 @@ Beim ersten Start:
 
 ### 4.1 `windows\.env` (Secrets, **nicht** in Git)
 
-**Aktueller Code:** [DotEnvSummary](../CarolusNexus/Services/DotEnvSummary.cs) listet nur Schlüsselnamen aus `windows\.env`; im Setup-Tab werden sie als `NAME=***` angezeigt — **keine** Auswertung der Werte für Provider/STT/TTS. Die folgende Tabelle beschreibt die **vorgesehene Zielintegration** (vgl. `windows\.env.example`).
+**Aktueller Code:** [DotEnvStore](../CarolusNexus/Services/DotEnvStore.cs) liest Werte aus `windows\.env` (RAM-Cache); [DotEnvSummary](../CarolusNexus/Services/DotEnvSummary.cs) zeigt im Setup-Tab nur **Schlüsselnamen** — keine Secret-Werte. Provider/STT/TTS/Codex nutzen die geladenen Werte. Die folgende Tabelle ergänzt `windows\.env.example`.
 
 | Variable | Default (Ziel) | Zweck |
 |---|---|---|
@@ -168,7 +177,8 @@ Beim ersten Start:
 | `OPENCLAW_TIMEOUT_SECONDS` | `120` | Timeout OpenClaw |
 | `OPENCLAW_GATEWAY_URL` | – | optionaler Gateway |
 | `GATEWAY_TOKEN` | – | optionaler Gateway-Token |
-| `PUSH_TO_TALK_KEY` | `F8` | Globaler PTT-Hotkey (Ziel); im Stub ist **F8** fest im [MainWindow](../CarolusNexus/MainWindow.axaml.cs) gepollt |
+| `PUSH_TO_TALK_KEY` | `F8` | Globaler PTT-Hotkey — [PushToTalkHotkeyWindow](../CarolusNexus/Services/PushToTalkHotkeyWindow.cs) bzw. Fallback-Polling in [MainWindow](../CarolusNexus/MainWindow.axaml.cs) |
+| `TTS_PROVIDER` | `auto` | `auto` (ElevenLabs falls Keys, sonst SAPI), `elevenlabs`, `sapi` / `windows` — [TextToSpeechService](../CarolusNexus/Services/TextToSpeechService.cs) |
 
 Reload der Anzeige zur Laufzeit über den Header-Button **„refresh all"**.
 
@@ -201,17 +211,17 @@ Die Hauptoberfläche ([MainWindow.axaml](../CarolusNexus/MainWindow.axaml)) best
 - **Titel**, Untertitel („Windows-Operator-Desktop · Persona: Karl Klammer“), **Statuszeile**
 - Checkbox **„Begleiter am Cursor"** (Windows: `KarlCompanionWindow`) und Button **„Schließen"** (Hauptfenster)
 - Button **„Handbuch"** öffnet diese Datei im Standardprogramm (sofern im Build-Layout unter `docs\` auffindbar)
-- Badges: **Layout** · **Environment** · **Speech** · **Automation** · **Knowledge** (u. a. Stub-Hinweise)
+- Badges: **Layout** · **Environment** · **Speech** · **Automation** · **Knowledge** (Kurzstatus aus Settings/.env)
 - Kacheln **Operator Memory** · **Live Context** · **Environment**
 - Globale Buttons:
   `refresh all` · `save settings` · `reindex knowledge` · `refresh active app` · `export diagnostics`
 
 ### 5.2 Tab **Ask**
 
-- Prompt-Eingabe; Checkboxen **„Screenshots einbeziehen"** und **„Lokales Wissen im Ask-Flow"** (Zielverhalten; Backend Stub)
+- Prompt-Eingabe; Checkboxen **„Screenshots einbeziehen"** und **„Lokales Wissen im Ask-Flow"** (Multi-Monitor-Vision bzw. Chunk-Kontext, wenn indexiert)
 - Buttons:
   `ask now` · `smoke test` · `import audio + transcribe` · `start push-to-talk` · `stop + ask` · `cancel recording` · `clear conversation` · `run plan` · `approve + run` · `run next step` · `save plan as ritual` · `clear plan` · `panic stop` · `speak response`
-- Hinweiszeile zu **AX Fat-Client** / Ritual-Runtime (Stub)
+- Hinweiszeile zu **AX Fat-Client** / Ritual-Runtime (Ausführung siehe Safety-Profil **power-user**)
 - Spalte links: **Assistant Response**, **Retrieval + Context**, **Safety / Recovery**, **Transcript / Audio**
 - Spalte rechts: **Action Plan Preview**, **Action Plan Execution**
 
@@ -231,27 +241,26 @@ Die Hauptoberfläche ([MainWindow.axaml](../CarolusNexus/MainWindow.axaml)) best
 
 - Provider-, Modus-, Modell-Auswahl; Schalter **speak responses** / **use local knowledge** / **suggest automations**
 - **Safety Center:** Profil, **never auto-send**, **never auto-post / book**, **panic stop enabled**, Denylist
-- **.env-Übersicht (nur Schlüssel)** + Pfadhinweis — keine Werte, keine Secret-Verarbeitung im Stub
+- **.env-Übersicht (nur Schlüssel)** + Pfadhinweis — Werte werden intern gelesen, nicht angezeigt
 
 ### 5.5 Tab **Knowledge**
 
 - `search` · `import files` · `remove doc` · `reindex` · `suggest ritual from doc`
-- Dokumentliste links, **Document Preview** rechts (Stub-Logik möglich; Indexierung Zielbild)
+- Dokumentliste links, **Document Preview** rechts; Reindex über Header oder Knowledge-Tab
 
 ### 5.6 Tab **Rituals**
 
-Drei Spalten: **Ritual Library** · **Ritual Builder** · **Structured Steps (Stub)**.
+Drei Spalten: **Ritual Library** · **Ritual Builder** · **Structured Steps (JSON)**.
 
 - **Library:** Suchfeld + Liste (keine separaten Category/Source/Risk-Filter in dieser UI; das bleibt **Zielbild** für die volle Library)
 - **Builder:** Name, Beschreibung, Buttons  
   `save ritual` · `delete` · `clone` · `archive` · `publish flow` · `queue for run` · `approve next job` · `dry run` · `run ritual` · `run next step` · `resume ritual`  
   sowie **Teach:** `promote from history` · `promote from watch` · `start teach` · `stop teach`
-- **Structured Steps:** ein großes **JSON-/Textfeld** (Stub) — kein vollständiger Schritt- und Parameter-Editor wie in der Zielspezifikation
+- **Structured Steps:** JSON-Editor — **Teach:** `start teach` · `capture foreground step` · optional Live-Context-Schritte · `stop teach` speichert ein Ritual; **promote from history/watch** erzeugt Entwürfe aus `action-history.json` bzw. `watch-sessions.json`
 
 ### 5.7 Tab **History**
 
-- Suchfeld, Liste, Detail; Button **create ritual from selection**  
-- Ein **promote count**-Steuerelement ist in dieser UI **nicht** vorhanden (Zielbild)
+- Suchfeld, Liste der **Plan-Läufe** (`action-history.json`), JSON-Detail; Button **create ritual from selection** übernimmt die Schritte des gewählten Eintrags
 
 ### 5.8 Tab **Diagnostics**
 
@@ -259,20 +268,20 @@ Drei Spalten: **Ritual Library** · **Ritual Builder** · **Structured Steps (St
 
 ### 5.9 Tab **Console**
 
-- Agent-Auswahl (`ComboBox`), Prompt, **`run selected agent`**, Hinweis auf Output-Pfad, Run-Output (Stub)
+- Agent-Auswahl (`ComboBox`), Prompt, **`run selected agent`**, Output-Pfad unter `codex output/`, Auszug der CLI-Ausgabe ([CliAgentRunner](../CarolusNexus/Services/CliAgentRunner.cs))
 
 ### 5.10 Tab **Live Context**
 
-- Überschrift **Desktop Inspector · Adapter-Stubs**
-- Adapter-Buttons: Explorer, Browser, Mail, Outlook, Teams, Word, Excel, PowerPoint, OneNote, Editor, AX
-- Zeile **InspectorAction** + Button **`run`**
-- Untertabs: **Active Window** · **AX Context** · **Cross-App** (Reihenfolge in XAML)
+- **Desktop Inspector:** automatische Aktualisierung des **Vordergrundfensters** (Titel, Prozess, Fensterklasse, Bounds) und Zuordnung zu einer **Adapter-Familie** ([OperatorAdapterRegistry](../CarolusNexus/Services/OperatorAdapterRegistry.cs))
+- Adapter-Buttons: Vergleich gewählte Familie vs. aktives Fenster; im **Teach-Modus** werden Schritte mitprotokolliert
+- **InspectorAction** + **`run`:** protokolliert die Aktion, versucht bei ausführbaren Tokens eine **Win32-Ausführung** (Profil **power-user** + [PlanGuard](../CarolusNexus/Services/PlanGuard.cs)); Teach nimmt die Zeile als Schritt auf
+- Untertabs: **Active Window** · **AX Context** (Heuristik AX/Dynamics) · **Cross-App**
 
 ---
 
 ## 6. Hauptarbeitsabläufe
 
-Die Schritte beschreiben das **Zielverhalten** nach Anbindung von Vision-/LLM-Backend. Im **aktuellen Branch** lösen die meisten Aktionen nur **Stub-Logs** in **Diagnostics** aus (siehe §1.1).
+Die Schritte setzen den **Ist-Stand** aus §1.1 voraus (Vision, RAG-light, STT/TTS, Plan-Lauf). Bei fehlenden API-Keys oder blockierter Automation verweisen Meldungen auf **Diagnostics** und Safety-Profil.
 
 ### 6.1 Klassisches „Frag mit Screenshot"
 
@@ -311,9 +320,9 @@ Die Schritte beschreiben das **Zielverhalten** nach Anbindung von Vision-/LLM-Ba
 
 ### 6.7 Aus History oder Watch lernen
 
-- **History**-Tab → Eintrag wählen → **„create ritual from selection"**.
-- **Rituals**-Tab → **„promote from history"** / **„promote from watch"**.
-- **Teach-Mode** zeichnet neu bestätigte Aktionen auf und schlägt einen Ritual-Draft vor.
+- **History**-Tab → Eintrag mit Schritten wählen → **„create ritual from selection"** (übernimmt die gespeicherten Plan-Schritte).
+- **Rituals**-Tab → **„promote from history"** (letzter `plan_run` aus `action-history.json`) oder **„promote from watch"** (ein Schritt pro Watch-Eintrag aus `watch-sessions.json`).
+- **Teach-Mode:** **„start teach"** → optional **„capture foreground step"**, Live-Context-**run** oder Adapter-Klicks → **„stop teach"** speichert ein neues Ritual.
 
 ---
 
@@ -338,22 +347,19 @@ Die Schritte beschreiben das **Zielverhalten** nach Anbindung von Vision-/LLM-Ba
 
 ### 7.3 Smoke-Test
 
-`smoke test` im Ask-Tab schickt eine Mini-Anfrage `say ready` an den aktuellen Provider und zeigt das Ergebnis – schneller End-to-End-Healthcheck (im Stub ohne echtes Netzwerk).
+`smoke test` im Ask-Tab schickt eine Mini-Anfrage an den aktuellen Provider und zeigt das Ergebnis — End-to-End-Healthcheck inkl. Netzwerk (API-Key nötig).
 
 ---
 
 ## 8. Sprache: Push-to-Talk, STT und TTS
 
-Die folgenden Abschnitte beschreiben die **Zielarchitektur** der vollständigen Runtime. Konkrete Dienstklassen (z. B. `MicrophoneRecorderService`) sind Teil dieser Zielintegration und müssen nicht im vorliegenden `CarolusNexus`-Branch vorliegen.
+**Implementierung:** [WindowsMicRecorder](../CarolusNexus/Services/WindowsMicRecorder.cs) (WaveOut/WAV), [SpeechTranscriptionService](../CarolusNexus/Services/SpeechTranscriptionService.cs), [TextToSpeechService](../CarolusNexus/Services/TextToSpeechService.cs), Ask-Tab-Buttons und globaler Hotkey in [MainWindow](../CarolusNexus/MainWindow.axaml.cs).
 
 ### 8.1 Mikrofon-Aufnahme
 
-In der Zielruntime nutzt z. B. ein **MicrophoneRecorderService** **MCI** (`mciSendString`) und schreibt eine WAV in
-`windows\data\` / temporäre Datei. Drei Wege:
-
-- Button **„start push-to-talk"** → **„stop + ask"**
+- Button **„start push-to-talk"** → spricht → **„stop + ask"** stoppt, transkribiert und startet bei Erfolg **ask now**
 - **Cancel** verwirft die Aufnahme
-- **Globaler Hotkey** triggert dieselben Methoden im ViewModel (nicht identisch mit dem aktuellen F8-Stub im Hauptfenster)
+- **Globaler Hotkey** `PUSH_TO_TALK_KEY` (Default **F8**): gedrückt halten startet die Aufnahme, **Loslassen** stoppt + Transkript + Ask — [PushToTalkHotkeyWindow](../CarolusNexus/Services/PushToTalkHotkeyWindow.cs) mit **Fallback-Polling**, falls `RegisterHotKey` scheitert
 
 ### 8.2 Speech-to-Text
 
@@ -362,13 +368,15 @@ In der Zielruntime nutzt z. B. ein **MicrophoneRecorderService** **MCI** (`mciSe
 
 ### 8.3 Text-to-Speech
 
-ElevenLabs erzeugt MP3 unter dem Daten-Ordner. Falls fehlgeschlagen, Fallback auf Windows-SAPI. Pfad zur letzten Audio-Datei wird in der UI angezeigt.
+- `TTS_PROVIDER=elevenlabs` → ElevenLabs (MP3, Wiedergabe über NAudio)
+- `TTS_PROVIDER=sapi` oder `windows` → **Windows-SAPI** ohne Cloud
+- `TTS_PROVIDER=auto` (Default) → ElevenLabs wenn Key/Voice-ID gesetzt, sonst SAPI
 
 ---
 
 ## 9. Lokale CLI-Agenten: Codex, Claude Code, OpenClaw
 
-**Zielarchitektur:** Routing und Konsolen-Tab wie beschrieben; im Stub werden keine CLIs gestartet.
+**Implementierung:** [CliAgentRunner](../CarolusNexus/Services/CliAgentRunner.cs) startet die gewählte CLI mit Timeout und schreibt Logs nach `codex output/`.
 
 ### 9.1 Trigger im normalen Ask-Flow
 
@@ -399,14 +407,13 @@ Stderr/Stdout, ExitCode und Prompt werden in jede Log-Datei geschrieben.
 
 ## 10. Lokales Wissen (RAG)
 
-**Zielarchitektur** (Indexer/Chunking im Stub nicht angebunden):
+**Implementierung:** [KnowledgeIndexService](../CarolusNexus/Services/KnowledgeIndexService.cs) (Rebuild → `knowledge-index.json` + **`knowledge-chunks.json`**), [KnowledgeSnippetService](../CarolusNexus/Services/KnowledgeSnippetService.cs) für Kontext im Ask-Tab.
 
 - Dateien in `windows\data\knowledge\` werden indexiert und in **Chunks** zerlegt.
-- Unterstützte Formate: `.txt`, `.md`, `.log`, `.json`, `.csv`, `.pdf`, `.docx`.
-- Index liegt in `windows\data\knowledge-index.json`.
-- **Knowledge**-Tab erlaubt Import/Search/Reindex/Remove und liefert Vorschau.
-- Bei aktivem `use local knowledge in ask flow` werden relevante Chunks dem Prompt beigelegt; Quellen erscheinen in **Retrieval + Context**.
-- **„suggest ritual from doc"** generiert aus Dokumenten einen Ritual-Vorschlag (z. B. aus AX-Arbeitsanweisungen).
+- Unterstützte Formate u. a.: `.txt`, `.md`, `.log`, `.json`, `.csv`, `.pdf`, `.docx` (PdfPig / Open XML).
+- **Knowledge**-Tab: Import/Search/Reindex/Remove und Vorschau.
+- Bei aktivem `use local knowledge in ask flow` werden relevante Chunks dem Prompt beigelegt; Quellen erscheinen in **Retrieval + Context** (RAG-light, Ranking ohne Vektor-DB).
+- **„suggest ritual from doc"** im Knowledge-Tab: Vorschlag aus dem gewählten Dokument ([KnowledgeTab](../CarolusNexus/Views/KnowledgeTab.axaml.cs)).
 
 ---
 
@@ -450,9 +457,9 @@ Pro Schritt:
 
 ### 11.5 Lernen
 
-- **promote from history**: aus letzten N History-Einträgen ein Ritual machen
-- **promote from watch**: aus Watch-Sessions
-- **start/stop teach**: Live-Recorder, der bestätigte Aktionen einfängt
+- **promote from history**: letzter `plan_run` mit Schritten aus `action-history.json`
+- **promote from watch**: ein Token-Schritt pro Eintrag in `watch-sessions.json`
+- **start/stop teach**: Puffer mit **capture foreground**, Live-Context-**run** und Adapter-Klicks; **stop** speichert ein Ritual
 
 Persistente Speicherung: `windows\data\automation-recipes.json`.
 
@@ -460,7 +467,7 @@ Persistente Speicherung: `windows\data\automation-recipes.json`.
 
 ## 12. Action-Plans und Plan-Ausführung
 
-**Zielarchitektur:** Parser, Safety-Gates und Ausführung sind im Stub nicht aktiv.
+**Ist-Stand:** [ActionPlanExtractor](../CarolusNexus/Services/ActionPlanExtractor.cs), [SimplePlanSimulator](../CarolusNexus/Services/SimplePlanSimulator.cs), [PlanGuard](../CarolusNexus/Services/PlanGuard.cs) — Ausführung wie in §1.1 (nur **power-user** + erlaubte Tokens).
 
 Modellantworten können Aktionen vorschlagen. Diese werden als **Plan** geparst und mehrstufig behandelt:
 
@@ -484,7 +491,7 @@ Begleit-Anzeigen:
 
 ## 13. Operator-Adapter pro App
 
-**Zielarchitektur:** Jeder Adapter exportiert **semantische Aktionen**, die sowohl in Action-Plans als auch im Inspector verwendbar sind. Im aktuellen Repo lösen Adapter-Buttons Stub-Aktionen aus.
+**Zielarchitektur:** Jeder Adapter exportiert **semantische Aktionen** für Pläne und Inspector. **Ist-Stand:** Familien-Heuristik und Live-Context-Buttons (Vergleich/Teach); vollständige pro-App-Automation ist roadmap.
 
 ### 13.1 Browser (`browser.*`)
 
@@ -515,7 +522,7 @@ Erkennt App-Familie + Surface-Kind (Desktop vs. Web) und gibt das an den passend
 
 ## 14. AX 2012 / Microsoft Dynamics AX Fat-Client
 
-**Zielarchitektur:** Dienst z. B. `AxClientAutomationService`. Im Tab **Live Context** ist der AX-Snapshot derzeit ein **Stub-Text**.
+**Zielarchitektur:** Dienst z. B. `AxClientAutomationService`. Im Tab **Live Context** liefert der AX-Untertab eine **Heuristik** (Dynamics/AX-Fenster erkannt oder nicht), keine vollständige Form/Grid-Extraktion.
 
 ### 14.1 Snapshot
 
@@ -553,15 +560,12 @@ AX-Rituale laufen im **Ritual-Runtime** statt als rohe Maus-Replay. Riskante Sch
 
 ## 15. Live Context und Desktop Inspector
 
-**Zielarchitektur** (aktuell: Read-Only-Daten teils Platzhalter/Stub). Der **Desktop Inspector** zeigt:
+**Aktueller Stand:** [LiveContextTab](../CarolusNexus/Views/LiveContextTab.axaml.cs) zeigt **Vordergrundfenster** (Titel, Prozess, PID, Fensterklasse, Bounds) und leitet eine **Adapter-Familie** ab ([OperatorAdapterRegistry](../CarolusNexus/Services/OperatorAdapterRegistry.cs)). **AX Context** markiert Dynamics/AX-Fat-Client heuristisch; eine vollständige Steuerelement-/Grid-Liste (UIAutomation-Tiefe) ist **nicht** Bestandteil dieses Stands — dafür Vision + Plan im Ask-Tab nutzen.
 
-- Steuerelementliste der aktiven App
-- Form-Summary, Dialog-Summary
-- Tabellen-/Selected-Row-Auszug
-- Browser-/Explorer-/Mail-/Office-spezifische Kontexte über die Adapter-Buttons
-- AX-spezifische Snapshots
+- Adapter-Buttons: Abgleich gewählte Familie vs. aktives Fenster; Teach-Modus nimmt Schritte auf
+- **Custom action** + **run:** Protokoll + Versuch der Ausführung über [Win32AutomationExecutor](../CarolusNexus/Services/Win32AutomationExecutor.cs) bei passenden Tokens (Safety **power-user**)
 
-**„custom action"** akzeptiert beliebige Aktions-Strings (z. B. `app|focus_address`, `ax.read_field:Customer`).
+**Zielbild** (Roadmap): Form-Summary, Dialog-Summary, Tabellen-Row-Auszug, browser-/office-spezifische Kontexte ohne nur Vision zu benötigen.
 
 ---
 
@@ -620,25 +624,22 @@ Karl kann auf Bildschirm-Ziele „springen", die das Modell als Punkt-Tags zurü
 
 ## 18. Tray-Icon und Hotkeys
 
-- **Tray-Icon** mit Kontextmenü („Open …", „Ask …", „Quit") — **Zielbild**; in diesem Branch **nicht** implementiert.
-- **Globaler Hotkey** `PUSH_TO_TALK_KEY` (Default `F8`, Zielintegration):
-  - **Drücken** startet die Sprachaufnahme
-  - **Loslassen** stoppt + transkribiert + Ask
-- **Aktueller Stub:** [MainWindow](../CarolusNexus/MainWindow.axaml.cs) pollt **F8** per `Win32AsyncKey` und schreibt Stub-Meldungen ins Log — **keine** Aufnahme und kein STT.
-- Die Buttons **start push-to-talk** / **stop + ask** im Ask-Tab folgen derselben Stub-Logik wie andere Aktionen.
-- Bei Hotkey-Konflikt soll der Hold-to-Talk-Button als Fallback dienen (Zielverhalten).
+- **Tray-Icon** in [App.axaml](../CarolusNexus/App.axaml) / [App.axaml.cs](../CarolusNexus/App.axaml.cs): Menü **Carolus Nexus öffnen** (Fenster wiederherstellen), **Beenden**. Schließen des Hauptfensters **minimiert** ins Tray (nicht beenden, außer explizit „Beenden").
+- **Globaler Hotkey** `PUSH_TO_TALK_KEY` (Default `F8`): **Drücken** startet Aufnahme, **Loslassen** stoppt + STT + Ask — primär [PushToTalkHotkeyWindow](../CarolusNexus/Services/PushToTalkHotkeyWindow.cs); bei Fehler **Fallback-Polling** in [MainWindow](../CarolusNexus/MainWindow.axaml.cs).
+- Die Buttons **start push-to-talk** / **stop + ask** im Ask-Tab nutzen dieselbe Aufnahme-/STT-Pipeline.
+- Bei Hotkey-Konflikt oder Registrierungsfehler: Fallback-Polling; alternativ nur Button-PTT.
 
 ---
 
 ## 19. Diagnostics, History und Audit
 
 - **Diagnostics-Tab**: Filter, **export** → `windows\data\diagnostics-<Zeitstempel>.log`, **clear logs** (Inhalt nur im Speicher bis export)
-- **History-Tab**: Liste + Suche + Detail + **create ritual from selection** (Stub)
-- **Audit-Records**: Zielbild; Dashboard-Karte **Governance + Audit** zeigt aktuell Stub-/Settings-Text
+- **History-Tab**: strukturierte Liste aus **`action-history.json`** (Plan-Läufe aus Ritual/Ask-Ausführung), Suche, JSON-Detail, **create ritual from selection**
+- **Audit-Records / Job-Queue**: Zielbild; Dashboard-Karte **Governance + Audit** zeigt Safety-/Settings-Kurztext
 
 Persistenz:
 
-- `windows\data\action-history.json`
+- `windows\data\action-history.json` (Einträge mit `kind`, `steps`, Zeitstempel — siehe [ActionHistoryService](../CarolusNexus/Services/ActionHistoryService.cs))
 - `windows\data\watch-sessions.json`
 - `windows\data\diagnostics-*.log` (Exporte)
 
@@ -654,10 +655,11 @@ Pfade relativ zur **Repository-Wurzel**, die [AppPaths.DiscoverRepoRoot](../Caro
 | `windows\.env.example` | Vorlage ohne Werte |
 | `windows\data\settings.json` | App-Settings ([NexusSettings](../CarolusNexus/Models/NexusSettings.cs)) |
 | `windows\data\knowledge\` | Lokale Wissensdateien |
-| `windows\data\knowledge-index.json` | Wissens-Chunkindex (Ziel) |
-| `windows\data\automation-recipes.json` | Rituale (Ziel) |
-| `windows\data\watch-sessions.json` | Watch-Mode-Sessions (Ziel) |
-| `windows\data\action-history.json` | Bestätigte Aktionen (Ziel) |
+| `windows\data\knowledge-index.json` | Wissens-Dateiindex + Hashes |
+| `windows\data\knowledge-chunks.json` | RAG-light Chunks |
+| `windows\data\automation-recipes.json` | Rituale (Bibliothek) |
+| `windows\data\watch-sessions.json` | Watch-Mode-Sessions (Rotation max. 500) |
+| `windows\data\action-history.json` | Protokollierte Plan-Läufe (`plan_run`, Schritte) |
 | `windows\data\diagnostics-*.log` | Diagnostics-Exporte |
 | `playground\` | Default-Workdir für Codex |
 | `codex output\` | Logs der lokalen CLI-Runs |
@@ -686,13 +688,12 @@ Die Routing-Trigger sind auf deutsche Sprache optimiert. In gesprochenen oder ge
 
 - Avalonia ist hier **Windows-targeted** – die Automations-Schicht ist Win-only.
 - **Kein Installer** – Build + manueller Start.
-- **Dieser Branch:** Vision, RAG, STT/TTS, echte Plan-/Ritual-Ausführung und CLI-Starts sind **nicht** angebunden; viele UI-Aktionen sind **Stubs** (siehe §1.1).
-- Tiefere AX-spezifische UIA/MSAA-Discovery ist nur teilweise portiert (Win32-First-Hybrid) — Zielruntime.
-- AX-Grid-Row-Selection, Lookup-Handling und End-to-End-Posting sind **noch nicht für alle AX-Surfaces** robust.
-- Der Teach-Mode-Recorder ist noch history-backed, kein voll-semantischer Recorder.
+- **RAG-light:** Chunk-Ranking ohne Embeddings — Recall nicht vergleichbar mit Enterprise-Vektorsuche (Erwartungsmanagement).
+- **AX / Live Context:** Heuristik und Vision/Pläne ja; **keine** vollständige UIAutomation-Abdeckung aller AX-Grids/Dialogs — keine Behauptung „produktionsreife AX-Steuerung“ ohne Demo-Nachweis.
+- Echte UI-Ausführung aus Plänen nur bei Safety-Profil **power-user** und erlaubten Tokens ([PlanGuard](../CarolusNexus/Services/PlanGuard.cs)) — falsch konfiguriert = blockiert oder Dry-Run.
 - CLI-Handoffs (Codex/Claude Code/OpenClaw) sind **One-Shot**, keine persistenten Sessions.
 - Trigger-Phrasen sind auf deutsche Sprachvarianten getuned.
-- Sprache und Vision hängen an externer API-Verfügbarkeit (außer lokales Whisper).
+- Vision und Cloud-STT/TTS hängen an API-Verfügbarkeit; lokales Whisper und SAPI reduzieren Cloud-Abhängigkeit.
 
 ---
 
@@ -743,4 +744,4 @@ Chain-Direktiven vor jedem Token: `wait=500`, `ifapp=chrome`.
 
 *Pflege:* Bei größeren Struktur- oder Feature-Änderungen **§1.1**, **§3**, **§5** und **§20** mit dem Code abgleichen. Kurz-Checkliste: [AGENTS.md](../AGENTS.md).*
 
-*Repo-Stand (**RW-Avalonia-Karl-Klammer**): **Carolus Nexus** ([CarolusNexus/](../CarolusNexus/), Avalonia, **.NET 10**, Ausgabe `CarolusNexus.dll`) — Oberfläche und Pfade wie in **§1.1** und **§5**; **Tray-Icon** derzeit nicht enthalten; **Vision/LLM, STT/TTS, RAG-Indexer, Ritual-Runtime, UIA/AX-Adapter und CLI-Handoff** sind **Stubs**.*
+*Repo-Stand (**RW-Avalonia-Karl-Klammer**): **Carolus Nexus** ([CarolusNexus/](../CarolusNexus/), Avalonia, **.NET 10**) — Ist-Stand siehe **§1.1**; Messaging/Zielgruppen siehe [Carolus-Nexus-GTM-Messaging.md](Carolus-Nexus-GTM-Messaging.md) und [Carolus-Nexus-ICP-Personas.md](Carolus-Nexus-ICP-Personas.md).*
