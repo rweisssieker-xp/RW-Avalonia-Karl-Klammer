@@ -28,10 +28,10 @@ public partial class RitualsTab : UserControl
         BtnSaveRitual.Click += (_, _) => SaveCurrent();
         BtnDeleteRitual.Click += (_, _) => DeleteCurrent();
         BtnClone.Click += (_, _) => CloneCurrent();
-        BtnArchive.Click += (_, _) => NexusShell.Log("archive — Platzhalter (Statusfeld folgt).");
-        BtnPublish.Click += (_, _) => NexusShell.Log("publish flow — Platzhalter.");
-        BtnQueue.Click += (_, _) => NexusShell.Log("queue for run — Platzhalter.");
-        BtnApproveJob.Click += (_, _) => NexusShell.Log("approve next job — Platzhalter.");
+        BtnArchive.Click += (_, _) => ArchiveCurrent();
+        BtnPublish.Click += (_, _) => PublishCurrent();
+        BtnQueue.Click += (_, _) => QueueCurrentForRun();
+        BtnApproveJob.Click += async (_, _) => await ApproveNextJobAsync().ConfigureAwait(true);
         BtnDryRun.Click += async (_, _) => await RunSelectedAsync(true);
         BtnRunRitual.Click += async (_, _) => await RunSelectedAsync(false);
         BtnRunNextStep.Click += async (_, _) => await RunNextStepAsync();
@@ -41,6 +41,7 @@ public partial class RitualsTab : UserControl
         BtnTeachStart.Click += (_, _) => StartTeach();
         BtnTeachCapture.Click += (_, _) => CaptureForegroundTeachStep();
         BtnTeachStop.Click += (_, _) => StopTeach();
+        BtnAiSuggestName.Click += async (_, _) => await SuggestRitualNameWithAiAsync().ConfigureAwait(true);
 
         RitualRecipeStore.Saved += OnRecipesSaved;
         Unloaded += (_, _) => RitualRecipeStore.Saved -= OnRecipesSaved;
@@ -175,6 +176,14 @@ public partial class RitualsTab : UserControl
                 ApplySelection(match);
             }
         }
+
+        RefreshQueueStatus();
+    }
+
+    private void RefreshQueueStatus()
+    {
+        var n = RitualJobQueueStore.GetPendingCount();
+        QueueStatusLine.Text = $"Job-Warteschlange: {n} ausstehend";
     }
 
     private void FilterList()
@@ -262,6 +271,178 @@ public partial class RitualsTab : UserControl
         RitualRecipeStore.AppendRecipe(clone);
         NexusShell.Log("Ritual geklont.");
         ReloadLibrary();
+    }
+
+    private void ArchiveCurrent()
+    {
+        if (_selected == null)
+        {
+            NexusShell.Log("Archiv: kein Ritual gewählt.");
+            return;
+        }
+
+        SaveCurrent();
+        _selected.Archived = true;
+        RitualRecipeStore.Upsert(_selected);
+        NexusShell.Log($"Ritual archiviert: {_selected.Name}");
+        ReloadLibrary();
+    }
+
+    private void PublishCurrent()
+    {
+        if (_selected == null)
+        {
+            NexusShell.Log("Publish: kein Ritual gewählt.");
+            return;
+        }
+
+        SaveCurrent();
+        _selected.PublicationState = "published";
+        RitualRecipeStore.Upsert(_selected);
+        NexusShell.Log($"Flow veröffentlicht (published): {_selected.Name}");
+        ReloadLibrary();
+    }
+
+    private void QueueCurrentForRun()
+    {
+        if (_selected == null)
+        {
+            NexusShell.Log("Warteschlange: kein Ritual gewählt — zuerst speichern oder auswählen.");
+            RefreshQueueStatus();
+            return;
+        }
+
+        SaveCurrent();
+        if (_selected.Archived)
+        {
+            NexusShell.Log("Warteschlange: archivierte Rituale werden nicht eingereiht.");
+            RefreshQueueStatus();
+            return;
+        }
+
+        RitualJobQueueStore.Enqueue(_selected.Id, _selected.Name);
+        var n = RitualJobQueueStore.GetPendingCount();
+        NexusShell.Log($"Eingereiht: {_selected.Name} (ausstehend: {n}).");
+        RefreshQueueStatus();
+    }
+
+    private async Task ApproveNextJobAsync()
+    {
+        try
+        {
+            if (!RitualJobQueueStore.TryDequeuePending(out var job) || job == null)
+            {
+                NexusShell.Log("Job-Warteschlange: keine ausstehenden Jobs.");
+                return;
+            }
+
+            var all = RitualRecipeStore.LoadAll();
+            var recipe = all.FirstOrDefault(r => string.Equals(r.Id, job.RecipeId, StringComparison.Ordinal));
+            if (recipe == null)
+            {
+                RitualJobQueueStore.RecordHistory(job, "failed", "Rezept nicht gefunden");
+                NexusShell.Log($"Job abgebrochen: Rezept {job.RecipeId} fehlt.");
+                return;
+            }
+
+            if (recipe.Archived)
+            {
+                RitualJobQueueStore.RecordHistory(job, "failed", "Rezept archiviert");
+                NexusShell.Log($"Job übersprungen: {recipe.Name} ist archiviert.");
+                return;
+            }
+
+            _runCts?.Cancel();
+            _runCts = new CancellationTokenSource();
+            NexusShell.Log($"Job genehmigt — Lauf: {recipe.Name} …");
+            try
+            {
+                await SimplePlanSimulator
+                    .RunAsync(recipe.Steps, false, NexusContext.GetSettings(), _runCts.Token)
+                    .ConfigureAwait(true);
+                RitualJobQueueStore.RecordHistory(job, "completed", null);
+                NexusShell.Log($"Job abgeschlossen: {recipe.Name}");
+            }
+            catch (OperationCanceledException)
+            {
+                RitualJobQueueStore.RecordHistory(job, "cancelled", null);
+                NexusShell.Log("Job abgebrochen.");
+            }
+            catch (Exception ex)
+            {
+                RitualJobQueueStore.RecordHistory(job, "failed", ex.Message);
+                NexusShell.Log("Job fehlgeschlagen: " + ex.Message);
+            }
+        }
+        finally
+        {
+            RefreshQueueStatus();
+        }
+    }
+
+    private async Task SuggestRitualNameWithAiAsync()
+    {
+        var desc = RitualDesc.Text?.Trim() ?? "";
+        var steps = ParseStepsEditor();
+        if (string.IsNullOrWhiteSpace(desc) && steps.Count == 0)
+        {
+            NexusShell.Log("KI-Kurztitel: Beschreibung oder Schritte eingeben.");
+            return;
+        }
+
+        var settings = NexusContext.GetSettings();
+        if (!DotEnvStore.HasProviderKey(settings.Provider))
+        {
+            NexusShell.Log("KI-Kurztitel: API-Key für Provider fehlt (.env).");
+            return;
+        }
+
+        var stepSummary = string.Join("\n", steps.Take(6).Select(s =>
+        {
+            var arg = s.ActionArgument ?? "";
+            if (arg.Length > 160)
+                arg = arg[..160] + "…";
+            return "- " + s.ActionType + ": " + arg;
+        }));
+
+        var userBlob =
+            "Beschreibung:\n" + (string.IsNullOrWhiteSpace(desc) ? "(keine)" : desc) +
+            "\n\nSchritte (Auszug):\n" + (stepSummary.Length > 0 ? stepSummary : "(keine)");
+
+        BtnAiSuggestName.IsEnabled = false;
+        CompanionHub.Publish(CompanionVisualState.Thinking);
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            const string sys =
+                "Vorschlage genau einen kurzen, sachlichen Ritual-Namen auf Deutsch (maximal 6 Wörter). " +
+                "Nur den Namen ausgeben, keine Anführungszeichen, kein Zusatz.";
+            var name = await LlmChatService.CompleteUtilityAsync(settings, sys, userBlob, cts.Token).ConfigureAwait(true);
+            if (name.StartsWith("Fehlt ", StringComparison.Ordinal) ||
+                name.StartsWith("Unbekannter Provider", StringComparison.Ordinal) ||
+                name.StartsWith("Anthropic HTTP", StringComparison.Ordinal) ||
+                name.StartsWith("OpenAI", StringComparison.Ordinal))
+            {
+                NexusShell.Log("KI-Kurztitel: " + name);
+                return;
+            }
+
+            var oneLine = name.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            if (oneLine.Length > 120)
+                oneLine = oneLine[..120].TrimEnd();
+            RitualName.Text = oneLine;
+            NexusShell.Log("KI-Kurztitel übernommen.");
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("KI-Kurztitel: " + ex.Message);
+            CompanionHub.Publish(CompanionVisualState.Error);
+        }
+        finally
+        {
+            BtnAiSuggestName.IsEnabled = true;
+            CompanionHub.Publish(CompanionVisualState.Ready);
+        }
     }
 
     private async Task RunSelectedAsync(bool dryRun)

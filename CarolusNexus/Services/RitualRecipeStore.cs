@@ -29,7 +29,15 @@ public static class RitualRecipeStore
         {
             var json = File.ReadAllText(AppPaths.AutomationRecipes);
             var list = JsonSerializer.Deserialize<List<AutomationRecipe>>(json, JsonOpts);
-            return list ?? new List<AutomationRecipe>();
+            if (list == null)
+                return new List<AutomationRecipe>();
+            foreach (var r in list)
+            {
+                if (string.IsNullOrWhiteSpace(r.PublicationState))
+                    r.PublicationState = "draft";
+            }
+
+            return list;
         }
         catch
         {

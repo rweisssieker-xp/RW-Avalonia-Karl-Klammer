@@ -24,7 +24,8 @@ public static class LlmChatService
         string userPrompt,
         bool includeScreenshots,
         bool useKnowledge,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? knowledgeContextOverride = null)
     {
         if (string.IsNullOrWhiteSpace(userPrompt))
             return "Bitte einen Prompt eingeben.";
@@ -34,7 +35,7 @@ public static class LlmChatService
         var augmented = userPrompt;
         if (useKnowledge)
         {
-            var k = KnowledgeSnippetService.BuildContext(userPrompt, 12000);
+            var k = knowledgeContextOverride ?? KnowledgeSnippetService.BuildContext(userPrompt, 12000);
             if (!string.IsNullOrWhiteSpace(k))
                 augmented = "Kontext aus lokalem Wissen (Auszüge):\n\n" + k + "\n\n---\n\nNutzeranfrage:\n" + userPrompt;
         }
@@ -59,6 +60,31 @@ public static class LlmChatService
             "openai" => await CompleteOpenAiAsync(env, settings.Model, system, prompt, false, false, ct),
             "openai-compatible" => await CompleteOpenAiAsync(env, settings.Model, system, prompt, false, true, ct),
             _ => "Unbekannter Provider."
+        };
+    }
+
+    /// <summary>Kurze Hilfsaufrufe (Prompt schärfen, Titel, …) ohne Screenshots und ohne Knowledge-Augmentierung.</summary>
+    public static async Task<string> CompleteUtilityAsync(
+        NexusSettings settings,
+        string utilitySystemPrompt,
+        string userPrompt,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(userPrompt))
+            return "Bitte Inhalt eingeben.";
+
+        var env = DotEnvStore.Load();
+        var system = string.IsNullOrWhiteSpace(utilitySystemPrompt)
+            ? "Du bist ein präziser Assistent."
+            : utilitySystemPrompt.Trim();
+        var user = userPrompt.Trim();
+
+        return settings.Provider switch
+        {
+            "anthropic" => await CompleteAnthropicAsync(env, settings.Model, system, user, false, ct),
+            "openai" => await CompleteOpenAiAsync(env, settings.Model, system, user, false, false, ct),
+            "openai-compatible" => await CompleteOpenAiAsync(env, settings.Model, system, user, false, true, ct),
+            _ => "Unbekannter Provider: " + settings.Provider
         };
     }
 

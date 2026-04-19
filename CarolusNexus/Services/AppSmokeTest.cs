@@ -44,6 +44,9 @@ public static class AppSmokeTest
             _ = RitualRecipeStore.LoadAll();
             LogOk("smoke · RitualRecipeStore.LoadAll");
 
+            _ = RitualJobQueueStore.LoadOrEmpty();
+            LogOk("smoke · RitualJobQueueStore.LoadOrEmpty");
+
             _ = WatchSessionService.LoadOrEmpty();
             LogOk("smoke · WatchSessionService.LoadOrEmpty");
 

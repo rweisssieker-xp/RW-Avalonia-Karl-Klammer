@@ -9,12 +9,14 @@
         MinHeight="640"
         WindowStartupLocation="CenterScreen">
   <DockPanel>
-    <Border DockPanel.Dock="Top" Background="#ecece6" BorderBrush="#c8c8c0" BorderThickness="0,0,0,1" Padding="14,10">
+    <Border DockPanel.Dock="Top" Background="{DynamicResource NexusHeaderBackgroundBrush}"
+            BorderBrush="{DynamicResource NexusHeaderBorderBrush}" BorderThickness="0,0,0,1" Padding="14,10">
       <StackPanel Spacing="10">
         <Grid ColumnDefinitions="*,Auto,Auto,Auto">
           <StackPanel Spacing="2">
             <TextBlock Text="Carolus Nexus" FontSize="22" FontWeight="Bold" />
-            <TextBlock Text="Windows-Operator-Desktop · Persona: Karl Klammer" FontSize="12" Opacity="0.65" />
+            <TextBlock Text="Windows-Operator-Desktop · Persona: Karl Klammer" FontSize="12"
+                       Foreground="{DynamicResource NexusMutedForegroundBrush}" />
             <TextBlock x:Name="StatusLine" Text="Bereit" FontSize="12" />
           </StackPanel>
           <CheckBox x:Name="CompanionToggle"
@@ -37,36 +39,44 @@
                   Click="OnCloseClick" />
         </Grid>
         <WrapPanel>
-          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4" Background="#ddd">
+          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4"
+                  Background="{DynamicResource NexusBadgeBackgroundBrush}">
             <TextBlock x:Name="BadgeLayout" Text="Layout: Shell" FontSize="11" />
           </Border>
-          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4" Background="#ddd">
+          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4"
+                  Background="{DynamicResource NexusBadgeBackgroundBrush}">
             <TextBlock x:Name="BadgeEnv" Text="Environment: —" FontSize="11" />
           </Border>
-          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4" Background="#ddd">
-            <TextBlock x:Name="BadgeSpeech" Text="Speech: Stub" FontSize="11" />
+          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4"
+                  Background="{DynamicResource NexusBadgeBackgroundBrush}">
+            <TextBlock x:Name="BadgeSpeech" Text="Speech: —" FontSize="11" />
           </Border>
-          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4" Background="#ddd">
-            <TextBlock x:Name="BadgeAuto" Text="Automation: Stub" FontSize="11" />
+          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4"
+                  Background="{DynamicResource NexusBadgeBackgroundBrush}">
+            <TextBlock x:Name="BadgeAuto" Text="Automation: —" FontSize="11" />
           </Border>
-          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4" Background="#ddd">
+          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4"
+                  Background="{DynamicResource NexusBadgeBackgroundBrush}">
             <TextBlock x:Name="BadgeKnow" Text="Knowledge: lokal" FontSize="11" />
           </Border>
         </WrapPanel>
         <Grid ColumnDefinitions="*,*,*">
-          <Border Padding="8" CornerRadius="6" BorderBrush="#bbb" BorderThickness="1" Background="#fafaf8">
+          <Border Padding="8" CornerRadius="6" BorderBrush="{DynamicResource NexusTileBorderBrush}"
+                  BorderThickness="1" Background="{DynamicResource NexusTileBackgroundBrush}">
             <StackPanel>
               <TextBlock Text="Operator Memory" FontWeight="SemiBold" FontSize="11" />
               <TextBlock x:Name="TileMemory" TextWrapping="Wrap" FontSize="11" Text="—" />
             </StackPanel>
           </Border>
-          <Border Grid.Column="1" Padding="8" CornerRadius="6" BorderBrush="#bbb" BorderThickness="1" Background="#fafaf8">
+          <Border Grid.Column="1" Padding="8" CornerRadius="6" BorderBrush="{DynamicResource NexusTileBorderBrush}"
+                  BorderThickness="1" Background="{DynamicResource NexusTileBackgroundBrush}">
             <StackPanel>
               <TextBlock Text="Live Context" FontWeight="SemiBold" FontSize="11" />
               <TextBlock x:Name="TileLive" TextWrapping="Wrap" FontSize="11" Text="—" />
             </StackPanel>
           </Border>
-          <Border Grid.Column="2" Padding="8" CornerRadius="6" BorderBrush="#bbb" BorderThickness="1" Background="#fafaf8">
+          <Border Grid.Column="2" Padding="8" CornerRadius="6" BorderBrush="{DynamicResource NexusTileBorderBrush}"
+                  BorderThickness="1" Background="{DynamicResource NexusTileBackgroundBrush}">
             <StackPanel>
               <TextBlock Text="Environment" FontWeight="SemiBold" FontSize="11" />
               <TextBlock x:Name="TileEnv" TextWrapping="Wrap" FontSize="11" Text="—" />

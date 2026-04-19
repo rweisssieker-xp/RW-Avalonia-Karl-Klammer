@@ -40,7 +40,7 @@ public static class Win32AutomationExecutor
                     "type" => SendType(payload),
                     "open" => OpenTarget(payload),
                     "click" => DoClick(),
-                    "move" => "[SKIP] move nicht implementiert",
+                    "move" => DoMove(payload),
                     _ => $"[SKIP] ACTION:{kind}"
                 };
             }
@@ -134,9 +134,29 @@ public static class Win32AutomationExecutor
         return "[OK] click";
     }
 
+    /// <summary>Payload: <c>x,y</c> (Komma, Semikolon oder Leerzeichen).</summary>
+    private static string DoMove(string payload)
+    {
+        if (string.IsNullOrWhiteSpace(payload))
+            return "[SKIP] move ohne Koordinate";
+
+        var parts = payload.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length < 2
+            || !int.TryParse(parts[0], System.Globalization.NumberStyles.Integer, null, out var x)
+            || !int.TryParse(parts[1], System.Globalization.NumberStyles.Integer, null, out var y))
+            return "[SKIP] move: zwei ganze Zahlen erwartet (x,y)";
+
+        if (!SetCursorPos(x, y))
+            return "[ERR] SetCursorPos";
+        return "[OK] move";
+    }
+
     private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
     private const uint MOUSEEVENTF_LEFTUP = 0x0004;
 
     [DllImport("user32.dll")]
     private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetCursorPos(int X, int Y);
 }

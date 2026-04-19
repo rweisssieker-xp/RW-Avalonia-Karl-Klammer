@@ -1,10 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using CarolusNexus.Models;
 using CarolusNexus.Services;
@@ -99,6 +103,86 @@ public partial class AskTab : UserControl
         };
         BtnSpeak.Click += async (_, _) => await SpeakAssistantResponseAsync();
         BtnCopyAnswer.Click += async (_, _) => await CopyAssistantAnswerAsync();
+        BtnInsertKnowledge.Click += (_, _) => InsertKnowledgeSnippetIntoPrompt();
+        BtnPolishPrompt.Click += async (_, _) => await PolishPromptWithLlmAsync();
+        BtnPolishAnswer.Click += async (_, _) => await PolishAssistantAnswerAsync();
+        BtnChipSummary.Click += (_, _) => AppendPromptLine("Fasse die wichtigsten Punkte knapp auf Deutsch zusammen.");
+        BtnChipNext.Click += (_, _) =>
+            AppendPromptLine("Welche konkreten nächsten Schritte empfiehlst du? Bitte nummeriert und ausführbar.");
+        BtnChipRisks.Click += (_, _) =>
+            AppendPromptLine("Welche Risiken siehst du — und wie kann man sie mitigieren?");
+        BtnChipExplain.Click += (_, _) => AppendPromptLine("Erkläre das verständlich für jemanden ohne Fachjargon.");
+    }
+
+    private void AppendPromptLine(string line)
+    {
+        var cur = PromptBox.Text ?? "";
+        var prefix = string.IsNullOrWhiteSpace(cur) ? "" : (cur.EndsWith("\n", StringComparison.Ordinal) ? "" : "\n\n");
+        PromptBox.Text = cur + prefix + line;
+    }
+
+    private void InsertKnowledgeSnippetIntoPrompt()
+    {
+        var q = PromptBox.Text?.Trim();
+        var ctx = KnowledgeSnippetService.BuildContext(string.IsNullOrEmpty(q) ? "." : q, 3500);
+        if (string.IsNullOrWhiteSpace(ctx))
+        {
+            NexusShell.Log("Wissen einfügen: knowledge\\ leer oder kein Treffer.");
+            return;
+        }
+
+        AppendPromptLine("[Kontext aus lokalem Wissen]\n" + ctx.TrimEnd());
+        NexusShell.Log("Wissen-Auszug an Prompt angehängt.");
+    }
+
+    private async Task PolishPromptWithLlmAsync()
+    {
+        var raw = PromptBox.Text?.Trim();
+        if (string.IsNullOrEmpty(raw))
+        {
+            NexusShell.Log("Prompt schärfen: zuerst Text im Prompt-Feld.");
+            return;
+        }
+
+        var s = _getSettings();
+        if (!DotEnvStore.HasProviderKey(s.Provider))
+        {
+            NexusShell.Log("Prompt schärfen: API-Key für gewählten Provider fehlt (.env).");
+            return;
+        }
+
+        SetBusy(true);
+        CompanionHub.Publish(CompanionVisualState.Thinking);
+        try
+        {
+            _cts = new CancellationTokenSource();
+            const string sys =
+                "Du bist ein Schreibassistent für technische Prompts. Formuliere den Nutzertext klarer und prägnanter auf Deutsch. " +
+                "Keine neuen Fakten erfinden, keine Begrüßung. Maximal wenige Sätze oder kurze Stichpunkte. " +
+                "Nur die verbesserte Formulierung ausgeben.";
+            var polished = await LlmChatService.CompleteUtilityAsync(s, sys, raw, _cts.Token).ConfigureAwait(true);
+            if (polished.StartsWith("Fehlt ", StringComparison.Ordinal) ||
+                polished.StartsWith("Unbekannter Provider", StringComparison.Ordinal) ||
+                polished.StartsWith("Anthropic HTTP", StringComparison.Ordinal) ||
+                polished.StartsWith("OpenAI", StringComparison.Ordinal))
+            {
+                NexusShell.Log("Prompt schärfen: " + polished);
+                return;
+            }
+
+            PromptBox.Text = polished.Trim();
+            NexusShell.Log("Prompt geschärft.");
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("Prompt schärfen: " + ex.Message);
+            CompanionHub.Publish(CompanionVisualState.Error);
+        }
+        finally
+        {
+            SetBusy(false);
+            CompanionHub.Publish(CompanionVisualState.Ready);
+        }
     }
 
     private async Task CopyAssistantAnswerAsync()
@@ -134,6 +218,7 @@ public partial class AskTab : UserControl
             TranscriptOut.Text = $"Aufnahme aktiv {source} — loslassen / „stop + ask“ für Transkript.";
             NexusShell.Log($"Mikrofon Aufnahme gestartet {source}");
             RefreshInputStates();
+            CompanionHub.Publish(CompanionVisualState.Listening);
         }
         catch (Exception ex)
         {
@@ -157,6 +242,7 @@ public partial class AskTab : UserControl
         TranscriptOut.Text = "Aufnahme abgebrochen.";
         NexusShell.Log("Mikrofon Aufnahme abgebrochen.");
         RefreshInputStates();
+        CompanionHub.Publish(CompanionVisualState.Ready);
     }
 
     private async Task StopMicTranscribeAndAskAsync()
@@ -176,6 +262,7 @@ public partial class AskTab : UserControl
             NexusShell.Log("Mikrofon Stop: " + ex.Message);
             TranscriptOut.Text = "Mikrofon Stop: " + ex.Message;
             RefreshInputStates();
+            CompanionHub.Publish(CompanionVisualState.Ready);
             return;
         }
 
@@ -183,10 +270,12 @@ public partial class AskTab : UserControl
         if (string.IsNullOrEmpty(path) || !File.Exists(path))
         {
             TranscriptOut.Text = "Keine Audiodatei erzeugt.";
+            CompanionHub.Publish(CompanionVisualState.Ready);
             return;
         }
 
         SetBusy(true);
+        CompanionHub.Publish(CompanionVisualState.Transcribing);
         string? transcript = null;
         try
         {
@@ -203,6 +292,7 @@ public partial class AskTab : UserControl
         {
             TranscriptOut.Text = "Transkription: " + ex.Message;
             NexusShell.Log("Transkription Fehler: " + ex.Message);
+            CompanionHub.Publish(CompanionVisualState.Ready);
         }
         finally
         {
@@ -212,6 +302,8 @@ public partial class AskTab : UserControl
 
         if (!string.IsNullOrWhiteSpace(transcript) && !LooksLikeTranscriptionFailure(transcript))
             await RunAskAsync();
+        else if (transcript != null)
+            CompanionHub.Publish(CompanionVisualState.Ready);
     }
 
     private static bool LooksLikeTranscriptionFailure(string t)
@@ -275,6 +367,7 @@ public partial class AskTab : UserControl
         {
             TryDelete(tmp);
             SetBusy(false);
+            CompanionHub.Publish(CompanionVisualState.Ready);
         }
     }
 
@@ -288,6 +381,7 @@ public partial class AskTab : UserControl
         }
 
         SetBusy(true);
+        CompanionHub.Publish(CompanionVisualState.Speaking);
         try
         {
             _cts = new CancellationTokenSource();
@@ -307,6 +401,7 @@ public partial class AskTab : UserControl
         finally
         {
             SetBusy(false);
+            CompanionHub.Publish(CompanionVisualState.Ready);
         }
     }
 
@@ -328,6 +423,7 @@ public partial class AskTab : UserControl
     private async Task RunSmokeAsync()
     {
         SetBusy(true);
+        CompanionHub.Publish(CompanionVisualState.Thinking);
         try
         {
             _cts = new CancellationTokenSource();
@@ -341,10 +437,12 @@ public partial class AskTab : UserControl
         {
             AssistantOut.Text = "Fehler: " + ex.Message;
             NexusShell.Log("smoke test Fehler: " + ex.Message);
+            CompanionHub.Publish(CompanionVisualState.Error);
         }
         finally
         {
             SetBusy(false);
+            CompanionHub.Publish(CompanionVisualState.Ready);
         }
     }
 
@@ -358,10 +456,29 @@ public partial class AskTab : UserControl
         }
 
         SetBusy(true);
+        CompanionHub.Publish(CompanionVisualState.Thinking);
         try
         {
             _cts = new CancellationTokenSource();
             var s = _getSettings();
+            var ct = _cts.Token;
+
+            if (AskPromptRouter.TryPersonaGreeting(prompt, out var greet))
+            {
+                AssistantOut.Text = greet;
+                PlanPreview.Text = "(Persona)";
+                PlanExec.Text = "";
+                _planSteps.Clear();
+                NexusShell.Log("ask · Persona-Gruß.");
+                return;
+            }
+
+            if (AskPromptRouter.TryParseCliRoute(prompt, out var route) && route != null)
+            {
+                await RunCliHandoffFromAskAsync(s, route, ct).ConfigureAwait(true);
+                return;
+            }
+
             var shots = IncludeScreenshots.IsChecked == true;
             var know = UseKnowledgeInAsk.IsChecked == true;
 
@@ -370,7 +487,7 @@ public partial class AskTab : UserControl
                 : "(lokales Wissen nicht eingebunden)";
 
             NexusShell.Log($"ask now · screenshots={shots}, knowledge={know}");
-            var text = await LlmChatService.CompleteAsync(s, prompt, shots, know, _cts.Token).ConfigureAwait(true);
+            var text = await LlmChatService.CompleteAsync(s, prompt, shots, know, ct).ConfigureAwait(true);
             AssistantOut.Text = text;
 
             var tokens = ActionPlanExtractor.Extract(text);
@@ -381,7 +498,8 @@ public partial class AskTab : UserControl
 
             if (s.SpeakResponses)
             {
-                var ttsErr = await TextToSpeechService.SpeakAsync(text, _cts.Token).ConfigureAwait(true);
+                CompanionHub.Publish(CompanionVisualState.Speaking);
+                var ttsErr = await TextToSpeechService.SpeakAsync(text, ct).ConfigureAwait(true);
                 if (!string.IsNullOrEmpty(ttsErr))
                     NexusShell.Log("TTS (auto): " + ttsErr);
             }
@@ -396,11 +514,56 @@ public partial class AskTab : UserControl
         {
             AssistantOut.Text = "Fehler: " + ex;
             NexusShell.Log("ask Fehler: " + ex.Message);
+            CompanionHub.Publish(CompanionVisualState.Error);
         }
         finally
         {
             SetBusy(false);
+            CompanionHub.Publish(CompanionVisualState.Ready);
         }
+    }
+
+    /// <summary>Vision + lokaler CLI-Agent in einem Prompt (USP: Dev+Ops in einer Shell).</summary>
+    private async Task RunCliHandoffFromAskAsync(NexusSettings s, CliAskRoute route, CancellationToken ct)
+    {
+        var payload = route.Payload?.Trim() ?? "";
+        if (string.IsNullOrEmpty(payload))
+        {
+            AssistantOut.Text =
+                "Nach dem Trigger fehlt der Auftragstext. Beispiel: „nimm codex … beschreibe die Dateien im playground.“";
+            NexusShell.Log("CLI-Handoff: leerer Payload.");
+            return;
+        }
+
+        RetrievalOut.Text = "(CLI-Handoff — Logs unter „codex output“)";
+
+        var combined = payload;
+        if (route.WithScreenSummary)
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                NexusShell.Log("CLI-Handoff: Vision-Kurzfassung (Multimonitor) für Codex …");
+                CompanionHub.Publish(CompanionVisualState.Thinking);
+                var visionPrompt =
+                    "Beschreibe in 6–10 knappen Stichpunkten auf Deutsch, was auf allen sichtbaren Monitoren zu erkennen ist (Hauptfenster, sichtbare Apps, erkennbare Titel). Keine Begrüßung.";
+                var summary = await LlmChatService.CompleteAsync(s, visionPrompt, true, false, ct).ConfigureAwait(true);
+                combined =
+                    "[Auto: Multimonitor-Schnappschuss, vom Assistenten gekürzt beschrieben]\n" + summary.Trim() +
+                    "\n\n---\n[Operator / Codex-Auftrag]\n" + payload;
+            }
+            else
+            {
+                NexusShell.Log("CLI-Handoff: Vision nur unter Windows — Codex ohne Screen-Kontext.");
+            }
+        }
+
+        NexusShell.Log($"CLI-Handoff: {route.Agent}");
+        var (logPath, excerpt) = await CliAgentRunner.RunAsync(route.Agent, combined, ct).ConfigureAwait(true);
+        AssistantOut.Text = excerpt + "\n\n— Log-Datei —\n" + logPath;
+        PlanPreview.Text = "(CLI-Ausgabe — neuen Plan ggf. manuell oder über nächsten Ask erzeugen)";
+        PlanExec.Text = "";
+        _planSteps.Clear();
+        _planStepIndex = 0;
     }
 
     private async Task ExecutePlanAsync(bool dryRun)
@@ -470,11 +633,18 @@ public partial class AskTab : UserControl
     private void SetBusy(bool busy)
     {
         _operationBusy = busy;
+        AskBusyBar.IsVisible = busy;
         BtnAskNow.IsEnabled = !busy;
         BtnSmoke.IsEnabled = !busy;
         BtnImportAudio.IsEnabled = !busy;
         BtnSpeak.IsEnabled = !busy;
         BtnCopyAnswer.IsEnabled = !busy;
+        BtnInsertKnowledge.IsEnabled = !busy;
+        BtnPolishPrompt.IsEnabled = !busy;
+        BtnChipSummary.IsEnabled = !busy;
+        BtnChipNext.IsEnabled = !busy;
+        BtnChipRisks.IsEnabled = !busy;
+        BtnChipExplain.IsEnabled = !busy;
         RefreshInputStates();
     }
 

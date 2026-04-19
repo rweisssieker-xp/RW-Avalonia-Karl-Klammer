@@ -1,7 +1,19 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="CarolusNexus.App"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Dark">
+  <Application.Resources>
+    <ResourceDictionary>
+      <SolidColorBrush x:Key="NexusHeaderBackgroundBrush" Color="#242933" />
+      <SolidColorBrush x:Key="NexusHeaderBorderBrush" Color="#3d4655" />
+      <SolidColorBrush x:Key="NexusBadgeBackgroundBrush" Color="#353c48" />
+      <SolidColorBrush x:Key="NexusTileBackgroundBrush" Color="#2a3038" />
+      <SolidColorBrush x:Key="NexusTileBorderBrush" Color="#454e5e" />
+      <SolidColorBrush x:Key="NexusMutedForegroundBrush" Color="#9aa3b2" />
+      <SolidColorBrush x:Key="NexusCardBackgroundBrush" Color="#2d333d" />
+      <SolidColorBrush x:Key="NexusCardBorderBrush" Color="#4a5364" />
+    </ResourceDictionary>
+  </Application.Resources>
   <Application.Styles>
     <FluentTheme />
   </Application.Styles>

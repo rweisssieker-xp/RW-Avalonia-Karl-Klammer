@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using CarolusNexus.Models;
 
 namespace CarolusNexus.Services;
 
@@ -19,20 +20,24 @@ public static class EmbeddingRagService
     public static bool IsEmbeddingIndexReady() =>
         File.Exists(AppPaths.KnowledgeEmbeddings) && File.Exists(AppPaths.KnowledgeChunks);
 
-    public static string TryGetContext(string userQuery, int maxChars = 12_000)
+    public static string TryGetContext(string userQuery, int maxChars = 12_000) =>
+        TryGetContextBundle(userQuery, maxChars)?.ContextText ?? "";
+
+    /// <summary>Semantische RAG mit Quellenliste für die UI; <c>null</c> wenn nicht anwendbar oder kein Treffer.</summary>
+    public static KnowledgeContextBundle? TryGetContextBundle(string userQuery, int maxChars = 12_000)
     {
         if (string.IsNullOrWhiteSpace(userQuery) || !IsEmbeddingIndexReady())
-            return "";
+            return null;
 
         var env = DotEnvStore.Load();
         if (!env.TryGetValue("OPENAI_API_KEY", out var key) || string.IsNullOrWhiteSpace(key))
-            return "";
+            return null;
         if (env.TryGetValue("RAG_EMBEDDINGS", out var ragOff))
         {
             var r = ragOff.Trim();
             if (r.Equals("0", StringComparison.OrdinalIgnoreCase) ||
                 r.Equals("false", StringComparison.OrdinalIgnoreCase))
-                return "";
+                return null;
         }
 
         try
@@ -41,12 +46,12 @@ public static class EmbeddingRagService
                 File.ReadAllText(AppPaths.KnowledgeEmbeddings),
                 JsonOpts());
             if (doc?.Items == null || doc.Items.Count == 0)
-                return "";
+                return null;
 
             var chunksJson = File.ReadAllText(AppPaths.KnowledgeChunks);
             var fp = Fingerprint(chunksJson);
             if (!string.IsNullOrEmpty(doc.SourceFingerprint) && doc.SourceFingerprint != fp)
-                return ""; // veraltet — Reindex + Embedding-Rebuild
+                return null;
 
             var chunkTexts = LoadChunkLookup(chunksJson);
             var model = env.TryGetValue("OPENAI_EMBEDDING_MODEL", out var m) && !string.IsNullOrWhiteSpace(m)
@@ -63,7 +68,7 @@ public static class EmbeddingRagService
                 key,
                 CancellationToken.None).GetAwaiter().GetResult();
             if (qVec.Count == 0)
-                return "";
+                return null;
             var q = qVec[0];
 
             var scored = new List<(double Sim, EmbeddingItemDto It)>();
@@ -76,7 +81,7 @@ public static class EmbeddingRagService
             }
 
             if (scored.Count == 0)
-                return "";
+                return null;
 
             scored.Sort((a, b) => b.Sim.CompareTo(a.Sim));
             var topK = int.TryParse(env.TryGetValue("RAG_TOP_K", out var tk) ? tk : null, out var kParsed)
@@ -86,6 +91,8 @@ public static class EmbeddingRagService
             var sb = new StringBuilder();
             sb.AppendLine("(RAG: semantische Chunk-Suche)");
             var used = 0;
+            var sources = new List<KnowledgeSourceRef>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var (_, it) in scored.Take(topK))
             {
                 if (!chunkTexts.TryGetValue((it.File ?? "", it.Ordinal), out var text) || string.IsNullOrEmpty(text))
@@ -93,20 +100,24 @@ public static class EmbeddingRagService
                 sb.AppendLine("--- " + it.File + " [#" + it.Ordinal + "] ---");
                 sb.AppendLine(text.Trim());
                 sb.AppendLine();
+                var label = (it.File ?? "?") + " [#" + it.Ordinal + "]";
+                if (seen.Add(label))
+                    sources.Add(new KnowledgeSourceRef(label, KnowledgeSnippetService.TryResolveKnowledgeFilePath(it.File)));
                 used++;
                 if (sb.Length >= maxChars)
                     break;
             }
 
             if (used == 0)
-                return "";
+                return null;
             var s = sb.ToString();
-            return s.Length <= maxChars ? s : s[..maxChars] + "\n…(gekürzt)";
+            var ctx = s.Length <= maxChars ? s : s[..maxChars] + "\n…(gekürzt)";
+            return new KnowledgeContextBundle(ctx, sources);
         }
         catch (Exception ex)
         {
             NexusShell.Log("Embedding-RAG: " + ex.Message);
-            return "";
+            return null;
         }
     }
 

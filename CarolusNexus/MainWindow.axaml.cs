@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -47,6 +48,7 @@ public partial class MainWindow : Window
 
         Loaded += OnLoaded;
         Closing += OnWindowClosing;
+        CompanionHub.StateChanged += OnCompanionVisualState;
 
         BtnRefreshAll.Click += OnRefreshAll;
         BtnSaveSettings.Click += OnSaveSettings;
@@ -204,7 +206,11 @@ public partial class MainWindow : Window
         _hotkeyWindow = null;
         _toolHost?.Dispose();
         _toolHost = null;
+        CompanionHub.StateChanged -= OnCompanionVisualState;
     }
+
+    private void OnCompanionVisualState(CompanionVisualState state) =>
+        _companion?.ApplyVisualState(state);
 
     private void OnCompanionToggleChanged(object? sender, RoutedEventArgs e)
     {
@@ -347,9 +353,34 @@ public partial class MainWindow : Window
             live: TileLive.Text ?? "—",
             proactive,
             gov: $"Profil: {_settings.Safety.Profile}\nPanic: {_settings.Safety.PanicStopEnabled}",
-            rituals: Cap(File.Exists(AppPaths.AutomationRecipes) ? File.ReadAllText(AppPaths.AutomationRecipes) : null),
+            rituals: FormatRitualsDashboardCard(),
             watch: Cap(File.Exists(AppPaths.WatchSessions) ? File.ReadAllText(AppPaths.WatchSessions) : null)
         );
+    }
+
+    private static string FormatRitualsDashboardCard()
+    {
+        try
+        {
+            var list = RitualRecipeStore.LoadAll();
+            var pending = RitualJobQueueStore.GetPendingCount();
+            var sb = new StringBuilder();
+            sb.AppendLine($"Rezepte in Library: {list.Count} · Jobs wartend: {pending}");
+            if (list.Count == 0)
+                sb.Append("(noch keine — Tab „Rituals“)");
+            else
+            {
+                sb.AppendLine("Auszug:");
+                foreach (var r in list.Take(6))
+                    sb.AppendLine(" · " + r.ListCaption);
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+        catch (Exception ex)
+        {
+            return "(Rituale: " + ex.Message + ")";
+        }
     }
 
     private async Task TryProactiveHintAsync()

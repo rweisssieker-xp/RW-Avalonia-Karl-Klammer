@@ -1,10 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="CarolusNexus.Views.AskTab">
-  <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,*">
+  <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,*">
     <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="8" Margin="0,0,0,8">
       <TextBox x:Name="PromptBox" AcceptsReturn="True" MinHeight="72"
-               Watermark="Prompt (Vision, RAG, CLI-Trigger: nimm codex …)" />
+               Watermark="Frage / Vision / RAG — oder CLI: „nimm codex …“, „nimm codex mit screen …“, „nimm claude code …“, „nimm openclaw …“" />
       <StackPanel Orientation="Horizontal" Spacing="12">
         <CheckBox x:Name="IncludeScreenshots" Content="Screenshots einbeziehen" IsChecked="True" />
         <CheckBox x:Name="UseKnowledgeInAsk" Content="Lokales Wissen im Ask-Flow" IsChecked="True" />
@@ -27,21 +27,42 @@
         <Button x:Name="BtnCopyAnswer" Content="copy answer" Margin="0,0,6,6" Padding="10,6"
                 ToolTip.Tip="Kopiert die Assistant-Antwort in die Zwischenablage." />
       </WrapPanel>
-      <TextBlock Text="AX Fat-Client: ax.*-Aktionen in Plänen — Ausführung über Ritual-Runtime (Stub)." FontSize="11" Foreground="#666" TextWrapping="Wrap" />
+      <TextBlock Text="KI-Hilfen" FontWeight="SemiBold" FontSize="11" Margin="0,2,0,0" />
+      <WrapPanel Orientation="Horizontal">
+        <Button x:Name="BtnInsertKnowledge" Content="Wissen einfügen" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Hängt einen Auszug aus knowledge\\ an den Prompt (ranking nach aktuellem Text)." />
+        <Button x:Name="BtnPolishPrompt" Content="Prompt schärfen" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Kürzt und klärt den Prompt per LLM (ohne neue Fakten)." />
+        <Button x:Name="BtnPolishAnswer" Content="Antwort verbessern" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Überarbeitet die letzte Assistant-Antwort: klarer, gleiche Fakten." />
+      </WrapPanel>
+      <TextBlock Text="Schnell-Prompts" FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}" />
+      <WrapPanel Orientation="Horizontal">
+        <Button x:Name="BtnChipSummary" Content="+ Zusammenfassung" Margin="0,0,6,6" Padding="8,5" FontSize="11" />
+        <Button x:Name="BtnChipNext" Content="+ Nächste Schritte" Margin="0,0,6,6" Padding="8,5" FontSize="11" />
+        <Button x:Name="BtnChipRisks" Content="+ Risiken" Margin="0,0,6,6" Padding="8,5" FontSize="11" />
+        <Button x:Name="BtnChipExplain" Content="+ Erklär mir …" Margin="0,0,6,6" Padding="8,5" FontSize="11" />
+      </WrapPanel>
+      <TextBlock Text="AX / Pläne: ax.*-Tokens — echte Win32-Schritte nur mit Safety „power-user“ + PlanGuard. CLI-Handoff startet lokale Agenten aus demselben Prompt." FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}" TextWrapping="Wrap" />
     </StackPanel>
-    <ScrollViewer Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
+    <ProgressBar x:Name="AskBusyBar" Grid.Row="1" Grid.ColumnSpan="2" Height="4" Margin="0,0,0,8"
+                 IsIndeterminate="True" IsVisible="False" />
+    <ScrollViewer Grid.Row="2" Grid.Column="0" Margin="0,0,8,0">
       <StackPanel Spacing="8">
         <TextBlock Text="Assistant Response" FontWeight="SemiBold" />
         <TextBox x:Name="AssistantOut" IsReadOnly="True" AcceptsReturn="True" MinHeight="120" TextWrapping="Wrap" />
         <TextBlock Text="Retrieval + Context" FontWeight="SemiBold" />
         <TextBox x:Name="RetrievalOut" IsReadOnly="True" AcceptsReturn="True" MinHeight="80" TextWrapping="Wrap" />
+        <TextBlock x:Name="RetrievalSourcesHeader" Text="RAG-Quellen" FontWeight="SemiBold" FontSize="11"
+                   IsVisible="False" />
+        <StackPanel x:Name="RetrievalSourcesPanel" Spacing="4" IsVisible="False" />
         <TextBlock Text="Safety / Recovery" FontWeight="SemiBold" />
         <TextBox x:Name="SafetyOut" IsReadOnly="True" AcceptsReturn="True" MinHeight="60" TextWrapping="Wrap" />
         <TextBlock Text="Transcript / Audio" FontWeight="SemiBold" />
         <TextBox x:Name="TranscriptOut" IsReadOnly="True" AcceptsReturn="True" MinHeight="50" TextWrapping="Wrap" />
       </StackPanel>
     </ScrollViewer>
-    <ScrollViewer Grid.Row="1" Grid.Column="1">
+    <ScrollViewer Grid.Row="2" Grid.Column="1">
       <StackPanel Spacing="8">
         <TextBlock Text="Action Plan Preview" FontWeight="SemiBold" />
         <TextBox x:Name="PlanPreview" IsReadOnly="True" AcceptsReturn="True" MinHeight="100" TextWrapping="Wrap" />

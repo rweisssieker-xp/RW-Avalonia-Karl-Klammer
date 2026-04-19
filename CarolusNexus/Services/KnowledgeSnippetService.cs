@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CarolusNexus.Models;
 
 namespace CarolusNexus.Services;
 
@@ -29,49 +30,71 @@ public static class KnowledgeSnippetService
         public string? Text { get; set; }
     }
 
+    /// <summary>Absoluter oder knowledge\-relativer Dateipfad (für „Quelle öffnen“).</summary>
+    public static string? TryResolveKnowledgeFilePath(string? file)
+    {
+        if (string.IsNullOrWhiteSpace(file))
+            return null;
+        var t = file.Trim();
+        try
+        {
+            if (Path.IsPathRooted(t) && File.Exists(t))
+                return Path.GetFullPath(t);
+            var rel = Path.Combine(AppPaths.KnowledgeDir, t);
+            return Path.GetFullPath(rel);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>Einbindung für Ask: mit <paramref name="userQuery"/> werden Chunks gerankt, sonst linear aus Dateien.</summary>
-    public static string BuildContext(string? userQuery, int maxChars = 12000)
+    public static string BuildContext(string? userQuery, int maxChars = 12000) =>
+        BuildContextBundle(userQuery, maxChars).ContextText;
+
+    /// <summary>Wie <see cref="BuildContext"/> plus strukturierte Quellen für die UI.</summary>
+    public static KnowledgeContextBundle BuildContextBundle(string? userQuery, int maxChars = 12000)
     {
         if (!Directory.Exists(AppPaths.KnowledgeDir))
-            return "";
+            return new KnowledgeContextBundle("", Array.Empty<KnowledgeSourceRef>());
 
         var q = userQuery?.Trim();
         if (!string.IsNullOrEmpty(q) && File.Exists(AppPaths.KnowledgeChunks))
         {
-            var semantic = EmbeddingRagService.TryGetContext(q, maxChars);
-            if (!string.IsNullOrEmpty(semantic))
+            var semantic = EmbeddingRagService.TryGetContextBundle(q, maxChars);
+            if (semantic != null && !string.IsNullOrWhiteSpace(semantic.ContextText))
                 return semantic;
 
-            var ranked = BuildFromChunks(q, maxChars);
-            if (!string.IsNullOrEmpty(ranked))
+            var ranked = BuildFromChunksBundle(q, maxChars);
+            if (!string.IsNullOrWhiteSpace(ranked.ContextText))
                 return ranked;
         }
 
-        return BuildSequentialFiles(maxChars);
+        return BuildSequentialFilesBundle(maxChars);
     }
 
     /// <summary>Abwärtskompatibel: gesamter Ordnerscan ohne Query.</summary>
     public static string BuildContext(int maxChars) => BuildContext(null, maxChars);
 
-    private static string BuildFromChunks(string query, int maxChars)
+    private static KnowledgeContextBundle BuildFromChunksBundle(string query, int maxChars)
     {
         try
         {
             var json = File.ReadAllText(AppPaths.KnowledgeChunks);
             var doc = JsonSerializer.Deserialize<ChunkFileDto>(json);
             if (doc?.Chunks == null || doc.Chunks.Count == 0)
-                return "";
+                return new KnowledgeContextBundle("", Array.Empty<KnowledgeSourceRef>());
 
             var terms = Tokenize(query).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             if (terms.Length == 0)
-                return BuildSequentialFiles(maxChars);
+                return BuildSequentialFilesBundle(maxChars);
 
             var scored = new List<(int Score, ChunkDto C)>();
             foreach (var c in doc.Chunks)
             {
                 if (string.IsNullOrEmpty(c.Text))
                     continue;
-                var tlow = c.Text.AsSpan();
                 var score = 0;
                 var hay = c.Text;
                 foreach (var term in terms)
@@ -91,26 +114,32 @@ public static class KnowledgeSnippetService
             }
 
             if (scored.Count == 0)
-                return "";
+                return new KnowledgeContextBundle("", Array.Empty<KnowledgeSourceRef>());
 
             scored.Sort((a, b) => b.Score.CompareTo(a.Score));
 
             var sb = new StringBuilder();
+            var sources = new List<KnowledgeSourceRef>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var (_, c) in scored)
             {
-                sb.AppendLine("--- " + (c.File ?? "?") + " ---");
+                var label = c.File ?? "?";
+                sb.AppendLine("--- " + label + " ---");
                 sb.AppendLine(c.Text!.Trim());
                 sb.AppendLine();
+                if (seen.Add(label))
+                    sources.Add(new KnowledgeSourceRef(label, TryResolveKnowledgeFilePath(c.File)));
                 if (sb.Length >= maxChars)
                     break;
             }
 
             var s = sb.ToString();
-            return s.Length <= maxChars ? s : s[..maxChars] + "\n…(gekürzt)";
+            var text = s.Length <= maxChars ? s : s[..maxChars] + "\n…(gekürzt)";
+            return new KnowledgeContextBundle(text, sources);
         }
         catch
         {
-            return "";
+            return new KnowledgeContextBundle("", Array.Empty<KnowledgeSourceRef>());
         }
     }
 
@@ -128,9 +157,10 @@ public static class KnowledgeSnippetService
         return list;
     }
 
-    private static string BuildSequentialFiles(int maxChars)
+    private static KnowledgeContextBundle BuildSequentialFilesBundle(int maxChars)
     {
         var sb = new StringBuilder();
+        var sources = new List<KnowledgeSourceRef>();
         foreach (var path in Directory.GetFiles(AppPaths.KnowledgeDir, "*.*", SearchOption.TopDirectoryOnly)
                      .OrderBy(Path.GetFileName))
         {
@@ -142,9 +172,11 @@ public static class KnowledgeSnippetService
                 var text = File.ReadAllText(path);
                 if (string.IsNullOrWhiteSpace(text))
                     continue;
-                sb.AppendLine("--- " + Path.GetFileName(path) + " ---");
+                var name = Path.GetFileName(path);
+                sb.AppendLine("--- " + name + " ---");
                 sb.AppendLine(text.Trim());
                 sb.AppendLine();
+                sources.Add(new KnowledgeSourceRef(name, Path.GetFullPath(path)));
                 if (sb.Length >= maxChars)
                     break;
             }
@@ -155,8 +187,7 @@ public static class KnowledgeSnippetService
         }
 
         var s = sb.ToString();
-        if (s.Length <= maxChars)
-            return s;
-        return s[..maxChars] + "\n…(gekürzt)";
+        var ctx = s.Length <= maxChars ? s : s[..maxChars] + "\n…(gekürzt)";
+        return new KnowledgeContextBundle(ctx, sources);
     }
 }

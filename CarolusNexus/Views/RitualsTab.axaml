@@ -9,18 +9,23 @@
       <ListBox x:Name="RitualList">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="models:AutomationRecipe">
-            <TextBlock Text="{Binding Name}" />
+            <TextBlock Text="{Binding ListCaption}" TextWrapping="Wrap" />
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
     </DockPanel>
     <DockPanel Grid.Column="1" Margin="0,0,8,0">
-      <TextBlock DockPanel.Dock="Top" Text="Ritual Builder" FontWeight="SemiBold" Margin="0,0,0,6" />
+      <TextBlock DockPanel.Dock="Top" Text="Ritual Builder" FontWeight="SemiBold" Margin="0,0,0,4" />
+      <TextBlock x:Name="QueueStatusLine" DockPanel.Dock="Top" FontSize="11"
+                 Foreground="{DynamicResource NexusMutedForegroundBrush}" Margin="0,0,0,8"
+                 Text="Job-Warteschlange: —" TextWrapping="Wrap" />
       <ScrollViewer>
         <StackPanel Spacing="6">
           <TextBox x:Name="RitualName" Watermark="Name" />
           <TextBox x:Name="RitualDesc" Watermark="Description" AcceptsReturn="True" MinHeight="48" />
           <WrapPanel>
+            <Button x:Name="BtnAiSuggestName" Content="KI: Kurztitel" Margin="0,0,6,6"
+                    ToolTip.Tip="Schlägt einen kurzen Ritual-Namen per LLM vor (Beschreibung und/oder Schritte)." />
             <Button x:Name="BtnSaveRitual" Content="save ritual" Margin="0,0,6,6" />
             <Button x:Name="BtnDeleteRitual" Content="delete" Margin="0,0,6,6" />
             <Button x:Name="BtnClone" Content="clone" Margin="0,0,6,6" />
@@ -47,7 +52,7 @@
     <DockPanel Grid.Column="2">
       <TextBlock DockPanel.Dock="Top" Text="Structured Steps (JSON)" FontWeight="SemiBold" Margin="0,0,0,6" />
       <TextBox x:Name="StepsEditor" AcceptsReturn="True" FontFamily="Consolas,Courier New,monospace"
-               Watermark="JSON / Schritte — Persistenz: automation-recipes.json (Stub)" />
+               Watermark="JSON / Schritte — Persistenz: automation-recipes.json" />
     </DockPanel>
   </Grid>
 </UserControl>
