@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="CarolusNexus.Views.LiveContextTab">
+  <DockPanel MinHeight="420">
+    <TextBlock DockPanel.Dock="Top" Text="Desktop Inspector · Adapter-Stubs (§5.10)" FontWeight="SemiBold" Margin="0,0,0,8" />
+    <ScrollViewer DockPanel.Dock="Top" Margin="0,0,0,8">
+      <WrapPanel>
+        <Button x:Name="BExplorer" Content="Explorer" Margin="0,0,6,6" Padding="8,4" />
+        <Button x:Name="BBrowser" Content="Browser" Margin="0,0,6,6" Padding="8,4" />
+        <Button x:Name="BMail" Content="Mail" Margin="0,0,6,6" Padding="8,4" />
+        <Button x:Name="BOutlook" Content="Outlook" Margin="0,0,6,6" Padding="8,4" />
+        <Button x:Name="BTeams" Content="Teams" Margin="0,0,6,6" Padding="8,4" />
+        <Button x:Name="BWord" Content="Word" Margin="0,0,6,6" Padding="8,4" />
+        <Button x:Name="BExcel" Content="Excel" Margin="0,0,6,6" Padding="8,4" />
+        <Button x:Name="BPowerPoint" Content="PowerPoint" Margin="0,0,6,6" Padding="8,4" />
+        <Button x:Name="BOneNote" Content="OneNote" Margin="0,0,6,6" Padding="8,4" />
+        <Button x:Name="BEditor" Content="Editor" Margin="0,0,6,6" Padding="8,4" />
+        <Button x:Name="BAx" Content="AX" Margin="0,0,6,6" Padding="8,4" />
+      </WrapPanel>
+    </ScrollViewer>
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+      <TextBox x:Name="InspectorAction" Watermark="InspectorAction / custom action (z. B. ax.read_context)" />
+      <Button x:Name="BtnRunInspector" Grid.Column="1" Content="run" Margin="8,0,0,0" Padding="12,6" />
+    </Grid>
+    <TabControl>
+      <TabItem Header="Active Window">
+        <TextBox x:Name="SnapActive" AcceptsReturn="True" IsReadOnly="True" FontFamily="Consolas,Courier New,monospace" />
+      </TabItem>
+      <TabItem Header="AX Context">
+        <TextBox x:Name="SnapAx" AcceptsReturn="True" IsReadOnly="True" FontFamily="Consolas,Courier New,monospace" />
+      </TabItem>
+      <TabItem Header="Cross-App">
+        <TextBox x:Name="SnapCross" AcceptsReturn="True" IsReadOnly="True" FontFamily="Consolas,Courier New,monospace" />
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</UserControl>

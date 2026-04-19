@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="CarolusNexus.Views.AskTab">
+  <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,*">
+    <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="8" Margin="0,0,0,8">
+      <TextBox x:Name="PromptBox" AcceptsReturn="True" MinHeight="72"
+               Watermark="Prompt (Vision, RAG, CLI-Trigger: nimm codex …)" />
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <CheckBox x:Name="IncludeScreenshots" Content="Screenshots einbeziehen" IsChecked="True" />
+        <CheckBox x:Name="UseKnowledgeInAsk" Content="Lokales Wissen im Ask-Flow" IsChecked="True" />
+      </StackPanel>
+      <WrapPanel Orientation="Horizontal">
+        <Button x:Name="BtnAskNow" Content="ask now" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnSmoke" Content="smoke test" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnImportAudio" Content="import audio + transcribe" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnPttStart" Content="start push-to-talk" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnPttStop" Content="stop + ask" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnCancelRec" Content="cancel recording" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnClearConv" Content="clear conversation" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnRunPlan" Content="run plan" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnApproveRun" Content="approve + run" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnRunNext" Content="run next step" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnSaveRitual" Content="save plan as ritual" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnClearPlan" Content="clear plan" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnPanic" Content="panic stop" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnSpeak" Content="speak response" Margin="0,0,6,6" Padding="10,6" />
+      </WrapPanel>
+      <TextBlock Text="AX Fat-Client: ax.*-Aktionen in Plänen — Ausführung über Ritual-Runtime (Stub)." FontSize="11" Foreground="#666" TextWrapping="Wrap" />
+    </StackPanel>
+    <ScrollViewer Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
+      <StackPanel Spacing="8">
+        <TextBlock Text="Assistant Response" FontWeight="SemiBold" />
+        <TextBox x:Name="AssistantOut" IsReadOnly="True" AcceptsReturn="True" MinHeight="120" TextWrapping="Wrap" />
+        <TextBlock Text="Retrieval + Context" FontWeight="SemiBold" />
+        <TextBox x:Name="RetrievalOut" IsReadOnly="True" AcceptsReturn="True" MinHeight="80" TextWrapping="Wrap" />
+        <TextBlock Text="Safety / Recovery" FontWeight="SemiBold" />
+        <TextBox x:Name="SafetyOut" IsReadOnly="True" AcceptsReturn="True" MinHeight="60" TextWrapping="Wrap" />
+        <TextBlock Text="Transcript / Audio" FontWeight="SemiBold" />
+        <TextBox x:Name="TranscriptOut" IsReadOnly="True" AcceptsReturn="True" MinHeight="50" TextWrapping="Wrap" />
+      </StackPanel>
+    </ScrollViewer>
+    <ScrollViewer Grid.Row="1" Grid.Column="1">
+      <StackPanel Spacing="8">
+        <TextBlock Text="Action Plan Preview" FontWeight="SemiBold" />
+        <TextBox x:Name="PlanPreview" IsReadOnly="True" AcceptsReturn="True" MinHeight="100" TextWrapping="Wrap" />
+        <TextBlock Text="Action Plan Execution" FontWeight="SemiBold" />
+        <TextBox x:Name="PlanExec" IsReadOnly="True" AcceptsReturn="True" MinHeight="120" TextWrapping="Wrap" FontFamily="Consolas,Courier New,monospace" />
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

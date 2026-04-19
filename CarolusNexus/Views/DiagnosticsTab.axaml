@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="CarolusNexus.Views.DiagnosticsTab">
+  <DockPanel MinHeight="360">
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+      <TextBox x:Name="DiagFilter" Width="200" Watermark="Filter…" />
+      <Button x:Name="BtnExport" Content="export" />
+      <Button x:Name="BtnClear" Content="clear logs" />
+    </StackPanel>
+    <TextBox x:Name="DiagLog" AcceptsReturn="True" IsReadOnly="True" FontFamily="Consolas,Courier New,monospace"
+             TextWrapping="Wrap" />
+  </DockPanel>
+</UserControl>

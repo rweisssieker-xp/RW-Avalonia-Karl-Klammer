@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="CarolusNexus.Views.RitualsTab">
+  <Grid ColumnDefinitions="*,*,*" MinHeight="420">
+    <DockPanel Grid.Column="0" Margin="0,0,8,0">
+      <TextBlock DockPanel.Dock="Top" Text="Ritual Library" FontWeight="SemiBold" Margin="0,0,0,6" />
+      <TextBox x:Name="LibFilter" DockPanel.Dock="Top" Watermark="Suche…" Margin="0,0,0,6" />
+      <ListBox x:Name="RitualList" />
+    </DockPanel>
+    <DockPanel Grid.Column="1" Margin="0,0,8,0">
+      <TextBlock DockPanel.Dock="Top" Text="Ritual Builder" FontWeight="SemiBold" Margin="0,0,0,6" />
+      <ScrollViewer>
+        <StackPanel Spacing="6">
+          <TextBox x:Name="RitualName" Watermark="Name" />
+          <TextBox x:Name="RitualDesc" Watermark="Description" AcceptsReturn="True" MinHeight="48" />
+          <WrapPanel>
+            <Button x:Name="BtnSaveRitual" Content="save ritual" Margin="0,0,6,6" />
+            <Button x:Name="BtnDeleteRitual" Content="delete" Margin="0,0,6,6" />
+            <Button x:Name="BtnClone" Content="clone" Margin="0,0,6,6" />
+            <Button x:Name="BtnArchive" Content="archive" Margin="0,0,6,6" />
+            <Button x:Name="BtnPublish" Content="publish flow" Margin="0,0,6,6" />
+            <Button x:Name="BtnQueue" Content="queue for run" Margin="0,0,6,6" />
+            <Button x:Name="BtnApproveJob" Content="approve next job" Margin="0,0,6,6" />
+            <Button x:Name="BtnDryRun" Content="dry run" Margin="0,0,6,6" />
+            <Button x:Name="BtnRunRitual" Content="run ritual" Margin="0,0,6,6" />
+            <Button x:Name="BtnRunNextStep" Content="run next step" Margin="0,0,6,6" />
+            <Button x:Name="BtnResume" Content="resume ritual" Margin="0,0,6,6" />
+          </WrapPanel>
+          <TextBlock Text="Teach" FontWeight="SemiBold" />
+          <WrapPanel>
+            <Button x:Name="BtnPromoteHist" Content="promote from history" Margin="0,0,6,6" />
+            <Button x:Name="BtnPromoteWatch" Content="promote from watch" Margin="0,0,6,6" />
+            <Button x:Name="BtnTeachStart" Content="start teach" Margin="0,0,6,6" />
+            <Button x:Name="BtnTeachStop" Content="stop teach" Margin="0,0,6,6" />
+          </WrapPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </DockPanel>
+    <DockPanel Grid.Column="2">
+      <TextBlock DockPanel.Dock="Top" Text="Structured Steps (Stub)" FontWeight="SemiBold" Margin="0,0,0,6" />
+      <TextBox x:Name="StepsEditor" AcceptsReturn="True" FontFamily="Consolas,Courier New,monospace"
+               Watermark="JSON / Schritte — Persistenz: automation-recipes.json (Stub)" />
+    </DockPanel>
+  </Grid>
+</UserControl>

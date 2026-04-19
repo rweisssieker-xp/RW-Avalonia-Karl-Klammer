@@ -1,107 +1,115 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="clr-namespace:CarolusNexus"
+        xmlns:views="clr-namespace:CarolusNexus.Views"
         x:Class="CarolusNexus.MainWindow"
-        Title="Karl Klammer"
-        Width="400"
-        Height="560"
-        MinWidth="320"
-        MinHeight="480"
-        WindowStartupLocation="CenterScreen"
-        SystemDecorations="None"
-        TransparencyLevelHint="Transparent"
-        Background="Transparent"
-        CanResize="True"
-        Topmost="False">
-  <Border Margin="16"
-          CornerRadius="16"
-          Background="#F5F5F0"
-          BorderBrush="#C8C8C0"
-          BorderThickness="1"
-          BoxShadow="0 8 24 0 #40000000">
-    <Grid RowDefinitions="Auto,*">
-      <Grid Grid.Row="0"
-            Margin="12,10,8,4"
-            ColumnDefinitions="*,Auto,Auto">
-        <TextBlock Text="Karl Klammer"
-                   VerticalAlignment="Center"
-                   FontSize="12"
-                   Foreground="#666"
-                   IsHitTestVisible="False" />
-        <CheckBox x:Name="CompanionToggle"
-                  Grid.Column="1"
-                  Margin="8,0,8,0"
-                  VerticalAlignment="Center"
-                  Content="Begleiter am Cursor"
-                  FontSize="11"
-                  IsChecked="True"
-                  ToolTip.Tip="Zeigt Karl neben der Maus (Windows, klick-durchlässig)." />
-        <Button Grid.Column="2"
-                Padding="8,2"
-                Content="&#215;"
-                FontSize="12"
-                ToolTip.Tip="Schließen"
-                Click="OnCloseClick" />
-      </Grid>
-
-      <ScrollViewer Grid.Row="1"
-                    Margin="12,0,12,12"
-                    HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="10">
-          <Border Padding="0"
-                  Background="Transparent"
-                  PointerPressed="OnDragPointerPressed">
-            <StackPanel Spacing="0">
-              <Border Padding="14,12"
-                      CornerRadius="14"
-                      Background="#FFFACD"
-                      BorderBrush="#C4B896"
-                      BorderThickness="1">
-                <TextBlock x:Name="HintText"
-                           FontSize="14"
-                           Foreground="#2a2a2a"
-                           TextWrapping="Wrap"
-                           LineHeight="20" />
-              </Border>
-              <Path Margin="0,-1,0,0"
-                    HorizontalAlignment="Center"
-                    Data="M 0,0 L 22,0 L 11,12 Z"
-                    Fill="#FFFACD"
-                    Stroke="#C4B896"
-                    StrokeThickness="1"
-                    Stretch="None" />
+        Title="Carolus Nexus"
+        Width="1180"
+        Height="840"
+        MinWidth="900"
+        MinHeight="640"
+        WindowStartupLocation="CenterScreen">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Background="#ecece6" BorderBrush="#c8c8c0" BorderThickness="0,0,0,1" Padding="14,10">
+      <StackPanel Spacing="10">
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Text="Carolus Nexus" FontSize="22" FontWeight="Bold" />
+            <TextBlock Text="Windows-Operator-Desktop · Persona: Karl Klammer" FontSize="12" Opacity="0.65" />
+            <TextBlock x:Name="StatusLine" Text="Bereit" FontSize="12" />
+          </StackPanel>
+          <CheckBox x:Name="CompanionToggle"
+ Grid.Column="1"
+                    Margin="12,0,12,0"
+                    VerticalAlignment="Center"
+                    Content="Begleiter am Cursor"
+                    FontSize="11"
+                    IsChecked="True"
+                    ToolTip.Tip="Karl neben der Maus (Windows, klick-durchlässig)." />
+          <Button Grid.Column="2"
+                  Padding="10,4"
+                  Margin="0,0,8,0"
+                  Content="Handbuch"
+                  Click="OnOpenHandbookClick"
+                  ToolTip.Tip="Öffnet docs/Carolus-Nexus-Benutzerhandbuch.md (Repository-Wurzel)." />
+          <Button Grid.Column="3"
+                  Padding="10,4"
+                  Content="Schließen"
+                  Click="OnCloseClick" />
+        </Grid>
+        <WrapPanel>
+          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4" Background="#ddd">
+            <TextBlock x:Name="BadgeLayout" Text="Layout: Shell" FontSize="11" />
+          </Border>
+          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4" Background="#ddd">
+            <TextBlock x:Name="BadgeEnv" Text="Environment: —" FontSize="11" />
+          </Border>
+          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4" Background="#ddd">
+            <TextBlock x:Name="BadgeSpeech" Text="Speech: Stub" FontSize="11" />
+          </Border>
+          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4" Background="#ddd">
+            <TextBlock x:Name="BadgeAuto" Text="Automation: Stub" FontSize="11" />
+          </Border>
+          <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4" Background="#ddd">
+            <TextBlock x:Name="BadgeKnow" Text="Knowledge: lokal" FontSize="11" />
+          </Border>
+        </WrapPanel>
+        <Grid ColumnDefinitions="*,*,*">
+          <Border Padding="8" CornerRadius="6" BorderBrush="#bbb" BorderThickness="1" Background="#fafaf8">
+            <StackPanel>
+              <TextBlock Text="Operator Memory" FontWeight="SemiBold" FontSize="11" />
+              <TextBlock x:Name="TileMemory" TextWrapping="Wrap" FontSize="11" Text="—" />
             </StackPanel>
           </Border>
-
-          <Border x:Name="SceneBob"
-                  Height="300"
-                  CornerRadius="12"
-                  ClipToBounds="True"
-                  Background="#1a1c20"
-                  BorderBrush="#3d4450"
-                  BorderThickness="1"
-                  PointerPressed="OnDragPointerPressed">
-            <Border.RenderTransform>
-              <TranslateTransform />
-            </Border.RenderTransform>
-            <local:OfficeScene3D HorizontalAlignment="Stretch"
-                                 VerticalAlignment="Stretch" />
+          <Border Grid.Column="1" Padding="8" CornerRadius="6" BorderBrush="#bbb" BorderThickness="1" Background="#fafaf8">
+            <StackPanel>
+              <TextBlock Text="Live Context" FontWeight="SemiBold" FontSize="11" />
+              <TextBlock x:Name="TileLive" TextWrapping="Wrap" FontSize="11" Text="—" />
+            </StackPanel>
           </Border>
-
-          <TextBlock Text="OpenGL-3D: Papier, „Klammer“ und kleiner Akzent — alles mit Licht und Rotation."
-                     FontSize="11"
-                     Foreground="#777"
-                     TextWrapping="Wrap"
-                     LineHeight="16" />
-
-          <Button HorizontalAlignment="Stretch"
-                  HorizontalContentAlignment="Center"
-                  Padding="12,8"
-                  Content="Noch ein Tipp…"
-                  Click="OnNextTipClick" />
-        </StackPanel>
-      </ScrollViewer>
-    </Grid>
-  </Border>
+          <Border Grid.Column="2" Padding="8" CornerRadius="6" BorderBrush="#bbb" BorderThickness="1" Background="#fafaf8">
+            <StackPanel>
+              <TextBlock Text="Environment" FontWeight="SemiBold" FontSize="11" />
+              <TextBlock x:Name="TileEnv" TextWrapping="Wrap" FontSize="11" Text="—" />
+            </StackPanel>
+          </Border>
+        </Grid>
+        <WrapPanel>
+          <Button x:Name="BtnRefreshAll" Content="refresh all" Margin="0,0,8,6" Padding="12,6" />
+          <Button x:Name="BtnSaveSettings" Content="save settings" Margin="0,0,8,6" Padding="12,6" />
+          <Button x:Name="BtnReindex" Content="reindex knowledge" Margin="0,0,8,6" Padding="12,6" />
+          <Button x:Name="BtnRefreshApp" Content="refresh active app" Margin="0,0,8,6" Padding="12,6" />
+          <Button x:Name="BtnExportDiag" Content="export diagnostics" Margin="0,0,8,6" Padding="12,6" />
+        </WrapPanel>
+      </StackPanel>
+    </Border>
+    <TabControl x:Name="MainTabs" Margin="10,8,10,10">
+      <TabItem Header="Ask">
+        <views:AskTab x:Name="TabAsk" Margin="8" />
+      </TabItem>
+      <TabItem Header="Dashboard">
+        <views:DashboardTab x:Name="TabDashboard" Margin="8" />
+      </TabItem>
+      <TabItem Header="Setup">
+        <views:SetupTab x:Name="TabSetup" Margin="8" />
+      </TabItem>
+      <TabItem Header="Knowledge">
+        <views:KnowledgeTab x:Name="TabKnowledge" Margin="8" />
+      </TabItem>
+      <TabItem Header="Rituals">
+        <views:RitualsTab x:Name="TabRituals" Margin="8" />
+      </TabItem>
+      <TabItem Header="History">
+        <views:HistoryTab x:Name="TabHistory" Margin="8" />
+      </TabItem>
+      <TabItem Header="Diagnostics">
+        <views:DiagnosticsTab x:Name="TabDiagnostics" Margin="8" />
+      </TabItem>
+      <TabItem Header="Console">
+        <views:ConsoleTab x:Name="TabConsole" Margin="8" />
+      </TabItem>
+      <TabItem Header="Live Context">
+        <views:LiveContextTab x:Name="TabLive" Margin="8" />
+      </TabItem>
+    </TabControl>
+  </DockPanel>
 </Window>
