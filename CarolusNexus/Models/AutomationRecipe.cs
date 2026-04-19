@@ -21,6 +21,26 @@ public sealed class AutomationRecipe
     [JsonPropertyName("archived")]
     public bool Archived { get; set; }
 
+    /// <summary>z. B. <c>manual</c> (nur nach Freigabe/Queue) oder <c>auto</c>.</summary>
+    [JsonPropertyName("approvalMode")]
+    public string ApprovalMode { get; set; } = "manual";
+
+    /// <summary>z. B. <c>low</c>, <c>medium</c>, <c>high</c> — Hinweis für Operatoren / künftiges Gating.</summary>
+    [JsonPropertyName("riskLevel")]
+    public string RiskLevel { get; set; } = "medium";
+
+    /// <summary>Bevorzugte Adapter-Familie (z. B. <c>explorer</c>, <c>ax2012</c>) — Heuristik, keine harte Bindung.</summary>
+    [JsonPropertyName("adapterAffinity")]
+    public string AdapterAffinity { get; set; } = "";
+
+    /// <summary>Freitext: woher stammt die Konfidenz (z. B. „Teach“, „LLM“, „SOP xyz.md“).</summary>
+    [JsonPropertyName("confidenceSource")]
+    public string ConfidenceSource { get; set; } = "";
+
+    /// <summary>Max. aufeinanderfolgende autonome Schritte ohne Pause; 0 = unbegrenzt (nur Dokumentation/Governance).</summary>
+    [JsonPropertyName("maxAutonomySteps")]
+    public int MaxAutonomySteps { get; set; }
+
     [JsonPropertyName("steps")]
     public List<RecipeStep> Steps { get; set; } = new();
 
@@ -32,7 +52,8 @@ public sealed class AutomationRecipe
             var name = string.IsNullOrWhiteSpace(Name) ? "(ohne Name)" : Name;
             var arch = Archived ? " · archiv" : "";
             var state = string.IsNullOrWhiteSpace(PublicationState) ? "draft" : PublicationState;
-            return $"{name}{arch} · {state}";
+            var risk = string.IsNullOrWhiteSpace(RiskLevel) ? "" : $" · {RiskLevel}";
+            return $"{name}{arch} · {state}{risk}";
         }
     }
 }

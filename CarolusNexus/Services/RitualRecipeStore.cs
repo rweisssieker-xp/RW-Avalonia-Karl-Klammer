@@ -35,6 +35,14 @@ public static class RitualRecipeStore
             {
                 if (string.IsNullOrWhiteSpace(r.PublicationState))
                     r.PublicationState = "draft";
+                if (string.IsNullOrWhiteSpace(r.ApprovalMode))
+                    r.ApprovalMode = "manual";
+                if (string.IsNullOrWhiteSpace(r.RiskLevel))
+                    r.RiskLevel = "medium";
+                r.AdapterAffinity = r.AdapterAffinity ?? "";
+                r.ConfidenceSource = r.ConfidenceSource ?? "";
+                if (r.MaxAutonomySteps < 0)
+                    r.MaxAutonomySteps = 0;
             }
 
             return list;

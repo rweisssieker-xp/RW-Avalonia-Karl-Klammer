@@ -37,6 +37,8 @@ public static class AppSmokeTest
 
             _ = KnowledgeSnippetService.BuildContext(null, 400);
             LogOk("smoke · KnowledgeSnippetService.BuildContext");
+            _ = KnowledgeSnippetService.BuildContextBundle("smoke", 400);
+            LogOk("smoke · KnowledgeSnippetService.BuildContextBundle");
 
             _ = ActionHistoryService.Load();
             LogOk("smoke · ActionHistoryService.Load");

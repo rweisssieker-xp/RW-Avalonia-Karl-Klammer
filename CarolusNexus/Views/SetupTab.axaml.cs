@@ -13,6 +13,7 @@ public partial class SetupTab : UserControl
         InitializeComponent();
         ProviderBox.ItemsSource = new[] { "anthropic", "openai", "openai-compatible" };
         ModeBox.ItemsSource = new[] { "companion", "agent", "automation", "watch" };
+        UiThemeBox.ItemsSource = new[] { "Dark", "Light", "Default" };
         SafetyProfile.ItemsSource = new[] { "strict", "balanced", "power-user" };
     }
 
@@ -21,9 +22,11 @@ public partial class SetupTab : UserControl
         ProviderBox.SelectedItem = s.Provider;
         ModeBox.SelectedItem = s.Mode;
         ModelBox.Text = s.Model;
+        UiThemeBox.SelectedItem = string.IsNullOrWhiteSpace(s.UiTheme) ? "Dark" : s.UiTheme;
         SpeakResponses.IsChecked = s.SpeakResponses;
         UseLocalKnowledge.IsChecked = s.UseLocalKnowledge;
         SuggestAutomations.IsChecked = s.SuggestAutomations;
+        IncludeUiaInAsk.IsChecked = s.IncludeUiaContextInAsk;
         SafetyProfile.SelectedItem = s.Safety.Profile;
         NeverAutoSend.IsChecked = s.Safety.NeverAutoSend;
         NeverAutoPost.IsChecked = s.Safety.NeverAutoPostBook;
@@ -46,9 +49,11 @@ public partial class SetupTab : UserControl
             Provider = ProviderBox.SelectedItem?.ToString() ?? "anthropic",
             Mode = ModeBox.SelectedItem?.ToString() ?? "companion",
             Model = ModelBox.Text?.Trim() ?? "",
+            UiTheme = UiThemeBox.SelectedItem?.ToString() ?? "Dark",
             SpeakResponses = SpeakResponses.IsChecked == true,
             UseLocalKnowledge = UseLocalKnowledge.IsChecked == true,
             SuggestAutomations = SuggestAutomations.IsChecked == true,
+            IncludeUiaContextInAsk = IncludeUiaInAsk.IsChecked == true,
             WatchSnapshotIntervalSeconds = ParseInt(WatchIntervalBox.Text, 45, 15, 600),
             ProactiveDashboardLlm = ProactiveLlm.IsChecked == true,
             ProactiveLlmMinIntervalSeconds = ParseInt(ProactiveIntervalBox.Text, 180, 60, 3600),

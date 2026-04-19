@@ -36,4 +36,10 @@ Kurzfassung der externen **Kernbotschaften**, **Einzeiler** und **Einwandbehandl
 
 ---
 
+## KI-Differenzierung (vertieft)
+
+Für **Killer-Features** (Ist vs. Roadmap), **Proof/Build/Moonshot**-Legende, **Competitive-Matrix** und **Demo-Skript** siehe [Carolus-Nexus-USP-Strategie.md](Carolus-Nexus-USP-Strategie.md). Dieses GTM-Dokument bleibt Kurzpack; dort liegt die ausformulierte Differenzierung zu Copilot/Browser-Chat inkl. Anti-Hype pro Tier.
+
+---
+
 *Pflege: Bei größeren Feature-Sprüngen Handbuch §1.1 und dieses Dokument gemeinsam aktualisieren.*

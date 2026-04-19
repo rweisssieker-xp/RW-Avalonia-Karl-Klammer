@@ -138,6 +138,7 @@ public partial class MainWindow : Window
         TabSetup.RefreshEnvSummary();
         TabAsk.SetSettingsProvider(() => _settings);
         NexusContext.GetSettings = () => _settings;
+        ThemeApplier.ApplyUiTheme(_settings.UiTheme);
         DotEnvStore.Invalidate();
         SetupPushToTalk();
         RefreshDashboard();
@@ -244,6 +245,7 @@ public partial class MainWindow : Window
         SetupPushToTalk();
         TabAsk.SetSettingsProvider(() => _settings);
         NexusContext.GetSettings = () => _settings;
+        ThemeApplier.ApplyUiTheme(_settings.UiTheme);
         RefreshDashboard();
         RefreshHeaderBadges();
         NexusShell.Log("refresh all — .env neu eingelesen.");
@@ -256,6 +258,7 @@ public partial class MainWindow : Window
         _settingsStore.Save(_settings);
         TabAsk.SetSettingsProvider(() => _settings);
         NexusContext.GetSettings = () => _settings;
+        ThemeApplier.ApplyUiTheme(_settings.UiTheme);
         NexusShell.Log("settings.json gespeichert.");
         RefreshHeaderBadges();
         ApplyLocalToolHost();
@@ -352,7 +355,8 @@ public partial class MainWindow : Window
             know: $"Dateien in knowledge\\: {knowCount}\nIndex: {(File.Exists(AppPaths.KnowledgeIndex) ? "ja" : "nein")}\nChunks: {(File.Exists(AppPaths.KnowledgeChunks) ? "ja" : "nein")}\nEmbeddings: {(File.Exists(AppPaths.KnowledgeEmbeddings) ? "ja" : "nein")}",
             live: TileLive.Text ?? "—",
             proactive,
-            gov: $"Profil: {_settings.Safety.Profile}\nPanic: {_settings.Safety.PanicStopEnabled}",
+            gov:
+            $"Profil: {_settings.Safety.Profile}\nPanic: {_settings.Safety.PanicStopEnabled}\nneverAutoSend: {_settings.Safety.NeverAutoSend}\n\n— Ritual-Jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}",
             rituals: FormatRitualsDashboardCard(),
             watch: Cap(File.Exists(AppPaths.WatchSessions) ? File.ReadAllText(AppPaths.WatchSessions) : null)
         );

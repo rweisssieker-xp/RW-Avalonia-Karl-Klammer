@@ -4,20 +4,25 @@
   <ScrollViewer>
     <StackPanel Spacing="10" MaxWidth="720">
       <TextBlock Text="Setup · Provider, Modus, Safety (§5.4)" FontWeight="SemiBold" FontSize="14" />
-      <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+      <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
         <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Provider" />
         <ComboBox x:Name="ProviderBox" Grid.Row="0" Grid.Column="1" />
         <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Modus" />
         <ComboBox x:Name="ModeBox" Grid.Row="1" Grid.Column="1" />
         <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Modell" />
         <TextBox x:Name="ModelBox" Grid.Row="2" Grid.Column="1" />
-        <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="Schalter" FontWeight="SemiBold" Margin="0,8,0,0" />
-        <CheckBox x:Name="SpeakResponses" Grid.Row="4" Grid.ColumnSpan="2" Content="speak responses" />
-        <CheckBox x:Name="UseLocalKnowledge" Grid.Row="5" Grid.ColumnSpan="2" Content="use local knowledge" />
-        <CheckBox x:Name="SuggestAutomations" Grid.Row="6" Grid.ColumnSpan="2" Content="suggest automations" />
-        <TextBlock Grid.Row="7" Grid.ColumnSpan="2" Text="Safety Center" FontWeight="SemiBold" Margin="0,8,0,0" />
-        <TextBlock Grid.Row="8" VerticalAlignment="Center" Text="Profil" />
-        <ComboBox x:Name="SafetyProfile" Grid.Row="8" Grid.Column="1" />
+        <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="UI-Thema" />
+        <ComboBox x:Name="UiThemeBox" Grid.Row="3" Grid.Column="1"
+                  ToolTip.Tip="Dark / Light / System (Default) — sofort nach „save settings“." />
+        <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Text="Schalter" FontWeight="SemiBold" Margin="0,8,0,0" />
+        <CheckBox x:Name="SpeakResponses" Grid.Row="5" Grid.ColumnSpan="2" Content="speak responses" />
+        <CheckBox x:Name="UseLocalKnowledge" Grid.Row="6" Grid.ColumnSpan="2" Content="use local knowledge" />
+        <CheckBox x:Name="SuggestAutomations" Grid.Row="7" Grid.ColumnSpan="2" Content="suggest automations" />
+        <CheckBox x:Name="IncludeUiaInAsk" Grid.Row="8" Grid.ColumnSpan="2"
+                  Content="Ask: UIA-Snapshot des Vordergrundfensters anhängen (Windows)" />
+        <TextBlock Grid.Row="9" Grid.ColumnSpan="2" Text="Safety Center" FontWeight="SemiBold" Margin="0,8,0,0" />
+        <TextBlock Grid.Row="10" VerticalAlignment="Center" Text="Profil" />
+        <ComboBox x:Name="SafetyProfile" Grid.Row="10" Grid.Column="1" />
       </Grid>
       <CheckBox x:Name="NeverAutoSend" Content="never auto-send" />
       <CheckBox x:Name="NeverAutoPost" Content="never auto-post / book" />
@@ -39,7 +44,8 @@
       </Grid>
       <TextBlock Text=".env-Übersicht (nur Schlüssel)" FontWeight="SemiBold" Margin="0,8,0,0" />
       <TextBox x:Name="EnvSummary" IsReadOnly="True" AcceptsReturn="True" MinHeight="100" FontFamily="Consolas,Courier New,monospace" />
-      <TextBlock x:Name="EnvPathHint" FontSize="11" Foreground="#666" TextWrapping="Wrap" />
+      <TextBlock x:Name="EnvPathHint" FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}"
+                 TextWrapping="Wrap" />
     </StackPanel>
   </ScrollViewer>
 </UserControl>

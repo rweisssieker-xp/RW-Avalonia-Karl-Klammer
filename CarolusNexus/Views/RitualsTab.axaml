@@ -17,12 +17,29 @@
     <DockPanel Grid.Column="1" Margin="0,0,8,0">
       <TextBlock DockPanel.Dock="Top" Text="Ritual Builder" FontWeight="SemiBold" Margin="0,0,0,4" />
       <TextBlock x:Name="QueueStatusLine" DockPanel.Dock="Top" FontSize="11"
-                 Foreground="{DynamicResource NexusMutedForegroundBrush}" Margin="0,0,0,8"
+                 Foreground="{DynamicResource NexusMutedForegroundBrush}" Margin="0,0,0,4"
                  Text="Job-Warteschlange: —" TextWrapping="Wrap" />
+      <TextBox x:Name="JobQueueDetail" DockPanel.Dock="Top" IsReadOnly="True" AcceptsReturn="True"
+               MinHeight="100" MaxHeight="200" FontSize="11" FontFamily="Consolas,Courier New,monospace"
+               TextWrapping="Wrap" Margin="0,0,0,8"
+               Watermark="ritual-job-queue.json — ausstehend + Verlauf" />
       <ScrollViewer>
         <StackPanel Spacing="6">
           <TextBox x:Name="RitualName" Watermark="Name" />
           <TextBox x:Name="RitualDesc" Watermark="Description" AcceptsReturn="True" MinHeight="48" />
+          <TextBlock Text="Governance (Handbuch §16.5)" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+            <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Freigabe" />
+            <ComboBox x:Name="ApprovalModeBox" Grid.Row="0" Grid.Column="1" />
+            <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Risiko" />
+            <ComboBox x:Name="RiskLevelBox" Grid.Row="1" Grid.Column="1" />
+            <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Adapter" />
+            <TextBox x:Name="AdapterAffinityBox" Grid.Row="2" Grid.Column="1" Watermark="z. B. explorer, ax2012" />
+            <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Konfidenz" />
+            <TextBox x:Name="ConfidenceSourceBox" Grid.Row="3" Grid.Column="1" Watermark="Teach, LLM, SOP …" />
+            <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Max. Autonomie" />
+            <TextBox x:Name="MaxAutonomyStepsBox" Grid.Row="4" Grid.Column="1" Watermark="0 = unbegrenzt (Hinweis)" />
+          </Grid>
           <WrapPanel>
             <Button x:Name="BtnAiSuggestName" Content="KI: Kurztitel" Margin="0,0,6,6"
                     ToolTip.Tip="Schlägt einen kurzen Ritual-Namen per LLM vor (Beschreibung und/oder Schritte)." />

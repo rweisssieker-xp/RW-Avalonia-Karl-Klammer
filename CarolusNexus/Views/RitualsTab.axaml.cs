@@ -22,6 +22,8 @@ public partial class RitualsTab : UserControl
     public RitualsTab()
     {
         InitializeComponent();
+        ApprovalModeBox.ItemsSource = new[] { "manual", "auto" };
+        RiskLevelBox.ItemsSource = new[] { "low", "medium", "high" };
         LibFilter.TextChanged += (_, _) => FilterList();
         RitualList.SelectionChanged += OnRitualSelected;
 
@@ -183,7 +185,8 @@ public partial class RitualsTab : UserControl
     private void RefreshQueueStatus()
     {
         var n = RitualJobQueueStore.GetPendingCount();
-        QueueStatusLine.Text = $"Job-Warteschlange: {n} ausstehend";
+        QueueStatusLine.Text = $"Job-Warteschlange: {n} ausstehend · {AppPaths.RitualJobQueue}";
+        JobQueueDetail.Text = RitualJobQueueStore.FormatDashboardSummary();
     }
 
     private void FilterList()
@@ -210,6 +213,11 @@ public partial class RitualsTab : UserControl
     {
         RitualName.Text = r.Name;
         RitualDesc.Text = r.Description;
+        ApprovalModeBox.SelectedItem = string.IsNullOrWhiteSpace(r.ApprovalMode) ? "manual" : r.ApprovalMode;
+        RiskLevelBox.SelectedItem = string.IsNullOrWhiteSpace(r.RiskLevel) ? "medium" : r.RiskLevel;
+        AdapterAffinityBox.Text = r.AdapterAffinity ?? "";
+        ConfidenceSourceBox.Text = r.ConfidenceSource ?? "";
+        MaxAutonomyStepsBox.Text = r.MaxAutonomySteps > 0 ? r.MaxAutonomySteps.ToString() : "";
         StepsEditor.Text = JsonSerializer.Serialize(r.Steps, new JsonSerializerOptions { WriteIndented = true });
         _stepCursor = 0;
     }
@@ -238,6 +246,14 @@ public partial class RitualsTab : UserControl
             recipe.Id = Guid.NewGuid().ToString("n");
         recipe.Name = RitualName.Text?.Trim() ?? "Unbenannt";
         recipe.Description = RitualDesc.Text ?? "";
+        recipe.ApprovalMode = ApprovalModeBox.SelectedItem?.ToString()?.Trim() ?? "manual";
+        recipe.RiskLevel = RiskLevelBox.SelectedItem?.ToString()?.Trim() ?? "medium";
+        recipe.AdapterAffinity = AdapterAffinityBox.Text?.Trim() ?? "";
+        recipe.ConfidenceSource = ConfidenceSourceBox.Text?.Trim() ?? "";
+        if (int.TryParse(MaxAutonomyStepsBox.Text?.Trim(), out var maxA) && maxA > 0)
+            recipe.MaxAutonomySteps = maxA;
+        else
+            recipe.MaxAutonomySteps = 0;
         recipe.Steps = steps;
         RitualRecipeStore.Upsert(recipe);
         _selected = recipe;
@@ -253,6 +269,11 @@ public partial class RitualsTab : UserControl
         _selected = null;
         RitualName.Text = "";
         RitualDesc.Text = "";
+        ApprovalModeBox.SelectedItem = "manual";
+        RiskLevelBox.SelectedItem = "medium";
+        AdapterAffinityBox.Text = "";
+        ConfidenceSourceBox.Text = "";
+        MaxAutonomyStepsBox.Text = "";
         StepsEditor.Text = "[]";
         NexusShell.Log("Ritual gelöscht.");
         ReloadLibrary();
@@ -454,6 +475,16 @@ public partial class RitualsTab : UserControl
             return;
         }
 
+        if (_selected != null
+            && !dryRun
+            && string.Equals(_selected.PublicationState, "published", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(_selected.ApprovalMode, "manual", StringComparison.OrdinalIgnoreCase))
+        {
+            NexusShell.Log(
+                "Direktausführung blockiert: Ritual ist „published“ mit Freigabe „manual“ — bitte „queue for run“ und „approve next job“ nutzen.");
+            return;
+        }
+
         _runCts = new CancellationTokenSource();
         _stepCursor = 0;
         NexusShell.Log(dryRun ? "Dry-run startet …" : "Plan-Lauf startet (simuliert) …");
@@ -469,6 +500,15 @@ public partial class RitualsTab : UserControl
         if (_stepCursor >= steps.Count)
         {
             NexusShell.Log("Kein weiterer Schritt.");
+            return;
+        }
+
+        if (_selected != null
+            && string.Equals(_selected.PublicationState, "published", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(_selected.ApprovalMode, "manual", StringComparison.OrdinalIgnoreCase))
+        {
+            NexusShell.Log(
+                "Schritt blockiert: „published“ + „manual“ — Warteschlange + Approve nutzen.");
             return;
         }
 

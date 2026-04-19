@@ -83,6 +83,37 @@ public static class RitualJobQueueStore
 
     public static int GetPendingCount() => LoadOrEmpty().Pending.Count;
 
+    /// <summary>Kurztext für Dashboard / Diagnose (ohne vollständige Datei zu lesen zweimal).</summary>
+    public static string FormatDashboardSummary(int maxPendingLines = 5, int maxHistoryLines = 6)
+    {
+        var doc = LoadOrEmpty();
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"Ausstehend: {doc.Pending.Count}");
+        foreach (var p in doc.Pending.Take(maxPendingLines))
+        {
+            var t = p.UtcQueued.ToLocalTime();
+            sb.AppendLine($" · {t:yyyy-MM-dd HH:mm} — {p.RecipeName}");
+        }
+
+        if (doc.Pending.Count > maxPendingLines)
+            sb.AppendLine($" … +{doc.Pending.Count - maxPendingLines} weitere");
+
+        sb.AppendLine("Letzte Jobs:");
+        if (doc.History.Count == 0)
+            sb.AppendLine(" (noch keine)");
+        else
+        {
+            foreach (var h in doc.History.Take(maxHistoryLines))
+            {
+                var tf = h.UtcFinished?.ToLocalTime() ?? h.UtcQueued.ToLocalTime();
+                var detail = string.IsNullOrEmpty(h.Detail) ? "" : $" — {h.Detail}";
+                sb.AppendLine($" · {tf:MM-dd HH:mm} {h.Outcome}: {h.RecipeName}{detail}");
+            }
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
     public static void Enqueue(string recipeId, string recipeName)
     {
         if (string.IsNullOrWhiteSpace(recipeId))

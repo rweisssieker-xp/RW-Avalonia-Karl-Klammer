@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -15,7 +17,7 @@ using CarolusNexus.Services;
 
 namespace CarolusNexus.Views;
 
-public partial class AskTab : UserControl
+public partial class AskTab : Avalonia.Controls.UserControl
 {
     private Func<NexusSettings> _getSettings = () => new();
     private CancellationTokenSource? _cts;
@@ -81,11 +83,7 @@ public partial class AskTab : UserControl
             NexusShell.Log("Konversation geleert.");
         };
         BtnRunPlan.Click += async (_, _) => await ExecutePlanAsync(dryRun: false);
-        BtnApproveRun.Click += async (_, _) =>
-        {
-            NexusShell.Log("approve + run — Safety-Governance noch minimal; starte Lauf.");
-            await ExecutePlanAsync(dryRun: false);
-        };
+        BtnApproveRun.Click += async (_, _) => await ExecutePlanAfterApprovalGateAsync();
         BtnRunNext.Click += async (_, _) => await RunNextPlanStepAsync();
         BtnSaveRitual.Click += (_, _) => SavePlanAsRitual();
         BtnClearPlan.Click += (_, _) =>
@@ -106,6 +104,9 @@ public partial class AskTab : UserControl
         BtnInsertKnowledge.Click += (_, _) => InsertKnowledgeSnippetIntoPrompt();
         BtnPolishPrompt.Click += async (_, _) => await PolishPromptWithLlmAsync();
         BtnPolishAnswer.Click += async (_, _) => await PolishAssistantAnswerAsync();
+        BtnParseJsonPlan.Click += (_, _) => ApplyJsonPlanFromAssistant();
+        BtnLlmJsonPlan.Click += async (_, _) => await ExtractStructuredPlanWithLlmAsync().ConfigureAwait(true);
+        BtnExplainPlan.Click += async (_, _) => await ExplainCurrentPlanAsync().ConfigureAwait(true);
         BtnChipSummary.Click += (_, _) => AppendPromptLine("Fasse die wichtigsten Punkte knapp auf Deutsch zusammen.");
         BtnChipNext.Click += (_, _) =>
             AppendPromptLine("Welche konkreten nächsten Schritte empfiehlst du? Bitte nummeriert und ausführbar.");
@@ -124,14 +125,17 @@ public partial class AskTab : UserControl
     private void InsertKnowledgeSnippetIntoPrompt()
     {
         var q = PromptBox.Text?.Trim();
-        var ctx = KnowledgeSnippetService.BuildContext(string.IsNullOrEmpty(q) ? "." : q, 3500);
-        if (string.IsNullOrWhiteSpace(ctx))
+        var bundle = KnowledgeSnippetService.BuildContextBundle(string.IsNullOrEmpty(q) ? "." : q, 3500);
+        if (string.IsNullOrWhiteSpace(bundle.ContextText))
         {
             NexusShell.Log("Wissen einfügen: knowledge\\ leer oder kein Treffer.");
+            ClearRetrievalSources();
             return;
         }
 
-        AppendPromptLine("[Kontext aus lokalem Wissen]\n" + ctx.TrimEnd());
+        AppendPromptLine("[Kontext aus lokalem Wissen]\n" + bundle.ContextText.TrimEnd());
+        RetrievalOut.Text = bundle.ContextText;
+        RenderRetrievalSources(bundle.Sources);
         NexusShell.Log("Wissen-Auszug an Prompt angehängt.");
     }
 
@@ -161,10 +165,7 @@ public partial class AskTab : UserControl
                 "Keine neuen Fakten erfinden, keine Begrüßung. Maximal wenige Sätze oder kurze Stichpunkte. " +
                 "Nur die verbesserte Formulierung ausgeben.";
             var polished = await LlmChatService.CompleteUtilityAsync(s, sys, raw, _cts.Token).ConfigureAwait(true);
-            if (polished.StartsWith("Fehlt ", StringComparison.Ordinal) ||
-                polished.StartsWith("Unbekannter Provider", StringComparison.Ordinal) ||
-                polished.StartsWith("Anthropic HTTP", StringComparison.Ordinal) ||
-                polished.StartsWith("OpenAI", StringComparison.Ordinal))
+            if (LooksLikeLlmErrorPrefix(polished))
             {
                 NexusShell.Log("Prompt schärfen: " + polished);
                 return;
@@ -182,6 +183,317 @@ public partial class AskTab : UserControl
         {
             SetBusy(false);
             CompanionHub.Publish(CompanionVisualState.Ready);
+        }
+    }
+
+    private async Task PolishAssistantAnswerAsync()
+    {
+        var raw = AssistantOut.Text?.Trim();
+        if (string.IsNullOrEmpty(raw))
+        {
+            NexusShell.Log("Antwort verbessern: keine Assistant-Antwort.");
+            return;
+        }
+
+        var s = _getSettings();
+        if (!DotEnvStore.HasProviderKey(s.Provider))
+        {
+            NexusShell.Log("Antwort verbessern: API-Key für Provider fehlt (.env).");
+            return;
+        }
+
+        SetBusy(true);
+        CompanionHub.Publish(CompanionVisualState.Thinking);
+        try
+        {
+            _cts = new CancellationTokenSource();
+            const string sys =
+                "Du überarbeitest eine Assistenten-Antwort für den Nutzer: klarere Struktur, knappere Sätze, " +
+                "dieselben Fakten — nichts erfinden. Deutsch. Keine neue Begrüßung. Nur den verbesserten Text ausgeben.";
+            var polished = await LlmChatService.CompleteUtilityAsync(s, sys, raw, _cts.Token).ConfigureAwait(true);
+            if (LooksLikeLlmErrorPrefix(polished))
+            {
+                NexusShell.Log("Antwort verbessern: " + polished);
+                return;
+            }
+
+            AssistantOut.Text = polished.Trim();
+            NexusShell.Log("Assistant-Antwort überarbeitet.");
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("Antwort verbessern: " + ex.Message);
+            CompanionHub.Publish(CompanionVisualState.Error);
+        }
+        finally
+        {
+            SetBusy(false);
+            CompanionHub.Publish(CompanionVisualState.Ready);
+        }
+    }
+
+    private void ApplyJsonPlanFromAssistant()
+    {
+        var t = AssistantOut.Text ?? "";
+        if (!PlanJsonParser.TryParseRecipeStepsFromText(t, out var steps) || steps.Count == 0)
+        {
+            NexusShell.Log("JSON-Plan: nichts Parsbares in der Assistant-Antwort.");
+            return;
+        }
+
+        _planSteps = steps;
+        _planStepIndex = 0;
+        PlanPreview.Text = FormatStepsForPreview(_planSteps);
+        PlanExec.Text = $"({_planSteps.Count} Schritte aus JSON)";
+        NexusShell.Log($"JSON-Plan: {_planSteps.Count} Schritte übernommen.");
+    }
+
+    private static string FormatStepsForPreview(IReadOnlyList<RecipeStep> steps)
+    {
+        var sb = new StringBuilder();
+        for (var i = 0; i < steps.Count; i++)
+        {
+            var s = steps[i];
+            sb.Append(i + 1).Append(". ").Append(s.ActionType).Append(": ").Append(s.ActionArgument);
+            if (s.WaitMs > 0)
+                sb.Append(" (wait ").Append(s.WaitMs).Append("ms)");
+            sb.AppendLine();
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private async Task ExtractStructuredPlanWithLlmAsync()
+    {
+        var t = AssistantOut.Text?.Trim();
+        if (string.IsNullOrEmpty(t))
+        {
+            NexusShell.Log("KI-JSON: keine Assistant-Antwort.");
+            return;
+        }
+
+        var s = _getSettings();
+        if (!DotEnvStore.HasProviderKey(s.Provider))
+        {
+            NexusShell.Log("KI-JSON: API-Key fehlt (.env).");
+            return;
+        }
+
+        SetBusy(true);
+        CompanionHub.Publish(CompanionVisualState.Thinking);
+        try
+        {
+            _cts = new CancellationTokenSource();
+            var steps = await LlmStructuredPlanService.TryExtractStepsJsonAsync(s, t, _cts.Token).ConfigureAwait(true);
+            if (steps == null || steps.Count == 0)
+            {
+                NexusShell.Log("KI-JSON: keine Schritte extrahiert.");
+                return;
+            }
+
+            _planSteps = steps;
+            _planStepIndex = 0;
+            PlanPreview.Text = FormatStepsForPreview(_planSteps);
+            PlanExec.Text = $"({_planSteps.Count} Schritte per KI-JSON)";
+            NexusShell.Log($"KI-JSON: {_planSteps.Count} Schritte übernommen.");
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("KI-JSON: " + ex.Message);
+            CompanionHub.Publish(CompanionVisualState.Error);
+        }
+        finally
+        {
+            SetBusy(false);
+            CompanionHub.Publish(CompanionVisualState.Ready);
+        }
+    }
+
+    private async Task ExplainCurrentPlanAsync()
+    {
+        var steps = ActivePlanSteps();
+        if (steps.Count == 0)
+        {
+            NexusShell.Log("Plan erklären: keine Schritte.");
+            SafetyOut.Text = "(kein Plan)";
+            return;
+        }
+
+        var s = _getSettings();
+        if (!DotEnvStore.HasProviderKey(s.Provider))
+        {
+            NexusShell.Log("Plan erklären: API-Key fehlt (.env).");
+            return;
+        }
+
+        SetBusy(true);
+        CompanionHub.Publish(CompanionVisualState.Thinking);
+        try
+        {
+            _cts = new CancellationTokenSource();
+            var blob = FormatStepsForPreview(steps);
+            const string sys =
+                "Du erklärst einem Operator den folgenden Automations-Plan: kurz Schritt für Schritt, " +
+                "dann 3–5 mögliche Risiken und eine knappe Dry-Run-Empfehlung. Deutsch, keine Begrüßung, kein Markdown-Zwang.";
+            var r = await LlmChatService.CompleteUtilityAsync(s, sys, blob, _cts.Token).ConfigureAwait(true);
+            if (LooksLikeLlmErrorPrefix(r))
+            {
+                NexusShell.Log("Plan erklären: " + r);
+                return;
+            }
+
+            SafetyOut.Text = r.Trim();
+            NexusShell.Log("Plan erklären: Text unter „Safety / Recovery“.");
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("Plan erklären: " + ex.Message);
+            CompanionHub.Publish(CompanionVisualState.Error);
+        }
+        finally
+        {
+            SetBusy(false);
+            CompanionHub.Publish(CompanionVisualState.Ready);
+        }
+    }
+
+    private async Task ExecutePlanAfterApprovalGateAsync()
+    {
+        var steps = ActivePlanSteps();
+        if (steps.Count == 0)
+        {
+            PlanExec.Text = "Keine Schritte — erst „ask now“ oder Plan wählen.";
+            NexusShell.Log("freigeben + ausführen: kein Plan.");
+            return;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            var r = System.Windows.Forms.MessageBox.Show(
+                "Den erkannten Plan wirklich ausführen? (Je nach Safety-Profil Simulation oder echte Win32-Schritte.)",
+                "Carolus Nexus — Plan freigeben",
+                System.Windows.Forms.MessageBoxButtons.OKCancel,
+                System.Windows.Forms.MessageBoxIcon.Warning);
+            if (r != System.Windows.Forms.DialogResult.OK)
+            {
+                NexusShell.Log("Ausführung abgebrochen (keine Freigabe).");
+                return;
+            }
+        }
+        else
+            NexusShell.Log("freigeben + ausführen: ohne Dialog (nicht Windows).");
+
+        SafetyOut.Text = $"Freigabe {DateTime.Now:T}: {steps.Count} Schritte — Ausführung startet.";
+        await ExecutePlanAsync(dryRun: false).ConfigureAwait(true);
+    }
+
+    private async Task MaybeAppendAutomationSuggestionsAsync(NexusSettings s, string assistantText, CancellationToken ct)
+    {
+        if (!s.SuggestAutomations || string.IsNullOrWhiteSpace(assistantText))
+            return;
+        if (!DotEnvStore.HasProviderKey(s.Provider))
+            return;
+
+        try
+        {
+            const string sys =
+                "Basierend auf der folgenden Assistenten-Antwort: schlage auf Deutsch 1–3 konkrete, kurze Automations-Schritte vor " +
+                "(z. B. als token-Zeilen oder [ACTION:…]), ohne den Inhalt zu wiederholen. Keine Begrüßung, maximal ein Absatz oder nummerierte Liste.";
+            var clip = assistantText.Length > 5000 ? assistantText[..5000] + "…" : assistantText;
+            var extra = await LlmChatService.CompleteUtilityAsync(s, sys, clip, ct).ConfigureAwait(true);
+            if (LooksLikeLlmErrorPrefix(extra))
+                return;
+            AssistantOut.Text += "\n\n--- Automationsvorschläge ---\n" + extra.Trim();
+            NexusShell.Log("SuggestAutomations: Vorschläge an Antwort angehängt.");
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("SuggestAutomations: " + ex.Message);
+        }
+    }
+
+    private static bool LooksLikeLlmErrorPrefix(string text)
+    {
+        var t = text.TrimStart();
+        return t.StartsWith("Fehlt ", StringComparison.Ordinal)
+               || t.StartsWith("Unbekannter Provider", StringComparison.Ordinal)
+               || t.StartsWith("Anthropic HTTP", StringComparison.Ordinal)
+               || t.StartsWith("OpenAI", StringComparison.Ordinal)
+               || t.StartsWith("OpenAI-kompatibel", StringComparison.Ordinal);
+    }
+
+    private void ClearRetrievalSources()
+    {
+        RetrievalSourcesPanel.Children.Clear();
+        RetrievalSourcesHeader.IsVisible = false;
+        RetrievalSourcesPanel.IsVisible = false;
+    }
+
+    private void RenderRetrievalSources(IReadOnlyList<KnowledgeSourceRef> sources)
+    {
+        RetrievalSourcesPanel.Children.Clear();
+        if (sources == null || sources.Count == 0)
+        {
+            RetrievalSourcesHeader.IsVisible = false;
+            RetrievalSourcesPanel.IsVisible = false;
+            return;
+        }
+
+        RetrievalSourcesHeader.IsVisible = true;
+        RetrievalSourcesPanel.IsVisible = true;
+        foreach (var src in sources)
+        {
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            row.Children.Add(new TextBlock
+            {
+                Text = src.Label,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 420
+            });
+            if (!string.IsNullOrEmpty(src.FullPath))
+            {
+                var btn = new Button { Content = "Öffnen", Tag = src.FullPath, Padding = new Thickness(10, 4) };
+                btn.Click += OnOpenKnowledgeSourceClick;
+                row.Children.Add(btn);
+            }
+
+            RetrievalSourcesPanel.Children.Add(row);
+        }
+    }
+
+    private void OnOpenKnowledgeSourceClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button b || b.Tag is not string path)
+            return;
+        TryOpenKnowledgePath(path);
+    }
+
+    private static void TryOpenKnowledgePath(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                return;
+            }
+
+            if (Directory.Exists(path))
+            {
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                return;
+            }
+
+            var dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                Process.Start(new ProcessStartInfo("explorer.exe", dir) { UseShellExecute = true });
+            else
+                NexusShell.Log("Quelle nicht gefunden: " + path);
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("Quelle öffnen: " + ex.Message);
         }
     }
 
@@ -482,19 +794,52 @@ public partial class AskTab : UserControl
             var shots = IncludeScreenshots.IsChecked == true;
             var know = UseKnowledgeInAsk.IsChecked == true;
 
-            RetrievalOut.Text = know
-                ? KnowledgeSnippetService.BuildContext(prompt, 6000)
-                : "(lokales Wissen nicht eingebunden)";
+            string? knowledgeOverride = null;
+            if (know)
+            {
+                var bundle = KnowledgeSnippetService.BuildContextBundle(prompt, 6000);
+                knowledgeOverride = bundle.ContextText;
+                RetrievalOut.Text = string.IsNullOrWhiteSpace(bundle.ContextText)
+                    ? "(kein lokaler Treffer)"
+                    : bundle.ContextText;
+                RenderRetrievalSources(bundle.Sources);
+            }
+            else
+            {
+                RetrievalOut.Text = "(lokales Wissen nicht eingebunden)";
+                ClearRetrievalSources();
+            }
 
-            NexusShell.Log($"ask now · screenshots={shots}, knowledge={know}");
-            var text = await LlmChatService.CompleteAsync(s, prompt, shots, know, ct).ConfigureAwait(true);
+            var effectivePrompt = prompt;
+            if (s.IncludeUiaContextInAsk && OperatingSystem.IsWindows())
+            {
+                var uia = UiAutomationSnapshot.TryBuildForForeground();
+                if (!string.IsNullOrWhiteSpace(uia))
+                    effectivePrompt =
+                        "[Vordergrund UI-Struktur (UIA, gekürzt)]\n" + uia.TrimEnd() + "\n\n---\n" + prompt;
+            }
+
+            NexusShell.Log($"ask now · screenshots={shots}, knowledge={know}, uia={s.IncludeUiaContextInAsk}");
+            var text = await LlmChatService
+                .CompleteAsync(s, effectivePrompt, shots, know, ct, knowledgeContextOverride: know ? knowledgeOverride : null)
+                .ConfigureAwait(true);
             AssistantOut.Text = text;
 
             var tokens = ActionPlanExtractor.Extract(text);
-            _planSteps = ActionPlanExtractor.ToRecipeSteps(tokens);
+            var fromRegex = ActionPlanExtractor.ToRecipeSteps(tokens);
+            _planSteps = fromRegex;
+            if (_planSteps.Count == 0 && PlanJsonParser.TryParseRecipeStepsFromText(text, out var jsonSteps) &&
+                jsonSteps.Count > 0)
+                _planSteps = jsonSteps;
             _planStepIndex = 0;
-            PlanPreview.Text = ActionPlanExtractor.FormatPreview(tokens);
+            PlanPreview.Text = fromRegex.Count > 0
+                ? ActionPlanExtractor.FormatPreview(tokens)
+                : (_planSteps.Count > 0
+                    ? FormatStepsForPreview(_planSteps)
+                    : ActionPlanExtractor.FormatPreview(tokens));
             PlanExec.Text = $"({_planSteps.Count} Schritte erkannt — „run plan“ oder „run next step“)";
+
+            await MaybeAppendAutomationSuggestionsAsync(s, text, ct).ConfigureAwait(true);
 
             if (s.SpeakResponses)
             {
@@ -536,6 +881,7 @@ public partial class AskTab : UserControl
         }
 
         RetrievalOut.Text = "(CLI-Handoff — Logs unter „codex output“)";
+        ClearRetrievalSources();
 
         var combined = payload;
         if (route.WithScreenSummary)
@@ -641,10 +987,14 @@ public partial class AskTab : UserControl
         BtnCopyAnswer.IsEnabled = !busy;
         BtnInsertKnowledge.IsEnabled = !busy;
         BtnPolishPrompt.IsEnabled = !busy;
+        BtnPolishAnswer.IsEnabled = !busy;
         BtnChipSummary.IsEnabled = !busy;
         BtnChipNext.IsEnabled = !busy;
         BtnChipRisks.IsEnabled = !busy;
         BtnChipExplain.IsEnabled = !busy;
+        BtnParseJsonPlan.IsEnabled = !busy;
+        BtnLlmJsonPlan.IsEnabled = !busy;
+        BtnExplainPlan.IsEnabled = !busy;
         RefreshInputStates();
     }
 

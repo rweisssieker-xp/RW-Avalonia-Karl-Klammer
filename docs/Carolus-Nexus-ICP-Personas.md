@@ -2,17 +2,19 @@
 
 Dieses Dokument fasst **Zielgruppen** und **priorisierte USPs** zusammen und dient als **Checkliste für Abstimmung** mit Sales, Partnern und internen Stakeholdern. Es ersetzt keine Marktforschung; Ziel ist konsistente Messaging‑Priorisierung.
 
+**Vertiefung KI & Differenzierung:** [Carolus-Nexus-USP-Strategie.md](Carolus-Nexus-USP-Strategie.md) — Tier-A/B/C-Killer-Features (Proof vs. Build vs. Moonshot), Competitive-Matrix, Demo-Skript. Die Spalte **Killer-KI** unten verweist stichwortartig dorthin.
+
 ---
 
 ## ICP-Übersicht
 
-| ID | Persona / Käufer | Primäre USPs (Kurz) | Haupt-Risiko / Erwartung |
-|----|------------------|---------------------|---------------------------|
-| **ICP-A** | AX-/Dynamics-heavy Operator | AX-/Fat-Client-Narrativ, `ax.*`‑Pläne, Vision + Kontext | Hohe Erwartung an Tiefe, solange AX-UIA nicht vollständig ist → Demo-Nachweis nötig |
-| **ICP-B** | Regulierter Mid-Market (DACH/EU) | Lokale Pfade (`windows/data`, `.env`), Audit/Watch, BYO-Endpoint | DSGVO/Retention für Watch-Screenshots und Logs explizit klären |
-| **ICP-C** | Dev+Ops Power-User (kleine Teams) | CLI-Handoff, Timeouts, OpenClaw-Gateway-Env | „Full-auto“-CLIs sicherheitlich sensibel kommunizieren |
-| **ICP-D** | Knowledge Worker (interne Handbücher) | RAG-light, PDF/DOCX, Ritual aus Plan | Recall-Grenzen vs. Enterprise Search managen |
-| **ICP-E** | Executive Sponsor | Safety-Staffelung, Guards, manuelle Schritte | Zu viel „KI macht alles“-Erwartung vermeiden |
+| ID | Persona / Käufer | Primäre USPs (Kurz) | Killer-KI (siehe USP-Doc) | Haupt-Risiko / Erwartung |
+|----|------------------|---------------------|---------------------------|---------------------------|
+| **ICP-A** | AX-/Dynamics-heavy Operator | AX-/Fat-Client-Narrativ, `ax.*`‑Pläne, Vision + Kontext | Vision + UIA-Snapshot, strukturierte Pläne | Hohe Erwartung an Tiefe, solange AX-UIA nicht vollständig ist → Demo-Nachweis nötig |
+| **ICP-B** | Regulierter Mid-Market (DACH/EU) | Lokale Pfade (`windows/data`, `.env`), Audit/Watch, BYO-Endpoint | Queue/Audit, Freigabe-Gates, BYO-LLM | DSGVO/Retention für Watch-Screenshots und Logs explizit klären |
+| **ICP-C** | Dev+Ops Power-User (kleine Teams) | CLI-Handoff, Timeouts, OpenClaw-Gateway-Env | CLI + Screen-Summary | „Full-auto“-CLIs sicherheitlich sensibel kommunizieren |
+| **ICP-D** | Knowledge Worker (interne Handbücher) | RAG-light, PDF/DOCX, Ritual aus Plan | RAG/Embeddings optional, Plan→Ritual | Recall-Grenzen vs. Enterprise Search managen |
+| **ICP-E** | Executive Sponsor | Safety-Staffelung, Guards, manuelle Schritte | Risk-Erklärung, Karl-Trust-UX | Zu viel „KI macht alles“-Erwartung vermeiden |
 
 ---
 
@@ -42,6 +44,7 @@ Für jedes ICP mindestens **eine** Person / Rolle benennen und abhaken:
 
 - Technischer Ist-Stand: [Carolus-Nexus-Benutzerhandbuch.md §1.1](Carolus-Nexus-Benutzerhandbuch.md)
 - Grenzen / Anti-Hype: Handbuch **§22** und GTM-Dokument
+- USP- und KI-Messaging (Proof/Roadmap): [Carolus-Nexus-USP-Strategie.md](Carolus-Nexus-USP-Strategie.md)
 
 ---
 

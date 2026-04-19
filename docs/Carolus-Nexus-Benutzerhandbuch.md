@@ -32,6 +32,7 @@
 21. [Trigger-Phrasen für Sprachbefehle](#21-trigger-phrasen-für-sprachbefehle)
 22. [Bekannte Einschränkungen](#22-bekannte-einschränkungen)
 23. [Anhang: Vollständiger Action-Token-Katalog](#23-anhang-vollständiger-action-token-katalog)
+24. [USP-Strategie und KI-Positionierung (Marketing)](#24-usp-strategie-und-ki-positionierung-marketing)
 
 ---
 
@@ -61,7 +62,7 @@ Karl Klammer ist die **Identität/Stimme** des Assistenten (siehe [SOUL.md](../S
 
 ### 1.1 Dokumentationsstrategie und Implementierungsstand (dieses Repository)
 
-**Strategie:** Dieses Handbuch ist in erster Linie eine **Produkt- und Zielspezifikation** für Carolus Nexus (Funktionsumfang, Konfiguration, Arbeitsabläufe, Action-Tokens). Kapitel **§5 ff.** sind wo nötig mit dem **aktuellen UI-Stand** im Branch **RW-Avalonia-Karl-Klammer** abgeglichen.
+**Strategie:** Dieses Handbuch ist in erster Linie eine **Produkt- und Zielspezifikation** für Carolus Nexus (Funktionsumfang, Konfiguration, Arbeitsabläufe, Action-Tokens). Kapitel **§5 ff.** sind wo nötig mit dem **aktuellen UI-Stand** im Branch **RW-Avalonia-Karl-Klammer** abgeglichen. **Marketing & USP:** [Carolus-Nexus-USP-Strategie.md](Carolus-Nexus-USP-Strategie.md) (KI-Killer-Features, Wettbewerb, Demo) — immer gegen **§1.1** und **§22** abgleichen, nicht über den technischen Ist-Stand hinaus kommunizieren.
 
 **Implementierungsstand (Kurzüberblick):**
 
@@ -69,19 +70,21 @@ Karl Klammer ist die **Identität/Stimme** des Assistenten (siehe [SOUL.md](../S
 |--------|---------------------------|
 | Tab-Shell, Header, `settings.json`, `.env`-Lesen ([DotEnvStore](../CarolusNexus/Services/DotEnvStore.cs), Setup-Tab) | umgesetzt (Werte im RAM; keine Secret-Ausgabe in Logs) |
 | `AppPaths`, `windows/data`-Bäume, Dateipfade laut §20 | umgesetzt |
-| Dashboard inkl. 3D-Vorschau (`OfficeScene3D`), Kacheln | UI umgesetzt; Proactive-Kachel teils Platzhalter |
+| Dashboard inkl. 3D-Vorschau (`OfficeScene3D`), Kacheln | UI umgesetzt; **Proactive Karl:** im Modus **watch** optional kurzer LLM-Hinweis fürs Dashboard ([MainWindow](../CarolusNexus/MainWindow.axaml.cs), Schalter in Setup) |
 | Begleiter am Cursor (`KarlCompanionWindow`, Toggle im Header) | umgesetzt (Maus folgen, klick-durchlässig auf Windows) |
 | **Tray-Icon** ([App.axaml](../CarolusNexus/App.axaml)) | umgesetzt (Menü Öffnen/Beenden; Schließen minimiert ins Tray) |
 | **PTT / globaler Hotkey** `PUSH_TO_TALK_KEY` ([PushToTalkHotkeyWindow](../CarolusNexus/Services/PushToTalkHotkeyWindow.cs), Fallback-Polling) | umgesetzt: Hold-to-Talk, Loslassen → STT + optional Ask |
 | **STT / TTS** ([SpeechTranscriptionService](../CarolusNexus/Services/SpeechTranscriptionService.cs), [TextToSpeechService](../CarolusNexus/Services/TextToSpeechService.cs), `STT_PROVIDER`, `TTS_PROVIDER`) | umgesetzt (ElevenLabs / Whisper / SAPI-Fallback je nach `.env`) |
 | **Vision-LLM Ask** ([LlmChatService](../CarolusNexus/Services/LlmChatService.cs), Multi-Monitor-Screenshots) | umgesetzt (Provider-Keys vorausgesetzt) |
-| **RAG-light** ([KnowledgeIndexService](../CarolusNexus/Services/KnowledgeIndexService.cs), Chunks + [KnowledgeSnippetService](../CarolusNexus/Services/KnowledgeSnippetService.cs)) | umgesetzt (`knowledge-index.json`, `knowledge-chunks.json`, PDF/DOCX via NuGet) |
+| **RAG-light** ([KnowledgeIndexService](../CarolusNexus/Services/KnowledgeIndexService.cs), Chunks + [KnowledgeSnippetService](../CarolusNexus/Services/KnowledgeSnippetService.cs)) | umgesetzt (`knowledge-index.json`, `knowledge-chunks.json`, PDF/DOCX via NuGet); **optional semantisch** mit [EmbeddingRagService](../CarolusNexus/Services/EmbeddingRagService.cs) (`knowledge-embeddings.json`, `OPENAI_API_KEY`, siehe `.env`) |
 | **Action-Plans** ([ActionPlanExtractor](../CarolusNexus/Services/ActionPlanExtractor.cs), Plan-Vorschau / Run / Save-as-Ritual) | umgesetzt |
 | **Plan-Ausführung** ([SimplePlanSimulator](../CarolusNexus/Services/SimplePlanSimulator.cs), [Win32AutomationExecutor](../CarolusNexus/Services/Win32AutomationExecutor.cs), [PlanGuard](../CarolusNexus/Services/PlanGuard.cs)) | umgesetzt: echte Win32-Schritte nur bei Profil **power-user** + erlaubten Tokens |
 | **CLI-Handoff** ([CliAgentRunner](../CarolusNexus/Services/CliAgentRunner.cs), Console-Tab) | umgesetzt (lokale CLIs, Logs unter `codex output/`) |
 | **Watch-Modus** ([WatchSessionService](../CarolusNexus/Services/WatchSessionService.cs), Dashboard-Snapshots, Bildschirm-Hash) | umgesetzt (Rotation max. 500 Einträge) |
 | **History** ([ActionHistoryService](../CarolusNexus/Services/ActionHistoryService.cs), `action-history.json`) | umgesetzt (Plan-Läufe werden protokolliert) |
 | **Rituals Teach / promote** | umgesetzt: Teach-Session, Promote aus History/Watch, Capture Vordergrund |
+| **Ritual Job-Queue** ([RitualJobQueueStore](../CarolusNexus/Services/RitualJobQueueStore.cs), `ritual-job-queue.json`) | umgesetzt: einreihen, nächsten Job freigeben, History begrenzt |
+| **Ritual Step-Audit** ([RitualStepAudit](../CarolusNexus/Services/RitualStepAudit.cs), `ritual-step-audit.jsonl`) | umgesetzt: Protokoll je Plan-Schritt |
 | **Live Context** ([LiveContextTab](../CarolusNexus/Views/LiveContextTab.axaml.cs), [ForegroundWindowInfo](../CarolusNexus/Services/ForegroundWindowInfo.cs), [OperatorAdapterRegistry](../CarolusNexus/Services/OperatorAdapterRegistry.cs)) | umgesetzt: Vordergrundfenster, Familien-Heuristik, AX-Hinweis; **keine** vollständige UIA-Grid-Tiefe für AX |
 | AX Fat-Client UIAutomation (Form/Grid) | **Teilziel** — narrativ und Tokens vorhanden; Live Context liefert Kontext, keine produktionsreife AX-Steuerung |
 
@@ -218,9 +221,10 @@ Die Hauptoberfläche ([MainWindow.axaml](../CarolusNexus/MainWindow.axaml)) best
 
 ### 5.2 Tab **Ask**
 
-- Prompt-Eingabe; Checkboxen **„Screenshots einbeziehen"** und **„Lokales Wissen im Ask-Flow"** (Multi-Monitor-Vision bzw. Chunk-Kontext, wenn indexiert)
+- Prompt-Eingabe; Checkboxen **„Screenshots einbeziehen"** und **„Lokales Wissen im Ask-Flow"** (Multi-Monitor-Vision bzw. Chunk-Kontext, wenn indexiert). Optional: **UIA-Snapshot** des Vordergrundfensters wird im Setup eingeschaltet und dann an den Prompt angehängt (Windows).
 - Buttons:
-  `ask now` · `smoke test` · `import audio + transcribe` · `start push-to-talk` · `stop + ask` · `cancel recording` · `clear conversation` · `run plan` · `approve + run` · `run next step` · `save plan as ritual` · `clear plan` · `panic stop` · `speak response`
+  `ask now` · `smoke test` · `import audio + transcribe` · `start push-to-talk` · `stop + ask` · `cancel recording` · `clear conversation` · `run plan` · **`freigeben + ausführen`** (Bestätigungsdialog unter Windows) · `run next step` · `save plan as ritual` · `clear plan` · `panic stop` · `speak response`
+- KI-Hilfen u. a.: **JSON-Plan aus Antwort**, **KI: strukturierte Schritte**, **Plan erklären / Risiko** (Ausgabe unter **Safety / Recovery** bei „Plan erklären“).
 - Hinweiszeile zu **AX Fat-Client** / Ritual-Runtime (Ausführung siehe Safety-Profil **power-user**)
 - Spalte links: **Assistant Response**, **Retrieval + Context**, **Safety / Recovery**, **Transcript / Audio**
 - Spalte rechts: **Action Plan Preview**, **Action Plan Execution**
@@ -232,14 +236,14 @@ Die Hauptoberfläche ([MainWindow.axaml](../CarolusNexus/MainWindow.axaml)) best
   1. Environment + Routing  
   2. Knowledge + Memory  
   3. Live Context  
-  4. Proactive Karl (aktuell oft Stub-Platzhalter)  
-  5. Governance + Audit  
+  4. Proactive Karl (Watch-Modus + optional LLM-Hinweis aus Setup)  
+  5. Governance + Audit (Safety-Profil + **Auszug Ritual-Job-Warteschlange / Verlauf** aus `ritual-job-queue.json`)  
   6. Recent Rituals (Rohinhalt aus `automation-recipes.json`, falls vorhanden)  
   7. Recent Watch Sessions (Rohinhalt aus `watch-sessions.json`, falls vorhanden)
 
 ### 5.4 Tab **Setup**
 
-- Provider-, Modus-, Modell-Auswahl; Schalter **speak responses** / **use local knowledge** / **suggest automations**
+- Provider-, Modus-, Modell-Auswahl; **UI-Thema** (Dark / Light / System-Default); Schalter **speak responses** / **use local knowledge** / **suggest automations** (nach **ask now**: kurzer LLM-Block „Automationsvorschläge“ an die Antwort angehängt, wenn API-Key gesetzt) / **Ask: UIA-Snapshot …**
 - **Safety Center:** Profil, **never auto-send**, **never auto-post / book**, **panic stop enabled**, Denylist
 - **.env-Übersicht (nur Schlüssel)** + Pfadhinweis — Werte werden intern gelesen, nicht angezeigt
 
@@ -253,9 +257,10 @@ Die Hauptoberfläche ([MainWindow.axaml](../CarolusNexus/MainWindow.axaml)) best
 Drei Spalten: **Ritual Library** · **Ritual Builder** · **Structured Steps (JSON)**.
 
 - **Library:** Suchfeld + Liste (keine separaten Category/Source/Risk-Filter in dieser UI; das bleibt **Zielbild** für die volle Library)
-- **Builder:** Name, Beschreibung, Buttons  
+- **Builder:** Name, Beschreibung, **Governance (§16.5):** Freigabe, Risiko, Adapter-Affinity, Konfidenz-Quelle, max. Autonomie-Schritte; **Job-Queue-Detail** (ausstehend + Verlauf aus `ritual-job-queue.json`); Buttons  
   `save ritual` · `delete` · `clone` · `archive` · `publish flow` · `queue for run` · `approve next job` · `dry run` · `run ritual` · `run next step` · `resume ritual`  
-  sowie **Teach:** `promote from history` · `promote from watch` · `start teach` · `stop teach`
+  sowie **Teach:** `promote from history` · `promote from watch` · `start teach` · `stop teach`  
+  Hinweis: **`published` + Freigabe `manual`** blockiert **Direktausführung** (`run ritual` / `run next step`) — stattdessen **queue** + **approve next job**.
 - **Structured Steps:** JSON-Editor — **Teach:** `start teach` · `capture foreground step` · optional Live-Context-Schritte · `stop teach` speichert ein Ritual; **promote from history/watch** erzeugt Entwürfe aus `action-history.json` bzw. `watch-sessions.json`
 
 ### 5.7 Tab **History**
@@ -469,10 +474,10 @@ Persistente Speicherung: `windows\data\automation-recipes.json`.
 
 **Ist-Stand:** [ActionPlanExtractor](../CarolusNexus/Services/ActionPlanExtractor.cs), [SimplePlanSimulator](../CarolusNexus/Services/SimplePlanSimulator.cs), [PlanGuard](../CarolusNexus/Services/PlanGuard.cs) — Ausführung wie in §1.1 (nur **power-user** + erlaubte Tokens).
 
-Modellantworten können Aktionen vorschlagen. Diese werden als **Plan** geparst und mehrstufig behandelt:
+Modellantworten können Aktionen vorschlagen. Diese werden als **Plan** geparst (zuerst Token-/Regex-Extraktion; falls leer, optional **JSON** mit `steps` in der Antwort) und mehrstufig behandelt:
 
 1. **Vorschau** (`Action Plan Preview`) zeigt alle geplanten Schritte.
-2. **`approve + run`** akzeptiert den Plan und führt ihn aus, sofern die Safety-Policy es zulässt.
+2. **`freigeben + ausführen`** öffnet einen **Bestätigungsdialog** (Windows); nach Zustimmung wird der Plan wie bei **`run plan`** ausgeführt (Safety-Profil und PlanGuard wie zuvor). **`run plan`** bleibt der direkte Lauf ohne diesen Dialog.
 3. **`run next step`** führt schrittweise aus.
 4. **`save plan as ritual`** speichert den geplanten Ablauf direkt als Ritual.
 5. **`clear plan`** verwirft.
@@ -593,13 +598,16 @@ Hochrisiko-Rituale werden nur nach Approval ausgeführt; sensitive Send/Post/Boo
 
 ### 16.5 Governance-Felder pro Ritual
 
+Persistiert in `automation-recipes.json`; im Tab **Rituals** unter **Governance** bearbeitbar:
+
 - Publication-State (z. B. `draft` / `published`)
 - Approval-Mode (z. B. `manual` / `auto`)
+- Risiko-Level (`low` / `medium` / `high`)
 - Adapter-Affinity, Confidence-Source, Max-Autonomy-Steps
 
 ### 16.6 Audit + Job-Queue
 
-Veröffentlichte Flows können in eine kleine Approval/Queue-Liste eingereiht und einzeln approved werden. Audit-Records landen im Workspace.
+Veröffentlichte Flows können in eine kleine Approval/Queue-Liste eingereiht und einzeln approved werden. **Ausstehende und letzte Jobs** sind im Rituals-Tab (Textfeld) und in der Dashboard-Kachel **Governance + Audit** als Auszug sichtbar. Audit-Records landen im Workspace (`ritual-step-audit.jsonl` etc.).
 
 ---
 
@@ -635,11 +643,13 @@ Karl kann auf Bildschirm-Ziele „springen", die das Modell als Punkt-Tags zurü
 
 - **Diagnostics-Tab**: Filter, **export** → `windows\data\diagnostics-<Zeitstempel>.log`, **clear logs** (Inhalt nur im Speicher bis export)
 - **History-Tab**: strukturierte Liste aus **`action-history.json`** (Plan-Läufe aus Ritual/Ask-Ausführung), Suche, JSON-Detail, **create ritual from selection**
-- **Audit-Records / Job-Queue**: Zielbild; Dashboard-Karte **Governance + Audit** zeigt Safety-/Settings-Kurztext
+- **Audit-Records / Job-Queue:** `ritual-job-queue.json` (pending/history), `ritual-step-audit.jsonl`; Dashboard-Karte **Governance + Audit** zeigt Safety-/Settings-Kurztext und Kurzüberblick Queue
 
 Persistenz:
 
 - `windows\data\action-history.json` (Einträge mit `kind`, `steps`, Zeitstempel — siehe [ActionHistoryService](../CarolusNexus/Services/ActionHistoryService.cs))
+- `windows\data\ritual-job-queue.json` (siehe [RitualJobQueueStore](../CarolusNexus/Services/RitualJobQueueStore.cs))
+- `windows\data\ritual-step-audit.jsonl` (siehe [RitualStepAudit](../CarolusNexus/Services/RitualStepAudit.cs))
 - `windows\data\watch-sessions.json`
 - `windows\data\diagnostics-*.log` (Exporte)
 
@@ -657,7 +667,10 @@ Pfade relativ zur **Repository-Wurzel**, die [AppPaths.DiscoverRepoRoot](../Caro
 | `windows\data\knowledge\` | Lokale Wissensdateien |
 | `windows\data\knowledge-index.json` | Wissens-Dateiindex + Hashes |
 | `windows\data\knowledge-chunks.json` | RAG-light Chunks |
+| `windows\data\knowledge-embeddings.json` | Optional: Embedding-Vektoren für semantische RAG-Suche (OpenAI) |
 | `windows\data\automation-recipes.json` | Rituale (Bibliothek) |
+| `windows\data\ritual-job-queue.json` | Ritual-Jobs: pending + History (Freigabe-Lauf) |
+| `windows\data\ritual-step-audit.jsonl` | Audit-Zeilen je Ritual-/Plan-Schritt |
 | `windows\data\watch-sessions.json` | Watch-Mode-Sessions (Rotation max. 500) |
 | `windows\data\action-history.json` | Protokollierte Plan-Läufe (`plan_run`, Schritte) |
 | `windows\data\diagnostics-*.log` | Diagnostics-Exporte |
@@ -666,7 +679,7 @@ Pfade relativ zur **Repository-Wurzel**, die [AppPaths.DiscoverRepoRoot](../Caro
 | `CarolusNexus\bin\Release\net10.0-windows\` | Build-Output (Release) |
 | `docs\Carolus-Nexus-Benutzerhandbuch.md` | Dieses Handbuch |
 
-[SOUL.md](../SOUL.md) im Root: Persona-Referenz; **Injektion in den Anthropic-System-Prompt** ist Zielintegration, sobald das LLM-Backend angebunden ist.
+[SOUL.md](../SOUL.md) im Root: Persona-Referenz; **Injektion in den System-Prompt** erfolgt über [SoulPrompt](../CarolusNexus/Services/SoulPrompt.cs) in [LlmChatService](../CarolusNexus/Services/LlmChatService.cs) (alle konfigurierten Provider).
 
 ---
 
@@ -688,18 +701,31 @@ Die Routing-Trigger sind auf deutsche Sprache optimiert. In gesprochenen oder ge
 
 - Avalonia ist hier **Windows-targeted** – die Automations-Schicht ist Win-only.
 - **Kein Installer** – Build + manueller Start.
-- **RAG-light:** Chunk-Ranking ohne Embeddings — Recall nicht vergleichbar mit Enterprise-Vektorsuche (Erwartungsmanagement).
+- **RAG-light:** Basis ist Chunk-Ranking über `knowledge-chunks.json`; **optional** semantische Suche über Embeddings (`knowledge-embeddings.json`, OpenAI) — Recall dennoch kein Ersatz für Enterprise-Vektordatenbanken ohne Betrieb/Monitoring.
 - **AX / Live Context:** Heuristik und Vision/Pläne ja; **keine** vollständige UIAutomation-Abdeckung aller AX-Grids/Dialogs — keine Behauptung „produktionsreife AX-Steuerung“ ohne Demo-Nachweis.
 - Echte UI-Ausführung aus Plänen nur bei Safety-Profil **power-user** und erlaubten Tokens ([PlanGuard](../CarolusNexus/Services/PlanGuard.cs)) — falsch konfiguriert = blockiert oder Dry-Run.
 - CLI-Handoffs (Codex/Claude Code/OpenClaw) sind **One-Shot**, keine persistenten Sessions.
 - Trigger-Phrasen sind auf deutsche Sprachvarianten getuned.
 - Vision und Cloud-STT/TTS hängen an API-Verfügbarkeit; lokales Whisper und SAPI reduzieren Cloud-Abhängigkeit.
 
+**Marketing vs. Ist-Stand:** Externe Claims und „Killer-Feature“-Listen gehören in [Carolus-Nexus-USP-Strategie.md](Carolus-Nexus-USP-Strategie.md) und müssen **Proof** (produktiv) vs. **Build**/**Moonshot** (Roadmap) kennzeichnen — siehe dort Legende. Dieses Kapitel **§22** ist die technische Ehrlichkeitslinie.
+
 ---
 
 ## 23. Anhang: Vollständiger Action-Token-Katalog
 
 **Zielspezifikation** für Parser und Runtime. Diese Tokens dürfen das Modell oder ein Ritual als Plan-Schritte erzeugen.
+
+### 23.0 Parser vs. ausführbare Runtime (Ist-Stand)
+
+| Kategorie | Parser / Vorschau ([ActionPlanExtractor](../CarolusNexus/Services/ActionPlanExtractor.cs)) | Echte Ausführung ([Win32AutomationExecutor](../CarolusNexus/Services/Win32AutomationExecutor.cs), nur Windows + Safety **power-user** + [PlanGuard](../CarolusNexus/Services/PlanGuard.cs)) |
+|-----------|---------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `[ACTION:hotkey\|…]`, `type`, `open`, `click`, `move` | ja | **ja** (soweit Token erlaubt) |
+| `http(s)://…`, `explorer.open_path`, `browser.open` | ja | **ja** (Shell) |
+| `ax.*`, `browser.*`, `word.*`, …, generische `app\|…` | ja (Erkennung) | **nein** — typischerweise Simulation / `[SKIP]` in der Runtime; Vision + manuelle Schritte nutzen |
+| `[ACTIONS:…]` / Ketten | teils erkannt | nicht als Chain — Einzelschritte wie oben |
+
+Über die Zeit: Adapter-Schicht (UIA/App-spezifisch) erweitern; Katalog bleibt Zielbild.
 
 ### 23.1 Generisch
 
@@ -742,6 +768,12 @@ Chain-Direktiven vor jedem Token: `wait=500`, `ifapp=chrome`.
 
 ---
 
+## 24. USP-Strategie und KI-Positionierung (Marketing)
+
+Vertiefende **Positionierung**, **KI-Killer-Features** (Tier A/B/C mit Proof/Build/Moonshot), **Wettbewerbs-Matrix**, **Demo-Skript** und **Messaging-Don’ts**: [Carolus-Nexus-USP-Strategie.md](Carolus-Nexus-USP-Strategie.md). Technischer Implementierungsstand bleibt maßgeblich **§1.1** und **§22**.
+
+---
+
 *Pflege:* Bei größeren Struktur- oder Feature-Änderungen **§1.1**, **§3**, **§5** und **§20** mit dem Code abgleichen. Kurz-Checkliste: [AGENTS.md](../AGENTS.md).*
 
-*Repo-Stand (**RW-Avalonia-Karl-Klammer**): **Carolus Nexus** ([CarolusNexus/](../CarolusNexus/), Avalonia, **.NET 10**) — Ist-Stand siehe **§1.1**; Messaging/Zielgruppen siehe [Carolus-Nexus-GTM-Messaging.md](Carolus-Nexus-GTM-Messaging.md) und [Carolus-Nexus-ICP-Personas.md](Carolus-Nexus-ICP-Personas.md).*
+*Repo-Stand (**RW-Avalonia-Karl-Klammer**): **Carolus Nexus** ([CarolusNexus/](../CarolusNexus/), Avalonia, **.NET 10**) — Ist-Stand siehe **§1.1**; Messaging/Zielgruppen siehe [Carolus-Nexus-GTM-Messaging.md](Carolus-Nexus-GTM-Messaging.md), [Carolus-Nexus-ICP-Personas.md](Carolus-Nexus-ICP-Personas.md) und [Carolus-Nexus-USP-Strategie.md](Carolus-Nexus-USP-Strategie.md).*

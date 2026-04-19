@@ -41,6 +41,14 @@ public sealed class NexusSettings
     [JsonPropertyName("localToolHostPort")]
     public int LocalToolHostPort { get; set; } = 17888;
 
+    /// <summary>Oberflächenthema: <c>Dark</c>, <c>Light</c>, <c>Default</c> (System).</summary>
+    [JsonPropertyName("uiTheme")]
+    public string UiTheme { get; set; } = "Dark";
+
+    /// <summary>Bei Ask: gekürzten UIA-Baum des Vordergrundfensters in den Prompt einfügen (Windows).</summary>
+    [JsonPropertyName("includeUiaContextInAsk")]
+    public bool IncludeUiaContextInAsk { get; set; }
+
     [JsonPropertyName("safety")]
     public SafetySettings Safety { get; set; } = new();
 }

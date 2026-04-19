@@ -9,7 +9,8 @@
       </StackPanel>
       <TextBox x:Name="AgentPrompt" AcceptsReturn="True" MinHeight="64" Watermark="Prompt für Codex / Claude Code / OpenClaw" />
       <Button x:Name="BtnRunAgent" Content="run selected agent" HorizontalAlignment="Left" Padding="12,8" />
-      <TextBlock x:Name="OutputPathHint" FontSize="11" Foreground="#666" />
+      <TextBlock x:Name="OutputPathHint" FontSize="11"
+                 Foreground="{DynamicResource NexusMutedForegroundBrush}" />
     </StackPanel>
     <TextBox x:Name="AgentOutput" AcceptsReturn="True" IsReadOnly="True" FontFamily="Consolas,Courier New,monospace" />
   </DockPanel>

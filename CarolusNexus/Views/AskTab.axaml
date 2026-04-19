@@ -7,7 +7,8 @@
                Watermark="Frage / Vision / RAG — oder CLI: „nimm codex …“, „nimm codex mit screen …“, „nimm claude code …“, „nimm openclaw …“" />
       <StackPanel Orientation="Horizontal" Spacing="12">
         <CheckBox x:Name="IncludeScreenshots" Content="Screenshots einbeziehen" IsChecked="True" />
-        <CheckBox x:Name="UseKnowledgeInAsk" Content="Lokales Wissen im Ask-Flow" IsChecked="True" />
+        <CheckBox x:Name="UseKnowledgeInAsk" Content="Lokales Wissen im Ask-Flow" IsChecked="True"
+                  ToolTip.Tip="UIA-Kontext kommt aus Setup („Ask: UIA-Snapshot …“)." />
       </StackPanel>
       <WrapPanel Orientation="Horizontal">
         <Button x:Name="BtnAskNow" Content="ask now" Margin="0,0,6,6" Padding="10,6" />
@@ -17,8 +18,10 @@
         <Button x:Name="BtnPttStop" Content="stop + ask" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnCancelRec" Content="cancel recording" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnClearConv" Content="clear conversation" Margin="0,0,6,6" Padding="10,6" />
-        <Button x:Name="BtnRunPlan" Content="run plan" Margin="0,0,6,6" Padding="10,6" />
-        <Button x:Name="BtnApproveRun" Content="approve + run" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnRunPlan" Content="run plan" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Führt den erkannten Plan ohne zusätzlichen Bestätigungsdialog aus." />
+        <Button x:Name="BtnApproveRun" Content="freigeben + ausführen" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Bestätigungsdialog — explizites Gate vor Ausführung." />
         <Button x:Name="BtnRunNext" Content="run next step" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnSaveRitual" Content="save plan as ritual" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnClearPlan" Content="clear plan" Margin="0,0,6,6" Padding="10,6" />
@@ -35,6 +38,12 @@
                 ToolTip.Tip="Kürzt und klärt den Prompt per LLM (ohne neue Fakten)." />
         <Button x:Name="BtnPolishAnswer" Content="Antwort verbessern" Margin="0,0,6,6" Padding="10,6"
                 ToolTip.Tip="Überarbeitet die letzte Assistant-Antwort: klarer, gleiche Fakten." />
+        <Button x:Name="BtnParseJsonPlan" Content="JSON-Plan aus Antwort" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Liest JSON-Fences oder ein steps-Array in der Assistant-Antwort." />
+        <Button x:Name="BtnLlmJsonPlan" Content="KI: strukturierte Schritte" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Zweiter LLM-Aufruf: extrahiert Schritte als JSON." />
+        <Button x:Name="BtnExplainPlan" Content="Plan erklären / Risiko" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Kurze LLM-Erklärung der aktuellen Plan-Schritte (Dry-Run-Begleittext)." />
       </WrapPanel>
       <TextBlock Text="Schnell-Prompts" FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}" />
       <WrapPanel Orientation="Horizontal">
