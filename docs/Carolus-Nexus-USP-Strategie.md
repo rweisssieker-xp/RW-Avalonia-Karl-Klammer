@@ -112,24 +112,30 @@
 
 ### 4b. Tier B (**Build**) – Roadmap
 
-| # | Feature | Akzeptanz (1 Satz) | Komplexität | Abhängigkeit |
-|---|--------|---------------------|-------------|----------------|
-| 1 | Native Tool-/Function-Calling für `steps[]` | Golden-Tests: ≥90 % stabile Schritt-Extraktion auf feste Beispiel-Prompts. | L | Provider-API, Schema-Pflege |
-| 2 | Ritual-QA vor Speichern (LLM + Denylist/Waits/Risk) | Rituals-Tab zeigt Blocker + diffbaren Vorschlag vor Save. | M | Prompt-Design, Settings |
-| 3 | Risk-Score + härteres Gate | Bei `high` zweistufige Freigabe; Score in SafetyOut. | M | Heuristik + optional LLM |
-| 4 | Konversationsgedächtnis (opt-in) | Follow-up ohne vollständigen Re-Prompt; Kostenlimit im Setup. | M | Speicher, Kontextfenster |
-| 5 | UIA + Vision Fusion | Referenz-App: strukturierte Felderliste aus UIA + Ausschnitt im Ask. | L | Fensterwahl, Token-Budget |
-| 6 | Companion „Springen zu Ziel“ | Demo: Fokus/Highlight auf Referenz-Dialog aus Modell-Output. | L | Koordinaten/Control-IDs |
-| 7 | Self-Heal nach Fehllauf | Ein Klick „Vorschlag übernehmen“ aus History/Audit + LLM. | L | UI, Parsing |
-| 8 | Voice Barge-in | TTS bricht bei neuer PTT zuverlässig ab. | S | Audio-Pipeline |
+Jede Zeile ist explizit als **Build** (noch nicht als Produktversprechen zu verkaufen) gekennzeichnet.
+
+| # | Status | Feature | Akzeptanz (1 Satz) | Komplexität | Abhängigkeit |
+|---|--------|--------|---------------------|-------------|----------------|
+| 1 | **Build** | Native Tool-/Function-Calling für `steps[]` | Golden-Tests: ≥90 % stabile Schritt-Extraktion auf feste Beispiel-Prompts. | L | Provider-API, Schema-Pflege |
+| 2 | **Build** | Ritual-QA vor Speichern (LLM + Denylist/Waits/Risk) | Rituals-Tab zeigt Blocker + diffbaren Vorschlag vor Save. | M | Prompt-Design, Settings |
+| 3 | **Build** | Risk-Score + härteres Gate | Bei `high` zweistufige Freigabe; Score in SafetyOut. | M | Heuristik + optional LLM |
+| 4 | **Build** | Konversationsgedächtnis (opt-in) | Follow-up ohne vollständigen Re-Prompt; Kostenlimit im Setup. | M | Speicher, Kontextfenster |
+| 5 | **Build** | UIA + Vision Fusion | Referenz-App: strukturierte Felderliste aus UIA + Ausschnitt im Ask. | L | Fensterwahl, Token-Budget |
+| 6 | **Build** | Companion „Springen zu Ziel“ | Demo: Fokus/Highlight auf Referenz-Dialog aus Modell-Output. | L | Koordinaten/Control-IDs |
+| 7 | **Build** | Self-Heal nach Fehllauf | Ein Klick „Vorschlag übernehmen“ aus History/Audit + LLM. | L | UI, Parsing |
+| 8 | **Build** | Voice Barge-in | TTS bricht bei neuer PTT zuverlässig ab. | S | Audio-Pipeline |
 
 ### 4c. Tier C (**Moonshot**)
+
+Nur **Experiment** — nicht als Roadmap-Datum oder Lieferversprechen kommunizieren.
 
 | Idee | Stolperstein (Policy/Ethik) |
 |------|-------------------------------|
 | On-Device Guard-Summary (kleines lokales Modell) | Verteilung/Updates, Modellqualität, was darf lokal klassifiziert werden? |
 | Org-weites Ritual-Marketplace lite (signiert) | Vertrauenskette, Signing, Import-Governance |
 | Laufzeit-Lernen aus Fehlermustern | Einwilligung, Anonymisierung, Aufbewahrung |
+| **Closed-loop Eval-Harness** (synthetische Desktop-Szenarien für Regression) | Aufwand, Repräsentativität, kein „Spiegel der Produktion“ ohne Abstimmung |
+| **Geteilte Wissens-Kontexte** (team-intern, ohne globales Scraping) | Zugriffsrechte, Löschfristen, Trennung personenbezogen / betrieblich |
 
 ---
 
@@ -169,6 +175,7 @@ Siehe ausführlich [Carolus-Nexus-ICP-Personas.md](Carolus-Nexus-ICP-Personas.md
 | **2 Ask: Vision + Wissen + Plan + Freigabe** | 5 min | Ask: lokales Wissen an, optional Screenshot; „ask now“; Plan-Vorschau; „Plan erklären“ in SafetyOut; „freigeben + ausführen“ vs „run plan“ erklären. |
 | **3 CLI-Handoff** | 3 min | Prompt mit CLI-Route (Handbuch §9); Ausgabe + Log-Pfad zeigen. |
 | **4 Optional Watch + Proactive** | 3 min | Modus watch, Proactive in Setup; Dashboard-Hinweis erwähnen (API-Key nötig). |
+| **5 Optional KI-Tiefgang** | +3 min | Setup: UIA im Ask aktiv; nach Antwort: „JSON-Plan aus Antwort“ oder „KI: strukturierte Schritte“, dann „Plan erklären / Risiko“, abschließend „freigeben + ausführen“ (Windows-Dialog). |
 
 ---
 
