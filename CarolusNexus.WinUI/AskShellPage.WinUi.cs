@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using CarolusNexus;
 using CarolusNexus.Models;
 using CarolusNexus.Services;
+using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
@@ -27,7 +28,7 @@ public sealed class AskShellPage : Page
     private readonly CheckBox _shots = new() { Content = "Include screenshots", IsChecked = true };
     private readonly CheckBox _know = new() { Content = "Use local knowledge", IsChecked = true };
     private readonly InfoBar _busy = new() { IsOpen = false, Title = "Working" };
-    private readonly Grid _root = new() { Padding = new Thickness(12) };
+    private readonly Grid _root = new() { Padding = new Thickness(20, 16, 20, 16) };
     private CancellationTokenSource? _cts;
     private readonly List<RecipeStep> _planSteps = new();
     private int _planStepIndex;
@@ -36,29 +37,38 @@ public sealed class AskShellPage : Page
     private bool _awaitGlobalHotkeyRelease;
     public AskShellPage()
     {
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-
-        var bAsk = new Button { Content = "ask now" };
+        var bAsk = new Button { Content = "Ask now" };
+        WinUiFluentChrome.StyleActionButton(bAsk, accent: true);
         bAsk.Click += async (_, _) => await RunAskAsync();
-        var bSmoke = new Button { Content = "smoke test" };
+        var bSmoke = new Button { Content = "Smoke test" };
+        WinUiFluentChrome.StyleActionButton(bSmoke);
         bSmoke.Click += async (_, _) => await RunSmokeAsync();
-        var bImport = new Button { Content = "import audio + transcribe" };
+        var bImport = new Button { Content = "Import audio + transcribe" };
+        WinUiFluentChrome.StyleActionButton(bImport);
         bImport.Click += async (_, _) => await ImportAudioAsync();
-        var bPtt0 = new Button { Content = "start push-to-talk" };
+        var bPtt0 = new Button { Content = "Start push-to-talk" };
+        WinUiFluentChrome.StyleActionButton(bPtt0);
         bPtt0.Click += (_, _) => StartMic("(button)", false);
-        var bPtt1 = new Button { Content = "stop + ask" };
+        var bPtt1 = new Button { Content = "Stop + ask" };
+        WinUiFluentChrome.StyleActionButton(bPtt1);
         bPtt1.Click += async (_, _) => await StopMicTranscribeAndAskAsync();
-        var bCancel = new Button { Content = "cancel recording" };
+        var bCancel = new Button { Content = "Cancel recording" };
+        WinUiFluentChrome.StyleActionButton(bCancel);
         bCancel.Click += (_, _) => CancelMic();
-        var bRun = new Button { Content = "run plan" };
+        var bRun = new Button { Content = "Run plan" };
+        WinUiFluentChrome.StyleActionButton(bRun, accent: true);
         bRun.Click += async (_, _) => await ExecutePlanAsync(false);
-        var bApr = new Button { Content = "approve + run" };
+        var bApr = new Button { Content = "Approve + run" };
+        WinUiFluentChrome.StyleActionButton(bApr);
         bApr.Click += async (_, _) => await ExecutePlanAfterConfirmAsync();
-        var bNext = new Button { Content = "run next step" };
+        var bNext = new Button { Content = "Run next step" };
+        WinUiFluentChrome.StyleActionButton(bNext);
         bNext.Click += async (_, _) => await RunNextPlanStepAsync();
-        var bSave = new Button { Content = "save plan as flow" };
+        var bSave = new Button { Content = "Save plan as flow" };
+        WinUiFluentChrome.StyleActionButton(bSave);
         bSave.Click += (_, _) => SavePlanAsRitual();
-        var bClr = new Button { Content = "clear plan" };
+        var bClr = new Button { Content = "Clear plan" };
+        WinUiFluentChrome.StyleActionButton(bClr);
         bClr.Click += (_, _) =>
         {
             _planPreview.Text = "";
@@ -66,47 +76,64 @@ public sealed class AskShellPage : Page
             _planSteps.Clear();
             _planStepIndex = 0;
         };
-        var bPanic = new Button { Content = "panic stop" };
+        var bPanic = new Button { Content = "Panic stop" };
+        WinUiFluentChrome.StyleActionButton(bPanic);
         bPanic.Click += (_, _) =>
         {
             _cts?.Cancel();
             NexusShell.Log("panic stop");
         };
-        var bSpeak = new Button { Content = "speak response" };
+        var bSpeak = new Button { Content = "Speak response" };
+        WinUiFluentChrome.StyleActionButton(bSpeak);
         bSpeak.Click += async (_, _) => await SpeakAsync();
 
-        tools.Children.Add(bAsk);
-        tools.Children.Add(bSmoke);
-        tools.Children.Add(bImport);
-        tools.Children.Add(bPtt0);
-        tools.Children.Add(bPtt1);
-        tools.Children.Add(bCancel);
-        tools.Children.Add(bRun);
-        tools.Children.Add(bApr);
-        tools.Children.Add(bNext);
-        tools.Children.Add(bSave);
-        tools.Children.Add(bClr);
-        tools.Children.Add(bPanic);
-        tools.Children.Add(bSpeak);
-        tools.Children.Add(_shots);
-        tools.Children.Add(_know);
+        static StackPanel HRow(params UIElement[] els)
+        {
+            var sp = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            foreach (var e in els)
+                sp.Children.Add(e);
+            return sp;
+        }
 
-        var left = new StackPanel { Spacing = 8 };
-        left.Children.Add(new TextBlock { Text = "Prompt", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        var toolInner = new StackPanel { Spacing = 10 };
+        toolInner.Children.Add(WinUiFluentChrome.ColumnCaption("Ask, voice, and plans"));
+        toolInner.Children.Add(HRow(bAsk, bSmoke, bImport));
+        toolInner.Children.Add(HRow(bPtt0, bPtt1, bCancel));
+        toolInner.Children.Add(HRow(bRun, bApr, bNext, bSave, bClr, bPanic, bSpeak));
+        var opts = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
+        opts.Children.Add(_shots);
+        opts.Children.Add(_know);
+        toolInner.Children.Add(opts);
+        var toolCard = WinUiFluentChrome.WrapCard(toolInner);
+
+        var top = new StackPanel { Spacing = 12 };
+        top.Children.Add(WinUiFluentChrome.PageTitle("Ask"));
+        var sub = new TextBlock
+        {
+            Text = "Prompt, retrieval, action plans, push-to-talk — parity with the Avalonia Ask tab.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        };
+        WinUiFluentChrome.ApplyCaptionTextStyle(sub);
+        top.Children.Add(sub);
+        top.Children.Add(toolCard);
+        var mid = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = top };
+
+        var left = new StackPanel { Spacing = 10 };
+        left.Children.Add(WinUiFluentChrome.ColumnCaption("Prompt"));
         left.Children.Add(_prompt);
-        left.Children.Add(new TextBlock { Text = "Assistant", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        left.Children.Add(WinUiFluentChrome.ColumnCaption("Assistant"));
         left.Children.Add(_assistant);
-        left.Children.Add(new TextBlock { Text = "Retrieval + context", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 });
+        left.Children.Add(WinUiFluentChrome.ColumnCaption("Retrieval + context"));
         left.Children.Add(_retrieval);
 
-        var right = new StackPanel { Spacing = 8 };
-        right.Children.Add(new TextBlock { Text = "Action plan preview", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        var right = new StackPanel { Spacing = 10 };
+        right.Children.Add(WinUiFluentChrome.ColumnCaption("Action plan preview"));
         right.Children.Add(_planPreview);
-        right.Children.Add(new TextBlock { Text = "Plan execution log", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        right.Children.Add(WinUiFluentChrome.ColumnCaption("Plan execution log"));
         right.Children.Add(_planExec);
 
-        var mid = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-        mid.Content = tools;
+        var body = new Grid { ColumnSpacing = 16 };
 
         _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -117,7 +144,6 @@ public sealed class AskShellPage : Page
         Grid.SetColumnSpan(mid, 2);
         Grid.SetRow(_busy, 1);
         Grid.SetColumnSpan(_busy, 2);
-        var body = new Grid();
         body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         body.Children.Add(left);

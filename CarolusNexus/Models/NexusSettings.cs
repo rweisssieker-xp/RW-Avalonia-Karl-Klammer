@@ -113,6 +113,22 @@ public sealed class NexusSettings
     /// <summary>Sprache für COM-Logon (z. B. en-us, de).</summary>
     [JsonPropertyName("axBcLanguage")]
     public string AxBcLanguage { get; set; } = "en-us";
+
+    /// <summary>Main header: badges, tiles, global buttons (Expander).</summary>
+    [JsonPropertyName("shellHeaderDetailsExpanded")]
+    public bool ShellHeaderDetailsExpanded { get; set; } = true;
+
+    /// <summary>Tab strip on the left (vs top).</summary>
+    [JsonPropertyName("useVerticalTabs")]
+    public bool UseVerticalTabs { get; set; }
+
+    /// <summary>Ask pane left column star weight (with splitter; wide layout only).</summary>
+    [JsonPropertyName("askLeftPaneStarWeight")]
+    public double AskLeftPaneStarWeight { get; set; } = 1;
+
+    /// <summary>Ask pane right column star weight.</summary>
+    [JsonPropertyName("askRightPaneStarWeight")]
+    public double AskRightPaneStarWeight { get; set; } = 1;
 }
 
 public sealed class SafetySettings

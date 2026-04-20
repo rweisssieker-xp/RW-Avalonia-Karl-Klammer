@@ -1,12 +1,15 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -85,64 +88,305 @@ public partial class MainWindow : Window
         }
     }
 
+    private sealed class PaletteRow
+    {
+        public required string Id { get; init; }
+        public required string Title { get; init; }
+        public string Subtitle { get; init; } = "";
+        public required Action Activate { get; init; }
+
+        public string SearchBlob => $"{Title} {Subtitle} {Id}".ToLowerInvariant();
+    }
+
     private async void ShowCommandPalette()
     {
-        var labels = new[]
+        var muted = Application.Current?.FindResource("NexusMutedForegroundBrush") as IBrush
+                    ?? Brushes.Gray;
+
+        List<PaletteRow> BuildAll()
         {
-            "Ask", "Dashboard", "Setup", "Knowledge", "Operator flows", "History", "Diagnostics", "Console",
-            "Live Context", "Experiments"
+            var rows = new List<PaletteRow>
+            {
+                new()
+                {
+                    Id = "tab:0", Title = "Ask", Subtitle = "Page · vision, plan, voice",
+                    Activate = () =>
+                    {
+                        MainTabs.SelectedIndex = 0;
+                        NexusShell.Log("Command palette: Ask");
+                    }
+                },
+                new()
+                {
+                    Id = "tab:1", Title = "Dashboard", Subtitle = "Page · watch, 3D, cards",
+                    Activate = () =>
+                    {
+                        MainTabs.SelectedIndex = 1;
+                        NexusShell.Log("Command palette: Dashboard");
+                    }
+                },
+                new()
+                {
+                    Id = "tab:2", Title = "Setup", Subtitle = "Page · provider, safety",
+                    Activate = () =>
+                    {
+                        MainTabs.SelectedIndex = 2;
+                        NexusShell.Log("Command palette: Setup");
+                    }
+                },
+                new()
+                {
+                    Id = "tab:3", Title = "Knowledge", Subtitle = "Page · RAG, documents",
+                    Activate = () =>
+                    {
+                        MainTabs.SelectedIndex = 3;
+                        NexusShell.Log("Command palette: Knowledge");
+                    }
+                },
+                new()
+                {
+                    Id = "tab:4", Title = "Operator flows", Subtitle = "Page · rituals, queue",
+                    Activate = () =>
+                    {
+                        MainTabs.SelectedIndex = 4;
+                        NexusShell.Log("Command palette: Operator flows");
+                    }
+                },
+                new()
+                {
+                    Id = "tab:5", Title = "History", Subtitle = "Page · plan runs",
+                    Activate = () =>
+                    {
+                        MainTabs.SelectedIndex = 5;
+                        NexusShell.Log("Command palette: History");
+                    }
+                },
+                new()
+                {
+                    Id = "tab:6", Title = "Diagnostics", Subtitle = "Page · logs",
+                    Activate = () =>
+                    {
+                        MainTabs.SelectedIndex = 6;
+                        NexusShell.Log("Command palette: Diagnostics");
+                    }
+                },
+                new()
+                {
+                    Id = "tab:7", Title = "Console", Subtitle = "Page · CLI agents",
+                    Activate = () =>
+                    {
+                        MainTabs.SelectedIndex = 7;
+                        NexusShell.Log("Command palette: Console");
+                    }
+                },
+                new()
+                {
+                    Id = "tab:8", Title = "Live Context", Subtitle = "Page · inspector",
+                    Activate = () =>
+                    {
+                        MainTabs.SelectedIndex = 8;
+                        NexusShell.Log("Command palette: Live Context");
+                    }
+                },
+                new()
+                {
+                    Id = "tab:9", Title = "Experiments", Subtitle = "Page · tier C",
+                    Activate = () =>
+                    {
+                        MainTabs.SelectedIndex = 9;
+                        NexusShell.Log("Command palette: Experiments");
+                    }
+                },
+                new()
+                {
+                    Id = "action:refresh_all", Title = "Refresh all", Subtitle = "Action · reload .env, tabs, theme",
+                    Activate = () => OnRefreshAll(this, new RoutedEventArgs())
+                },
+                new()
+                {
+                    Id = "action:save_settings", Title = "Save settings", Subtitle = "Action · write settings.json",
+                    Activate = () => OnSaveSettings(this, new RoutedEventArgs())
+                },
+                new()
+                {
+                    Id = "action:reindex", Title = "Reindex knowledge", Subtitle = "Action · chunks + FTS (+ embeddings if configured)",
+                    Activate = () => OnReindex(this, new RoutedEventArgs())
+                },
+                new()
+                {
+                    Id = "action:refresh_app", Title = "Refresh active app", Subtitle = "Action · Live Context tile",
+                    Activate = () => OnRefreshApp(this, new RoutedEventArgs())
+                },
+                new()
+                {
+                    Id = "action:export_diag", Title = "Export diagnostics", Subtitle = "Action · windows/data log",
+                    Activate = () => TabDiagnostics.ExportDiagnostics()
+                },
+                new()
+                {
+                    Id = "action:handbook", Title = "Open handbook", Subtitle = "Action · user manual .md",
+                    Activate = () => OnOpenHandbookClick(this, new RoutedEventArgs())
+                },
+                new()
+                {
+                    Id = "action:panic", Title = "Panic stop", Subtitle = "Action · cancel Ask / plan work",
+                    Activate = () =>
+                    {
+                        MainTabs.SelectedIndex = 0;
+                        TabAsk.RequestPanicStop();
+                    }
+                }
+            };
+            return rows;
+        }
+
+        static bool MatchesFilter(string query, PaletteRow r)
+        {
+            var q = query.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(q))
+                return true;
+            var parts = q.Split([' '], StringSplitOptions.RemoveEmptyEntries);
+            var blob = r.SearchBlob;
+            return parts.All(p => blob.Contains(p, StringComparison.Ordinal));
+        }
+
+        var all = BuildAll();
+        var recent = CommandPaletteRecentStore.Load().ToList();
+
+        var filterBox = new TextBox
+        {
+            Watermark = "Search pages and actions…",
+            Margin = new Thickness(0, 0, 0, 8)
         };
         var list = new ListBox
         {
-            Margin = new Thickness(8),
-            MinHeight = 300,
-            ItemsSource = labels
+            Margin = new Thickness(0, 4, 0, 0),
+            MinHeight = 320,
+            MaxHeight = 400
         };
+        list.ItemTemplate = new FuncDataTemplate<PaletteRow>((value, _) =>
+        {
+            if (value is null)
+                return new TextBlock();
+            var sp = new StackPanel { Spacing = 2 };
+            sp.Children.Add(new TextBlock
+            {
+                Text = value.Title,
+                FontWeight = FontWeight.SemiBold
+            });
+            if (!string.IsNullOrEmpty(value.Subtitle))
+            {
+                sp.Children.Add(new TextBlock
+                {
+                    Text = value.Subtitle,
+                    FontSize = 11,
+                    Foreground = muted,
+                    TextWrapping = TextWrapping.Wrap
+                });
+            }
+
+            return sp;
+        }, supportsRecycling: false);
+
+        void ApplyFilter()
+        {
+            var q = filterBox.Text ?? "";
+            var filtered = all.Where(r => MatchesFilter(q, r)).ToList();
+            var ordered = filtered
+                .OrderBy(r =>
+                {
+                    var i = recent.IndexOf(r.Id);
+                    return i < 0 ? 999 : i;
+                })
+                .ThenBy(r => r.Title, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            list.ItemsSource = ordered;
+            list.SelectedIndex = ordered.Count > 0 ? 0 : -1;
+        }
+
         var dlg = new Window
         {
-            Title = "Go to page",
-            Width = 460,
-            Height = 420,
+            Title = "Command palette",
+            Width = 520,
+            Height = 480,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Content = new StackPanel
             {
-                Margin = new Thickness(8),
-                Spacing = 8,
+                Margin = new Thickness(12),
+                Spacing = 4,
                 Children =
                 {
                     new TextBlock
                     {
-                        Text = "Double‑click or Enter — same order as the main tabs.",
-                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                        FontSize = 11
+                        Text = "Ctrl+P · type to filter · ↑↓ navigate · Enter run · Esc close",
+                        TextWrapping = TextWrapping.Wrap,
+                        FontSize = 11,
+                        Foreground = muted
                     },
+                    filterBox,
                     list
                 }
             }
         };
 
+        filterBox.TextChanged += (_, _) => ApplyFilter();
+        ApplyFilter();
+
         void Go()
         {
-            if (list.SelectedIndex < 0)
+            if (list.SelectedItem is not PaletteRow row)
                 return;
-            MainTabs.SelectedIndex = list.SelectedIndex;
-            NexusShell.Log("Command palette: " + labels[list.SelectedIndex]);
+            CommandPaletteRecentStore.Touch(row.Id);
+            try
+            {
+                row.Activate();
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("Command palette action: " + ex.Message);
+            }
+
             dlg.Close();
         }
 
         list.DoubleTapped += (_, _) => Go();
-        dlg.KeyDown += (_, ke) =>
+        list.KeyDown += (_, ke) =>
         {
             if (ke.Key == Key.Enter)
             {
                 ke.Handled = true;
                 Go();
             }
-            else if (ke.Key == Key.Escape)
+        };
+
+        filterBox.KeyDown += (_, ke) =>
+        {
+            if (ke.Key == Key.Down && list.ItemCount > 0)
+            {
+                ke.Handled = true;
+                list.Focus();
+                list.SelectedIndex = 0;
+            }
+            else if (ke.Key == Key.Enter && list.SelectedItem is PaletteRow)
+            {
+                ke.Handled = true;
+                Go();
+            }
+        };
+
+        dlg.KeyDown += (_, ke) =>
+        {
+            if (ke.Key == Key.Escape)
             {
                 ke.Handled = true;
                 dlg.Close();
             }
+        };
+
+        dlg.Opened += (_, _) =>
+        {
+            filterBox.Focus();
+            filterBox.SelectAll();
         };
 
         await dlg.ShowDialog(this);
@@ -229,8 +473,10 @@ public partial class MainWindow : Window
         NexusContext.RunWin32StepOnUiThreadAsync = async work =>
             await Dispatcher.UIThread.InvokeAsync(work);
         ThemeApplier.ApplyUiTheme(_settings.UiTheme);
+        ApplyShellChromeFromSettings();
         DotEnvStore.Invalidate();
         SetupPushToTalk();
+        TabAsk.RefreshPaneLayoutFromSettings();
         RefreshDashboard();
         RefreshHeaderBadges();
         RefreshLayoutBadge();
@@ -385,22 +631,29 @@ public partial class MainWindow : Window
         TabAsk.SetSettingsProvider(() => _settings);
         NexusContext.GetSettings = () => _settings;
         ThemeApplier.ApplyUiTheme(_settings.UiTheme);
+        ApplyShellChromeFromSettings();
         RefreshDashboard();
         RefreshHeaderBadges();
         NexusShell.Log("refresh all — .env reloaded.");
         ApplyLocalToolHost();
+        TabAsk.RefreshPaneLayoutFromSettings();
     }
 
     private void OnSaveSettings(object? sender, RoutedEventArgs e)
     {
         _settings = TabSetup.Gather();
+        TabAsk.CaptureAskPaneWeightsInto(_settings);
+        _settings.ShellHeaderDetailsExpanded = HeaderDetailsExpander.IsExpanded;
         _settingsStore.Save(_settings);
         TabAsk.SetSettingsProvider(() => _settings);
         NexusContext.GetSettings = () => _settings;
         ThemeApplier.ApplyUiTheme(_settings.UiTheme);
+        ApplyShellChromeFromSettings();
         NexusShell.Log("settings.json saved.");
         RefreshHeaderBadges();
         ApplyLocalToolHost();
+        TabAsk.RefreshPaneLayoutFromSettings();
+        NotifyUiBrief("Settings saved · Ctrl+P palette");
     }
 
     private void OnReindex(object? sender, RoutedEventArgs e)
@@ -411,6 +664,23 @@ public partial class MainWindow : Window
         RefreshHeaderBadges();
         _ = EmbeddingRagService.RebuildIfConfiguredAsync(default);
         NexusShell.Log("reindex knowledge → index + chunks + local FTS5 (knowledge-fts.db); embeddings in background if OPENAI_API_KEY + RAG.");
+        NotifyUiBrief("Knowledge reindexed");
+    }
+
+    private void ApplyShellChromeFromSettings()
+    {
+        MainTabs.TabStripPlacement = _settings.UseVerticalTabs ? Dock.Left : Dock.Top;
+        HeaderDetailsExpander.IsExpanded = _settings.ShellHeaderDetailsExpanded;
+    }
+
+    private void NotifyUiBrief(string message)
+    {
+        NexusShell.SetGlobalStatus(message);
+        _ = Dispatcher.UIThread.InvokeAsync(async () =>
+        {
+            await Task.Delay(2000).ConfigureAwait(true);
+            ActivityStatusHub.RefreshFromStores();
+        });
     }
 
     private void OnRefreshApp(object? sender, RoutedEventArgs e)

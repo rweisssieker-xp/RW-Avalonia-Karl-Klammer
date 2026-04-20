@@ -16,6 +16,22 @@
       <TextBlock TextWrapping="Wrap" FontSize="11"
                  Foreground="{DynamicResource NexusMutedForegroundBrush}"
                  Text="Use the main Setup tab for provider and safety. Tier C hooks may read optional keys from windows/.env when documented." />
+      <Border Padding="12" CornerRadius="6" BorderBrush="{DynamicResource NexusTileBorderBrush}"
+              BorderThickness="1" Background="{DynamicResource NexusTileBackgroundBrush}">
+        <StackPanel Spacing="8">
+          <TextBlock FontWeight="SemiBold" Text="Computer-use → SimplePlanSimulator (audit)" />
+          <TextBlock TextWrapping="Wrap" FontSize="11"
+                     Foreground="{DynamicResource NexusMutedForegroundBrush}"
+                     Text="Dry-run is always safe. Real Win32 only with Safety profile “power-user” and allowed tokens (Handbuch §23.0)." />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Name="BtnCuDryRun" Content="Run sample (dry-run)" Padding="10,6" />
+            <Button x:Name="BtnCuExecute" Content="Run sample (execute)" Padding="10,6"
+                    ToolTip.Tip="Uses current settings; real steps only if power-user + PlanGuard allows." />
+          </StackPanel>
+          <TextBox x:Name="CuLogOut" IsReadOnly="True" AcceptsReturn="True" MinHeight="120"
+                   TextWrapping="Wrap" FontFamily="Consolas,Courier New,monospace" FontSize="11" />
+        </StackPanel>
+      </Border>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

@@ -1,5 +1,6 @@
 using System;
 using CarolusNexus;
+using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -19,35 +20,51 @@ public sealed class DashboardShellPage : Page
     public DashboardShellPage()
     {
         var root = new ScrollViewer();
-        var stack = new StackPanel { Spacing = 12, Margin = new Thickness(12) };
-        stack.Children.Add(new TextBlock
+        var stack = new StackPanel { Spacing = 16, Margin = new Thickness(20, 16, 20, 20) };
+        var dashTitle = new TextBlock
         {
             Text = "Dashboard",
-            FontSize = 18,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
-        });
-        var refresh = new Button { Content = "Refresh now", HorizontalAlignment = HorizontalAlignment.Left };
+            TextWrapping = TextWrapping.Wrap
+        };
+        WinUiFluentChrome.ApplyTitleTextStyle(dashTitle);
+        stack.Children.Add(dashTitle);
+        var refresh = new Button
+        {
+            Content = "Refresh now",
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Padding = new Thickness(16, 10, 16, 10),
+            CornerRadius = new CornerRadius(8)
+        };
         refresh.Click += (_, _) => RefreshFull();
         stack.Children.Add(refresh);
 
-        stack.Children.Add(new TextBlock { Text = "3D preview", Opacity = 0.75, FontSize = 12 });
-        stack.Children.Add(new Border
+        var previewLabel = new TextBlock { Text = "3D preview" };
+        WinUiFluentChrome.ApplyCaptionTextStyle(previewLabel);
+        previewLabel.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        stack.Children.Add(previewLabel);
+        var previewInner = new TextBlock
         {
-            Height = 140,
-            CornerRadius = new CornerRadius(8),
-            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 26, 28, 32)),
-            Child = new TextBlock
-            {
-                Text =
-                    "OfficeScene3D (OpenGL) ships in the Avalonia build.\n" +
-                    "WinUI uses the same dashboard data (incl. watch snapshots + proactive LLM in watch mode) in the cards below.",
-                Margin = new Thickness(12),
-                TextWrapping = TextWrapping.Wrap,
-                VerticalAlignment = VerticalAlignment.Center
-            }
-        });
+            Text =
+                "OfficeScene3D (OpenGL) ships in the Avalonia build.\n" +
+                "WinUI uses the same dashboard data (incl. watch snapshots + proactive LLM in watch mode) in the cards below.",
+            Margin = new Thickness(16, 14, 16, 14),
+            TextWrapping = TextWrapping.Wrap,
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        };
+        var previewBox = new Border
+        {
+            Height = 148,
+            CornerRadius = new CornerRadius(WinUiFluentChrome.CardCornerRadius),
+            BorderThickness = new Thickness(1),
+            BorderBrush = WinUiFluentChrome.CardBorderBrush,
+            Background = WinUiFluentChrome.CardSurfaceBackground,
+            Child = previewInner
+        };
+        WinUiFluentChrome.ApplyCardElevation(previewBox, 2f);
+        stack.Children.Add(previewBox);
 
-        var grid = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch };
+        var grid = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch, ColumnSpacing = 10, RowSpacing = 10 };
         for (var i = 0; i < 4; i++)
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -58,20 +75,28 @@ public sealed class DashboardShellPage : Page
         {
             var b = new Border
             {
-                Margin = new Thickness(0, 0, 8, 8),
-                Padding = new Thickness(10),
-                CornerRadius = new CornerRadius(8),
+                Margin = new Thickness(0),
+                Padding = new Thickness(14, 12, 14, 12),
+                CornerRadius = new CornerRadius(WinUiFluentChrome.CardCornerRadius),
                 BorderThickness = new Thickness(1),
+                BorderBrush = WinUiFluentChrome.CardBorderBrush,
+                Background = WinUiFluentChrome.CardSurfaceBackground,
                 Child = new StackPanel
                 {
-                    Spacing = 4,
+                    Spacing = 6,
                     Children =
                     {
-                        new TextBlock { Text = title, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                        new TextBlock
+                        {
+                            Text = title,
+                            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                            Foreground = WinUiFluentChrome.PrimaryTextBrush
+                        },
                         box
                     }
                 }
             };
+            WinUiFluentChrome.ApplyCardElevation(b, 2f);
             Grid.SetRow(b, row);
             Grid.SetColumn(b, col);
             if (colSpan > 1)

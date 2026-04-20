@@ -14,7 +14,7 @@
       <Grid ColumnDefinitions="Auto,*">
         <ProgressBar x:Name="GlobalStatusBusyBar" Grid.Column="0" Width="56" Height="4" Margin="0,0,10,0" VerticalAlignment="Center"
                      IsIndeterminate="True" IsVisible="False" />
-        <TextBlock x:Name="GlobalStatusBar" Grid.Column="1" Text="Bereit" FontSize="12" TextWrapping="Wrap"
+        <TextBlock x:Name="GlobalStatusBar" Grid.Column="1" Text="Ready · Ctrl+P palette" FontSize="12" TextWrapping="Wrap"
                    VerticalAlignment="Center" />
       </Grid>
     </Border>
@@ -46,6 +46,8 @@
                   Content="Close"
                   Click="OnCloseClick" />
         </Grid>
+        <Expander x:Name="HeaderDetailsExpander" Header="Status, tiles &amp; global actions" IsExpanded="True">
+          <StackPanel Spacing="10">
         <WrapPanel>
           <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4"
                   Background="{DynamicResource NexusBadgeBackgroundBrush}">
@@ -98,9 +100,11 @@
           <Button x:Name="BtnRefreshApp" Content="refresh active app" Margin="0,0,8,6" Padding="12,6" />
           <Button x:Name="BtnExportDiag" Content="export diagnostics" Margin="0,0,8,6" Padding="12,6" />
         </WrapPanel>
+          </StackPanel>
+        </Expander>
       </StackPanel>
     </Border>
-    <TabControl x:Name="MainTabs" Margin="10,8,10,10">
+    <TabControl x:Name="MainTabs" Margin="10,8,10,10" TabStripPlacement="Top">
       <TabItem Header="Ask">
         <views:AskTab x:Name="TabAsk" Margin="8" />
       </TabItem>

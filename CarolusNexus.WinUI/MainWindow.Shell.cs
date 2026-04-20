@@ -70,9 +70,8 @@ public sealed partial class MainWindow
                 Application.Current.Exit();
             });
 
-        _companionToggle.Checked += OnCompanionToggleCheckedChanged;
-        _companionToggle.Unchecked += OnCompanionToggleCheckedChanged;
-        if (OperatingSystem.IsWindows() && _companionToggle.IsChecked == true)
+        _companionToggle.Toggled += OnCompanionToggleToggled;
+        if (OperatingSystem.IsWindows() && _companionToggle.IsOn)
             EnsureCompanion();
 
         var dq = DispatcherQueue.GetForCurrentThread();
@@ -131,13 +130,13 @@ public sealed partial class MainWindow
         }
     }
 
-    private void OnCompanionToggleCheckedChanged(object sender, RoutedEventArgs e)
+    private void OnCompanionToggleToggled(object sender, RoutedEventArgs e)
     {
         if (!OperatingSystem.IsWindows())
             return;
-        if (sender is not CheckBox cb)
+        if (sender is not ToggleSwitch ts)
             return;
-        if (cb.IsChecked == true)
+        if (ts.IsOn)
             EnsureCompanion();
         else
         {

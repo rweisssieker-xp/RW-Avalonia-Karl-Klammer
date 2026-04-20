@@ -29,6 +29,8 @@ public static class AppPaths
     public static string WatchThumbnailsDir => Path.Combine(DataDir, "watch-thumbnails");
     public static string RitualStepAudit => Path.Combine(DataDir, "ritual-step-audit.jsonl");
     public static string ConversationMemory => Path.Combine(DataDir, "conversation-memory.jsonl");
+    /// <summary>Recent command palette entry ids (<c>tab:N</c> / <c>action:key</c>).</summary>
+    public static string CommandPaletteRecent => Path.Combine(DataDir, "command-palette-recent.json");
     public static string PlaygroundDir => Path.Combine(RepoRoot, "playground");
     public static string CodexOutputDir => Path.Combine(RepoRoot, "codex output");
 

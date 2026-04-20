@@ -4,18 +4,46 @@
              RequestedThemeVariant="Dark">
   <Application.Resources>
     <ResourceDictionary>
-      <SolidColorBrush x:Key="NexusHeaderBackgroundBrush" Color="#242933" />
-      <SolidColorBrush x:Key="NexusHeaderBorderBrush" Color="#3d4655" />
-      <SolidColorBrush x:Key="NexusBadgeBackgroundBrush" Color="#353c48" />
-      <SolidColorBrush x:Key="NexusTileBackgroundBrush" Color="#2a3038" />
-      <SolidColorBrush x:Key="NexusTileBorderBrush" Color="#454e5e" />
-      <SolidColorBrush x:Key="NexusMutedForegroundBrush" Color="#9aa3b2" />
-      <SolidColorBrush x:Key="NexusCardBackgroundBrush" Color="#2d333d" />
-      <SolidColorBrush x:Key="NexusCardBorderBrush" Color="#4a5364" />
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="NexusHeaderBackgroundBrush" Color="#242933" />
+          <SolidColorBrush x:Key="NexusHeaderBorderBrush" Color="#3d4655" />
+          <SolidColorBrush x:Key="NexusBadgeBackgroundBrush" Color="#353c48" />
+          <SolidColorBrush x:Key="NexusTileBackgroundBrush" Color="#2a3038" />
+          <SolidColorBrush x:Key="NexusTileBorderBrush" Color="#454e5e" />
+          <SolidColorBrush x:Key="NexusMutedForegroundBrush" Color="#9aa3b2" />
+          <SolidColorBrush x:Key="NexusCardBackgroundBrush" Color="#2d333d" />
+          <SolidColorBrush x:Key="NexusCardBorderBrush" Color="#4a5364" />
+          <SolidColorBrush x:Key="NexusAccentBrush" Color="#3d7aed" />
+          <SolidColorBrush x:Key="NexusDangerBrush" Color="#c53030" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="NexusHeaderBackgroundBrush" Color="#e8ecf4" />
+          <SolidColorBrush x:Key="NexusHeaderBorderBrush" Color="#c5cdd8" />
+          <SolidColorBrush x:Key="NexusBadgeBackgroundBrush" Color="#dde3ec" />
+          <SolidColorBrush x:Key="NexusTileBackgroundBrush" Color="#f4f6fa" />
+          <SolidColorBrush x:Key="NexusTileBorderBrush" Color="#c5cdd8" />
+          <SolidColorBrush x:Key="NexusMutedForegroundBrush" Color="#5c6570" />
+          <SolidColorBrush x:Key="NexusCardBackgroundBrush" Color="#ffffff" />
+          <SolidColorBrush x:Key="NexusCardBorderBrush" Color="#c5cdd8" />
+          <SolidColorBrush x:Key="NexusAccentBrush" Color="#2563eb" />
+          <SolidColorBrush x:Key="NexusDangerBrush" Color="#b91c1c" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />
+    <Style Selector="Button.nexus-primary">
+      <Setter Property="Foreground" Value="#ffffff" />
+      <Setter Property="Background" Value="{DynamicResource NexusAccentBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.nexus-danger">
+      <Setter Property="Foreground" Value="#ffffff" />
+      <Setter Property="Background" Value="{DynamicResource NexusDangerBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
   </Application.Styles>
   <TrayIcon.Icons>
     <TrayIcons>

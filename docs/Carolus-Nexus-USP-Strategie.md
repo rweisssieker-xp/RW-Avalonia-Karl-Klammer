@@ -165,6 +165,20 @@ Siehe ausführlich [Carolus-Nexus-ICP-Personas.md](Carolus-Nexus-ICP-Personas.md
 | **ICP-D** (Knowledge) | Verstehen | RAG-light, Embeddings optional, Ritual aus Plan |
 | **ICP-E** (Sponsor) | Governance / Trust | Safety-Staffelung, Freigaben, Karl-Zustände |
 
+### 6a. ICP × Proof / Build / Moonshot (Abgleich §1.1 & §22)
+
+*Jede Zelle: Was darf **jetzt** verkauft werden (**Proof**), was nur als Roadmap (**Build**), was nicht ohne Pilot behauptet werden (**Moonshot** / nur mit Demo-Nachweis). Technische Wahrheit: [Carolus-Nexus-Benutzerhandbuch.md](Carolus-Nexus-Benutzerhandbuch.md) **§1.1**, **§22**, **§23.0**.*
+
+| ICP | Proof (heute kommunizieren) | Build / Roadmap (mit Tag kommunizieren) | Nicht behaupten (§22 / §23.0) |
+|-----|------------------------------|----------------------------------------|-------------------------------|
+| **ICP-A** | Vision-Ask, UIA-Snapshot im Ask, Live Context + Adapter-Familie, `ax.*` in Plänen **als Zielspezifikation** mit Simulation/Dry-Run | Tiefer AX-/Fat-Client-Kontext (Grid/Form), mehr **echte** `ax.*`-Ausführung hinter Flags | „Produktionsreife AX-Steuerung“, vollständige UIAutomation aller AX-Dialoge |
+| **ICP-B** | Lokale Pfade (`windows/data`), Queue, Step-Audit (`jsonl`), BYO-Endpoint, Safety-Profile, Watch mit Retention-Konzept klären | DSGVO-Presets UI, MSI/Sign-off-Installer | „Privacy/DSGVO automatisch gelöst“ ohne Kunden-Policy |
+| **ICP-C** | CLI-Handoff, Console-Tab, Logs unter `codex output/`, Screen-Summary im Router | Persistente CLI-Sessions, erweiterte Timeouts | „Unbegrenzte Agent-Sessions ohne Risiko“ |
+| **ICP-D** | RAG-light, PDF/DOCX-Index, Embeddings optional, Plan → Ritual, Knowledge-Tab | Enterprise-Vektor-Backend | Recall wie globale Enterprise Search |
+| **ICP-E** | Safety strict/balanced/power-user, Panic, Denylist, Freigabe-Gates, Karl-Zustände | Risk-Score UI, zweistufige High-Risk-Freigabe | „KI garantiert Sicherheit“ ohne Operator |
+
+**Killer-USPs aus dem Vibe-Sprint** (Plan „Carolus Nexus USP Vibe“): Reality Bundle, Playbooks aus Watch/History, Plan als Artefakt + Governance, Drei Gehirne (LLM+RAG+CLI), Ritual Job Queue, Karl HUD, Fat-Client-Moat — jeweils nur dort **Proof** nennen, wo §1.1 den Ist-Stand trägt; AX-Wedge und Closed-Loop immer **Build**/**Pilot** kennzeichnen.
+
 ---
 
 ## 7. 15-Minuten-Demo-Skript
@@ -176,6 +190,8 @@ Siehe ausführlich [Carolus-Nexus-ICP-Personas.md](Carolus-Nexus-ICP-Personas.md
 | **3 CLI-Handoff** | 3 min | Prompt mit CLI-Route (Handbuch §9); Ausgabe + Log-Pfad zeigen. |
 | **4 Optional Watch + Proactive** | 3 min | Modus watch, Proactive in Setup; Dashboard-Hinweis erwähnen (API-Key nötig). |
 | **5 Optional KI-Tiefgang** | +3 min | Setup: UIA im Ask aktiv; nach Antwort: „JSON-Plan aus Antwort“ oder „KI: strukturierte Schritte“, dann „Plan erklären / Risiko“, abschließend „freigeben + ausführen“ (Windows-Dialog). |
+
+**Variante „Reality Bundle → Ritual → Queue“ (Detail):** Schritt-für-Schritt in [Demo-Script-15min-Reality-Bundle.md](Demo-Script-15min-Reality-Bundle.md) — gleiche Zielzeit (~15 min), Fokus Multi-Monitor-Vision, Speichern als Flow, Job-Warteschlange und Audit ohne AX-Tiefe zu übertreiben.
 
 ---
 

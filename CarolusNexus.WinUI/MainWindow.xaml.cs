@@ -26,8 +26,11 @@ public sealed partial class MainWindow : Window
         IsBackButtonVisible = NavigationViewBackButtonVisible.Collapsed,
         IsSettingsVisible = false,
         PaneDisplayMode = NavigationViewPaneDisplayMode.Auto,
-        OpenPaneLength = 300,
+        OpenPaneLength = 280,
+        CompactPaneLength = 48,
+        ExpandedModeThresholdWidth = 1000,
         PaneTitle = "Carolus Nexus",
+        OverflowLabelMode = NavigationViewOverflowLabelMode.MoreLabel,
         Background = new SolidColorBrush(Colors.Transparent)
     };
 
@@ -39,7 +42,7 @@ public sealed partial class MainWindow : Window
     private readonly TextBlock _tileMemory = new() { TextWrapping = TextWrapping.Wrap, FontSize = 11 };
     private readonly TextBlock _tileLive = new() { TextWrapping = TextWrapping.Wrap, FontSize = 11 };
     private readonly TextBlock _tileEnv = new() { TextWrapping = TextWrapping.Wrap, FontSize = 11 };
-    private readonly TextBlock _statusLine = new() { FontSize = 12, Text = "Bereit" };
+    private readonly TextBlock _statusLine = new() { Text = "Bereit" };
     private readonly ProgressBar _globalStatusBusyBar = new()
     {
         Width = 56,
@@ -48,11 +51,14 @@ public sealed partial class MainWindow : Window
         IsIndeterminate = true,
         Visibility = Microsoft.UI.Xaml.Visibility.Collapsed
     };
-    private readonly CheckBox _companionToggle = new()
+    private readonly ToggleSwitch _companionToggle = new()
     {
-        Content = "Companion at cursor",
-        IsChecked = true,
-        FontSize = 11
+        Header = "Companion",
+        OnContent = "Follow cursor",
+        OffContent = "Off",
+        IsOn = true,
+        MinWidth = 0,
+        VerticalAlignment = VerticalAlignment.Center
     };
 
     public MainWindow()
@@ -73,7 +79,7 @@ public sealed partial class MainWindow : Window
         _nav.MenuItems.Add(Mk("Live Context", typeof(LiveContextShellPage), Symbol.View));
         _nav.MenuItems.Add(Mk("Experiments (Tier C)", typeof(ExperimentsShellPage), Symbol.Important));
 
-        _nav.FooterMenuItems.Add(MkFooter("Command palette (Ctrl+P)"));
+        _nav.FooterMenuItems.Add(MkFooter("Command palette  ·  Ctrl+P"));
 
         _nav.Content = _frame;
         _nav.ItemInvoked += NavOnItemInvoked;
@@ -125,50 +131,53 @@ public sealed partial class MainWindow : Window
     {
         var border = new Border
         {
-            Padding = new Thickness(20, 14, 20, 14),
+            Padding = new Thickness(24, 18, 24, 18),
             BorderThickness = new Thickness(0, 0, 0, 1),
             BorderBrush = WinUiFluentChrome.SeparatorBrush,
-            Background = WinUiFluentChrome.LayerChromeBackground
+            Background = WinUiFluentChrome.HeaderChromeBackground
         };
+        WinUiFluentChrome.ApplyCardElevation(border, 4f);
 
-        var stack = new StackPanel { Spacing = 14 };
+        var stack = new StackPanel { Spacing = 16 };
 
         var titleRow = new Grid();
         titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var titleBlock = new StackPanel { Spacing = 4 };
-        titleBlock.Children.Add(new TextBlock
-        {
-            Text = "Carolus Nexus",
-            FontSize = 26,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
-        });
-        titleBlock.Children.Add(new TextBlock
+        var titleBlock = new StackPanel { Spacing = 6 };
+        var titleMain = new TextBlock { Text = "Carolus Nexus", TextWrapping = TextWrapping.Wrap };
+        WinUiFluentChrome.ApplyTitleTextStyle(titleMain);
+        titleBlock.Children.Add(titleMain);
+        var titleSub = new TextBlock
         {
             Text = "Windows operator desktop · Karl Klammer",
-            FontSize = 13,
-            Opacity = 0.85,
-            IsTextSelectionEnabled = false
-        });
-        titleBlock.Children.Add(new TextBlock
+            Foreground = WinUiFluentChrome.SecondaryTextBrush,
+            IsTextSelectionEnabled = false,
+            TextWrapping = TextWrapping.Wrap
+        };
+        WinUiFluentChrome.ApplySubtitleTextStyle(titleSub);
+        titleBlock.Children.Add(titleSub);
+        var titleHint = new TextBlock
         {
             Text = "Tray · Companion · PTT · Ask · Dashboard",
-            FontSize = 12,
-            Opacity = 0.65
-        });
+            Foreground = WinUiFluentChrome.TertiaryTextBrush,
+            TextWrapping = TextWrapping.Wrap
+        };
+        WinUiFluentChrome.ApplyCaptionTextStyle(titleHint);
         var statusRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
         statusRow.Children.Add(_globalStatusBusyBar);
+        _statusLine.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        WinUiFluentChrome.ApplyCaptionTextStyle(_statusLine);
         statusRow.Children.Add(_statusLine);
         titleBlock.Children.Add(statusRow);
         Grid.SetColumn(titleBlock, 0);
         titleRow.Children.Add(titleBlock);
 
-        var titleBtns = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        var titleBtns = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
         titleBtns.Children.Add(_companionToggle);
-        var closeBtn = new Button { Content = "Close", Padding = new Thickness(14, 8, 14, 8), CornerRadius = new CornerRadius(4) };
+        var closeBtn = new Button { Content = "Minimize to tray", Padding = new Thickness(16, 10, 16, 10), CornerRadius = new CornerRadius(8) };
         closeBtn.Click += OnHeaderCloseClick;
         titleBtns.Children.Add(closeBtn);
-        var handbook = new Button { Content = "Handbook", Padding = new Thickness(14, 8, 14, 8), CornerRadius = new CornerRadius(4) };
+        var handbook = new HyperlinkButton { Content = "Handbook", VerticalAlignment = VerticalAlignment.Center };
         handbook.Click += OnHandbookClick;
         titleBtns.Children.Add(handbook);
         Grid.SetColumn(titleBtns, 1);
@@ -178,11 +187,14 @@ public sealed partial class MainWindow : Window
         var badges = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         foreach (var tb in new[] { _badgeLayout, _badgeEnv, _badgeSpeech, _badgeAuto, _badgeKnow })
         {
+            tb.Foreground = WinUiFluentChrome.PrimaryTextBrush;
             badges.Children.Add(new Border
             {
-                Margin = new Thickness(0, 0, 8, 6),
-                Padding = new Thickness(10, 6, 10, 6),
-                CornerRadius = new CornerRadius(8),
+                Margin = new Thickness(0, 0, 0, 0),
+                Padding = new Thickness(12, 7, 12, 7),
+                CornerRadius = new CornerRadius(WinUiFluentChrome.PillCornerRadius),
+                BorderThickness = new Thickness(1),
+                BorderBrush = WinUiFluentChrome.CardBorderBrush,
                 Background = WinUiFluentChrome.BadgeBackground,
                 Child = tb
             });
@@ -190,7 +202,7 @@ public sealed partial class MainWindow : Window
 
         stack.Children.Add(badges);
 
-        var tiles = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch };
+        var tiles = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch, ColumnSpacing = 12 };
         tiles.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         tiles.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         tiles.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -205,7 +217,7 @@ public sealed partial class MainWindow : Window
         tiles.Children.Add(tile2);
         stack.Children.Add(tiles);
 
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
         var bRefresh = MkHeaderActionButton("Refresh all");
         bRefresh.Click += (_, _) => OnRefreshAll();
         var bSave = MkHeaderActionButton("Save settings", accent: true);
@@ -232,34 +244,45 @@ public sealed partial class MainWindow : Window
         var b = new Button
         {
             Content = label,
-            Margin = new Thickness(0, 0, 8, 6),
-            Padding = new Thickness(16, 8, 16, 8),
-            CornerRadius = new CornerRadius(4)
+            Margin = new Thickness(0, 0, 0, 0),
+            Padding = new Thickness(16, 10, 16, 10),
+            CornerRadius = new CornerRadius(8)
         };
         if (accent && Application.Current.Resources.TryGetValue("AccentButtonStyle", out var st) && st is Style accentStyle)
             b.Style = accentStyle;
         return b;
     }
 
-    private static Border MkTile(string title, TextBlock body) =>
-        new()
+    private static Border MkTile(string title, TextBlock body)
+    {
+        body.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        var b = new Border
         {
-            Padding = new Thickness(12, 10, 12, 10),
-            Margin = new Thickness(0, 0, 10, 0),
-            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(16, 14, 16, 14),
+            Margin = new Thickness(0),
+            CornerRadius = new CornerRadius(WinUiFluentChrome.CardCornerRadius),
             BorderThickness = new Thickness(1),
             BorderBrush = WinUiFluentChrome.CardBorderBrush,
             Background = WinUiFluentChrome.CardSurfaceBackground,
             Child = new StackPanel
             {
-                Spacing = 6,
+                Spacing = 8,
                 Children =
                 {
-                    new TextBlock { Text = title, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
+                    new TextBlock
+                    {
+                        Text = title,
+                        FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                        FontSize = 13,
+                        Foreground = WinUiFluentChrome.PrimaryTextBrush
+                    },
                     body
                 }
             }
         };
+        WinUiFluentChrome.ApplyCardElevation(b, 3f);
+        return b;
+    }
 
     private void RefreshLayoutBadge(double w)
     {
@@ -397,7 +420,7 @@ public sealed partial class MainWindow : Window
         new()
         {
             Content = content,
-            Icon = new SymbolIcon(Symbol.Find),
+            Icon = new FontIcon { Glyph = "\uE721", FontSize = 16 },
             Tag = "palette"
         };
 

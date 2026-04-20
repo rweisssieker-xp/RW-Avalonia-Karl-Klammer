@@ -65,48 +65,89 @@ public partial class AskTab : Avalonia.Controls.UserControl
 
         AskRootGrid.ColumnDefinitions.Clear();
         AskRootGrid.RowDefinitions.Clear();
+        AskRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+        AskRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        AskRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        AskRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+
+        Grid.SetRow(AskToolbarHost, 0);
+        Grid.SetColumn(AskToolbarHost, 0);
+        Grid.SetColumnSpan(AskToolbarHost, 1);
+        Grid.SetRow(AskBusyBar, 1);
+        Grid.SetColumn(AskBusyBar, 0);
+        Grid.SetColumnSpan(AskBusyBar, 1);
+        Grid.SetRow(AskPaneGrid, 2);
+        Grid.SetColumn(AskPaneGrid, 0);
+        Grid.SetColumnSpan(AskPaneGrid, 1);
+
         if (twoCol)
         {
-            AskRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-            AskRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-            AskRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-            AskRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-            AskRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
-            Grid.SetRow(AskToolbarHost, 0);
-            Grid.SetColumn(AskToolbarHost, 0);
-            Grid.SetColumnSpan(AskToolbarHost, 2);
-            Grid.SetRow(AskBusyBar, 1);
-            Grid.SetColumn(AskBusyBar, 0);
-            Grid.SetColumnSpan(AskBusyBar, 2);
-            Grid.SetRow(AskLeftScroll, 2);
+            AskPaneGrid.ColumnDefinitions.Clear();
+            AskPaneGrid.RowDefinitions.Clear();
+            AskPaneGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            AskPaneGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(6, GridUnitType.Pixel)));
+            AskPaneGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            AskPaneGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+            Grid.SetRow(AskLeftScroll, 0);
             Grid.SetColumn(AskLeftScroll, 0);
             Grid.SetColumnSpan(AskLeftScroll, 1);
-            Grid.SetRow(AskRightScroll, 2);
-            Grid.SetColumn(AskRightScroll, 1);
+            Grid.SetRow(AskPaneSplitter, 0);
+            Grid.SetColumn(AskPaneSplitter, 1);
+            AskPaneSplitter.IsVisible = true;
+            Grid.SetRow(AskRightScroll, 0);
+            Grid.SetColumn(AskRightScroll, 2);
             Grid.SetColumnSpan(AskRightScroll, 1);
-            AskLeftScroll.Margin = new Thickness(0, 0, 8, 0);
+            ApplyAskPaneStarWeightsFromSettings();
+            AskLeftScroll.Margin = new Thickness(0, 0, 4, 0);
+            AskRightScroll.Margin = new Thickness(4, 0, 0, 0);
         }
         else
         {
-            AskRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-            AskRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-            AskRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-            AskRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
-            AskRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
-            Grid.SetRow(AskToolbarHost, 0);
-            Grid.SetColumn(AskToolbarHost, 0);
-            Grid.SetColumnSpan(AskToolbarHost, 1);
-            Grid.SetRow(AskBusyBar, 1);
-            Grid.SetColumn(AskBusyBar, 0);
-            Grid.SetColumnSpan(AskBusyBar, 1);
-            Grid.SetRow(AskLeftScroll, 2);
+            AskPaneGrid.ColumnDefinitions.Clear();
+            AskPaneGrid.RowDefinitions.Clear();
+            AskPaneGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            AskPaneGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+            Grid.SetRow(AskLeftScroll, 0);
             Grid.SetColumn(AskLeftScroll, 0);
             Grid.SetColumnSpan(AskLeftScroll, 1);
-            Grid.SetRow(AskRightScroll, 3);
+            AskPaneSplitter.IsVisible = false;
+            Grid.SetRow(AskRightScroll, 1);
             Grid.SetColumn(AskRightScroll, 0);
             Grid.SetColumnSpan(AskRightScroll, 1);
             AskLeftScroll.Margin = new Thickness(0, 0, 0, 8);
+            AskRightScroll.Margin = new Thickness(0);
         }
+    }
+
+    private void ApplyAskPaneStarWeightsFromSettings()
+    {
+        var s = _getSettings?.Invoke();
+        if (s == null || AskPaneGrid.ColumnDefinitions.Count < 3)
+            return;
+        var l = Math.Clamp(s.AskLeftPaneStarWeight, 0.2, 5.0);
+        var r = Math.Clamp(s.AskRightPaneStarWeight, 0.2, 5.0);
+        AskPaneGrid.ColumnDefinitions[0].Width = new GridLength(l, GridUnitType.Star);
+        AskPaneGrid.ColumnDefinitions[2].Width = new GridLength(r, GridUnitType.Star);
+    }
+
+    /// <summary>Call before saving <see cref="NexusSettings"/> so Ask column ratio persists (wide layout).</summary>
+    public void CaptureAskPaneWeightsInto(NexusSettings s)
+    {
+        if (AskPaneGrid.ColumnDefinitions.Count < 3 || !AskPaneSplitter.IsVisible)
+            return;
+        var w0 = AskPaneGrid.ColumnDefinitions[0].ActualWidth;
+        var w2 = AskPaneGrid.ColumnDefinitions[2].ActualWidth;
+        if (w0 + w2 < 32)
+            return;
+        var sum = w0 + w2;
+        s.AskLeftPaneStarWeight = Math.Round(Math.Clamp(w0 / sum * 2.0, 0.2, 5.0), 3);
+        s.AskRightPaneStarWeight = Math.Round(Math.Clamp(w2 / sum * 2.0, 0.2, 5.0), 3);
+    }
+
+    public void RefreshPaneLayoutFromSettings()
+    {
+        _askLayoutBand = null;
+        ApplyAskResponsiveLayout();
     }
 
     public void SetSettingsProvider(Func<NexusSettings> getSettings) => _getSettings = getSettings;
@@ -170,11 +211,7 @@ public partial class AskTab : Avalonia.Controls.UserControl
             _planStepIndex = 0;
             NexusShell.Log("Plan cleared.");
         };
-        BtnPanic.Click += (_, _) =>
-        {
-            _cts?.Cancel();
-            NexusShell.Log("panic stop — cancel requested.");
-        };
+        BtnPanic.Click += (_, _) => RequestPanicStop();
         BtnSpeak.Click += async (_, _) => await SpeakAssistantResponseAsync();
         BtnCopyAnswer.Click += async (_, _) => await CopyAssistantAnswerAsync();
         BtnInsertKnowledge.Click += (_, _) => InsertKnowledgeSnippetIntoPrompt();
@@ -189,6 +226,13 @@ public partial class AskTab : Avalonia.Controls.UserControl
         BtnChipRisks.Click += (_, _) =>
             AppendPromptLine("What risks do you see — and how can we mitigate them?");
         BtnChipExplain.Click += (_, _) => AppendPromptLine("Explain this in plain language for someone without domain jargon.");
+    }
+
+    /// <summary>Cancel in-flight ask/plan work (same as Panic button).</summary>
+    public void RequestPanicStop()
+    {
+        _cts?.Cancel();
+        NexusShell.Log("panic stop — cancel requested.");
     }
 
     /// <summary>Enter (und Ctrl+Enter) sendet wie „ask now“; nur Shift+Enter fügt eine neue Zeile ein.</summary>

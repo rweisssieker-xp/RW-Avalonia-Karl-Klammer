@@ -30,12 +30,16 @@
         <TextBlock Grid.Row="13" VerticalAlignment="Center" Text="Profile" />
         <ComboBox x:Name="SafetyProfile" Grid.Row="13" Grid.Column="1" />
       </Grid>
+      <CheckBox x:Name="UseVerticalTabs"
+                Content="Vertical tab strip (left side, saves with „save settings“)"
+                ToolTip.Tip="More room for tab labels; Ctrl+P still jumps quickly." />
       <CheckBox x:Name="NeverAutoSend" Content="never auto-send" />
       <CheckBox x:Name="NeverAutoPost" Content="never auto-post / book" />
       <CheckBox x:Name="PanicStop" Content="panic stop enabled" />
       <TextBlock Text="Denylist (comma-separated)" />
       <TextBox x:Name="DenylistBox" />
-      <TextBlock Text="Watch &amp; local tool host" FontWeight="SemiBold" Margin="0,8,0,0" />
+      <Expander Header="Watch &amp; local tool host" IsExpanded="True" Margin="0,4,0,0">
+        <StackPanel Spacing="10">
       <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
         <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Watch interval (s)" />
         <TextBox x:Name="WatchIntervalBox" Grid.Row="0" Grid.Column="1" Watermark="15–600, default 45" />
@@ -48,7 +52,11 @@
         <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Tool host port" />
         <TextBox x:Name="ToolHostPortBox" Grid.Row="4" Grid.Column="1" Watermark="17888" />
       </Grid>
-      <TextBlock Text="Dynamics AX 2012 — AIF / OData / COM (optional, test tenant)" FontWeight="SemiBold" Margin="0,8,0,0" />
+        </StackPanel>
+      </Expander>
+      <Expander Header="Dynamics AX 2012 (optional, test tenant)" IsExpanded="False" Margin="0,4,0,0">
+        <StackPanel Spacing="10">
+      <TextBlock Text="AIF / OData / COM" FontWeight="SemiBold" Margin="0,0,0,4" />
       <CheckBox x:Name="AxIntegrationEnabled" Content="Enable ax.* integration tokens" />
       <TextBlock Text="AX test tenant label (optional, non-secret)" />
       <TextBox x:Name="AxTenantLabel" Watermark="e.g. CONTOSO-DEV" />
@@ -72,10 +80,15 @@
         <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="COM: language" />
         <TextBox x:Name="AxBcLangBox" Grid.Row="2" Grid.Column="1" Watermark="en-us" />
       </Grid>
-      <TextBlock Text=".env overview (keys only)" FontWeight="SemiBold" Margin="0,8,0,0" />
+        </StackPanel>
+      </Expander>
+      <Expander Header=".env overview (keys only)" IsExpanded="False" Margin="0,4,0,0">
+        <StackPanel Spacing="8">
       <TextBox x:Name="EnvSummary" IsReadOnly="True" AcceptsReturn="True" MinHeight="100" FontFamily="Consolas,Courier New,monospace" />
       <TextBlock x:Name="EnvPathHint" FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}"
                  TextWrapping="Wrap" />
+        </StackPanel>
+      </Expander>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

@@ -9,6 +9,7 @@ public static class ActivityStatusHub
     private static readonly object Gate = new();
     private static CompanionVisualState _companion = CompanionVisualState.Ready;
     private static bool _askBusy;
+    private static string? _cliAgentLabel;
 
     public static void SetCompanionState(CompanionVisualState state)
     {
@@ -27,6 +28,14 @@ public static class ActivityStatusHub
     /// <summary>Re-read flow progress (AgentRunStateStore) and refresh the line.</summary>
     public static void RefreshFromStores() => Push();
 
+    /// <summary>Local CLI agent (codex / claude code / openclaw) — null when idle.</summary>
+    public static void SetCliAgentRun(string? shortAgentName)
+    {
+        lock (Gate)
+            _cliAgentLabel = string.IsNullOrWhiteSpace(shortAgentName) ? null : shortAgentName.Trim();
+        Push();
+    }
+
     private static void Push()
     {
         var line = BuildLine();
@@ -38,13 +47,17 @@ public static class ActivityStatusHub
     {
         CompanionVisualState c;
         bool ask;
+        string? cli;
         lock (Gate)
         {
             c = _companion;
             ask = _askBusy;
+            cli = _cliAgentLabel;
         }
 
         var ar = AgentRunStateStore.Snapshot();
+        if (!string.IsNullOrEmpty(cli))
+            return true;
         if (ask)
             return true;
         if (!string.IsNullOrEmpty(ar.RunId) && ar.TotalSteps > 0)
@@ -59,17 +72,19 @@ public static class ActivityStatusHub
     {
         CompanionVisualState comp;
         bool askBusy;
+        string? cliLabel;
         lock (Gate)
         {
             comp = _companion;
             askBusy = _askBusy;
+            cliLabel = _cliAgentLabel;
         }
 
         var ar = AgentRunStateStore.Snapshot();
         var parts = new List<string>();
 
         if (comp == CompanionVisualState.Error)
-            parts.Add("Begleiter: err");
+            parts.Add("Companion: err");
 
         if (!string.IsNullOrEmpty(ar.RunId) && ar.TotalSteps > 0)
         {
@@ -83,14 +98,20 @@ public static class ActivityStatusHub
             parts.Add(flow);
         }
 
+        if (!string.IsNullOrEmpty(cliLabel))
+        {
+            var c = cliLabel.Length > 28 ? cliLabel[..27] + "…" : cliLabel;
+            parts.Add("CLI: " + c);
+        }
+
         if (askBusy)
             parts.Add("Ask: busy");
 
         if (comp != CompanionVisualState.Ready && comp != CompanionVisualState.Error)
-            parts.Add("Begleiter: " + CompanionTag(comp));
+            parts.Add("Companion: " + CompanionTag(comp));
 
         if (parts.Count == 0)
-            return "Bereit";
+            return "Ready · Ctrl+P palette";
 
         return string.Join(" · ", parts);
     }

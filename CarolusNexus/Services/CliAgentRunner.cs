@@ -15,19 +15,31 @@ public static class CliAgentRunner
         string prompt,
         CancellationToken ct = default)
     {
-        Directory.CreateDirectory(AppPaths.CodexOutputDir);
-        var ts = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-        var tag = agent.Replace(' ', '-').ToLowerInvariant();
-        var logPath = Path.Combine(AppPaths.CodexOutputDir, $"karl-klammer-{tag}-{ts}.txt");
-        var env = DotEnvStore.Load();
+        var display = string.IsNullOrWhiteSpace(agent) ? "agent" : agent.Trim();
+        if (display.Length > 24)
+            display = display[..23] + "…";
+        ActivityStatusHub.SetCliAgentRun(display);
 
-        return agent switch
+        try
         {
-            "codex" => await RunCodexAsync(env, prompt, logPath, ct),
-            "claude code" => await RunClaudeAsync(env, prompt, logPath, ct),
-            "openclaw" => await RunOpenClawAsync(env, prompt, logPath, ct),
-            _ => (logPath, "Unknown agent: " + agent)
-        };
+            Directory.CreateDirectory(AppPaths.CodexOutputDir);
+            var ts = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            var tag = agent.Replace(' ', '-').ToLowerInvariant();
+            var logPath = Path.Combine(AppPaths.CodexOutputDir, $"karl-klammer-{tag}-{ts}.txt");
+            var env = DotEnvStore.Load();
+
+            return agent switch
+            {
+                "codex" => await RunCodexAsync(env, prompt, logPath, ct),
+                "claude code" => await RunClaudeAsync(env, prompt, logPath, ct),
+                "openclaw" => await RunOpenClawAsync(env, prompt, logPath, ct),
+                _ => (logPath, "Unknown agent: " + agent)
+            };
+        }
+        finally
+        {
+            ActivityStatusHub.SetCliAgentRun(null);
+        }
     }
 
     private static void ApplyOpenClawGatewayEnv(ProcessStartInfo psi, IReadOnlyDictionary<string, string> env)

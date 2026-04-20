@@ -52,6 +52,7 @@ public partial class SetupTab : UserControl
         AxBcAosBox.Text = s.AxBcObjectServer ?? "";
         AxBcDbBox.Text = s.AxBcDatabase ?? "";
         AxBcLangBox.Text = string.IsNullOrWhiteSpace(s.AxBcLanguage) ? "en-us" : s.AxBcLanguage;
+        UseVerticalTabs.IsChecked = s.UseVerticalTabs;
     }
 
     public NexusSettings Gather()
@@ -88,6 +89,7 @@ public partial class SetupTab : UserControl
             AxBcObjectServer = AxBcAosBox.Text?.Trim() ?? "",
             AxBcDatabase = AxBcDbBox.Text?.Trim() ?? "",
             AxBcLanguage = string.IsNullOrWhiteSpace(AxBcLangBox.Text) ? "en-us" : AxBcLangBox.Text.Trim(),
+            UseVerticalTabs = UseVerticalTabs.IsChecked == true,
             Safety = new SafetySettings
             {
                 Profile = SafetyProfile.SelectedItem?.ToString() ?? "balanced",
