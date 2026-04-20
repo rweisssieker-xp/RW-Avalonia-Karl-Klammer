@@ -4,8 +4,19 @@
              x:Class="CarolusNexus.Views.RitualsTab">
   <Grid x:Name="RitualsRootGrid" ColumnDefinitions="*,*,*" MinHeight="420">
     <DockPanel x:Name="RitualsLibraryPane" Grid.Column="0" Margin="0,0,8,0">
-      <TextBlock DockPanel.Dock="Top" Text="Ritual Library" FontWeight="SemiBold" Margin="0,0,0,6" />
-      <TextBox x:Name="LibFilter" DockPanel.Dock="Top" Watermark="Search…" Margin="0,0,0,6" />
+      <TextBlock DockPanel.Dock="Top" Text="Flow library" FontWeight="SemiBold" Margin="0,0,0,6" />
+      <TextBox x:Name="LibFilter" DockPanel.Dock="Top" Watermark="Search…" Margin="0,0,0,4" />
+      <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,6">
+        <TextBlock Text="Filters (risk · state · archive · category · source)" FontSize="11"
+                   Foreground="{DynamicResource NexusMutedForegroundBrush}" />
+        <WrapPanel>
+          <ComboBox x:Name="FilterRisk" Width="108" Margin="0,0,6,4" />
+          <ComboBox x:Name="FilterPublication" Width="118" Margin="0,0,6,4" />
+          <ComboBox x:Name="FilterArchive" Width="108" Margin="0,0,6,4" />
+          <TextBox x:Name="FilterCategory" Width="120" Watermark="category" Margin="0,0,6,4" />
+          <TextBox x:Name="FilterSource" Width="120" Watermark="source" Margin="0,0,6,4" />
+        </WrapPanel>
+      </StackPanel>
       <ListBox x:Name="RitualList" MinHeight="140">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="models:AutomationRecipe">
@@ -15,7 +26,7 @@
       </ListBox>
     </DockPanel>
     <DockPanel x:Name="RitualsBuilderPane" Grid.Column="1" Margin="0,0,8,0">
-      <TextBlock DockPanel.Dock="Top" Text="Ritual Builder" FontWeight="SemiBold" Margin="0,0,0,4" />
+      <TextBlock DockPanel.Dock="Top" Text="Flow builder" FontWeight="SemiBold" Margin="0,0,0,4" />
       <TextBlock x:Name="QueueStatusLine" DockPanel.Dock="Top" FontSize="11"
                  Foreground="{DynamicResource NexusMutedForegroundBrush}" Margin="0,0,0,4"
                  Text="Job queue: —" TextWrapping="Wrap" />
@@ -26,6 +37,7 @@
       <ScrollViewer>
         <StackPanel Spacing="6">
           <TextBox x:Name="RitualName" Watermark="Name" />
+          <TextBox x:Name="RitualCategory" Watermark="Category (filter / SOP bucket)" />
           <TextBox x:Name="RitualDesc" Watermark="Description" AcceptsReturn="True" MinHeight="48" />
           <TextBlock Text="Governance (handbook §16.5)" FontWeight="SemiBold" />
           <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
@@ -42,8 +54,8 @@
           </Grid>
           <WrapPanel>
             <Button x:Name="BtnAiSuggestName" Content="AI: short title" Margin="0,0,6,6"
-                    ToolTip.Tip="Suggests a short ritual name via LLM (description and/or steps)." />
-            <Button x:Name="BtnSaveRitual" Content="save ritual" Margin="0,0,6,6" />
+                    ToolTip.Tip="Suggests a short flow name via LLM (description and/or steps)." />
+            <Button x:Name="BtnSaveRitual" Content="save flow" Margin="0,0,6,6" />
             <Button x:Name="BtnDeleteRitual" Content="delete" Margin="0,0,6,6" />
             <Button x:Name="BtnClone" Content="clone" Margin="0,0,6,6" />
             <Button x:Name="BtnArchive" Content="archive" Margin="0,0,6,6" />
@@ -51,9 +63,9 @@
             <Button x:Name="BtnQueue" Content="queue for run" Margin="0,0,6,6" />
             <Button x:Name="BtnApproveJob" Content="approve next job" Margin="0,0,6,6" />
             <Button x:Name="BtnDryRun" Content="dry run" Margin="0,0,6,6" />
-            <Button x:Name="BtnRunRitual" Content="run ritual" Margin="0,0,6,6" />
+            <Button x:Name="BtnRunRitual" Content="run flow" Margin="0,0,6,6" />
             <Button x:Name="BtnRunNextStep" Content="run next step" Margin="0,0,6,6" />
-            <Button x:Name="BtnResume" Content="resume ritual" Margin="0,0,6,6" />
+            <Button x:Name="BtnResume" Content="resume flow" Margin="0,0,6,6" />
           </WrapPanel>
           <TextBlock Text="Teach" FontWeight="SemiBold" />
           <WrapPanel>

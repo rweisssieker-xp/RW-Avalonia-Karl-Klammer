@@ -61,18 +61,28 @@
                Stroke="#333"
                StrokeThickness="1"
                IsHitTestVisible="False" />
-      <Ellipse Canvas.Left="70"
+      <Ellipse x:Name="LeftPupil"
+               Canvas.Left="70"
                Canvas.Top="26"
                Width="7"
                Height="7"
                Fill="#1a1a1a"
-               IsHitTestVisible="False" />
-      <Ellipse Canvas.Left="88"
+               IsHitTestVisible="False">
+        <Ellipse.RenderTransform>
+          <TranslateTransform />
+        </Ellipse.RenderTransform>
+      </Ellipse>
+      <Ellipse x:Name="RightPupil"
+               Canvas.Left="88"
                Canvas.Top="28"
                Width="7"
                Height="7"
                Fill="#1a1a1a"
-               IsHitTestVisible="False" />
+               IsHitTestVisible="False">
+        <Ellipse.RenderTransform>
+          <TranslateTransform />
+        </Ellipse.RenderTransform>
+      </Ellipse>
     </Canvas>
   </Viewbox>
 </Window>

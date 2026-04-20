@@ -48,6 +48,30 @@
         <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Tool host port" />
         <TextBox x:Name="ToolHostPortBox" Grid.Row="4" Grid.Column="1" Watermark="17888" />
       </Grid>
+      <TextBlock Text="Dynamics AX 2012 — AIF / OData / COM (optional, test tenant)" FontWeight="SemiBold" Margin="0,8,0,0" />
+      <CheckBox x:Name="AxIntegrationEnabled" Content="Enable ax.* integration tokens" />
+      <TextBlock Text="AX test tenant label (optional, non-secret)" />
+      <TextBox x:Name="AxTenantLabel" Watermark="e.g. CONTOSO-DEV" />
+      <TextBlock VerticalAlignment="Center" Text="Integration backend" />
+      <ComboBox x:Name="AxBackendBox" />
+      <TextBlock Text="OData base URL" />
+      <TextBox x:Name="AxODataBaseUrlBox" Watermark="https://AOS/AX/Data/" />
+      <CheckBox x:Name="AxODataUseWinCred" Content="OData / AIF HTTP: use Windows default credentials" />
+      <TextBlock Text="AIF service base URL (optional ping)" />
+      <TextBox x:Name="AxAifBaseUrlBox" Watermark="https://AOS:8148/MicrosoftDynamicsAXAif50/…" />
+      <TextBlock Text="DataAreaId / company (test)" />
+      <TextBox x:Name="AxDataAreaBox" Watermark="USMF, DAT, …" />
+      <TextBlock Text="BusinessConnectorNet.dll path (COM)" />
+      <TextBox x:Name="AxBcDllBox"
+               Watermark="Path to Microsoft.Dynamics.BusinessConnectorNet.dll" />
+      <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto">
+        <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="COM: AOS" />
+        <TextBox x:Name="AxBcAosBox" Grid.Row="0" Grid.Column="1" Watermark="host:port" />
+        <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="COM: database" />
+        <TextBox x:Name="AxBcDbBox" Grid.Row="1" Grid.Column="1" />
+        <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="COM: language" />
+        <TextBox x:Name="AxBcLangBox" Grid.Row="2" Grid.Column="1" Watermark="en-us" />
+      </Grid>
       <TextBlock Text=".env overview (keys only)" FontWeight="SemiBold" Margin="0,8,0,0" />
       <TextBox x:Name="EnvSummary" IsReadOnly="True" AcceptsReturn="True" MinHeight="100" FontFamily="Consolas,Courier New,monospace" />
       <TextBlock x:Name="EnvPathHint" FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}"

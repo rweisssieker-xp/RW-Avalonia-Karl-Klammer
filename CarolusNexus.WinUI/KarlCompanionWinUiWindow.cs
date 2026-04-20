@@ -17,6 +17,9 @@ public sealed partial class KarlCompanionWinUiWindow
     private const int OffsetY = 18;
 
     private readonly DispatcherQueueTimer _timer;
+    private readonly DispatcherQueueTimer _thinkingAnimTimer;
+    private double _thinkPhase;
+    private const double AuraBaseOpacity = 0.42;
 
     public KarlCompanionWinUiWindow()
     {
@@ -33,11 +36,16 @@ public sealed partial class KarlCompanionWinUiWindow
         _timer.Interval = TimeSpan.FromMilliseconds(33);
         _timer.Tick += (_, _) => FollowCursor();
 
+        _thinkingAnimTimer = dq.CreateTimer();
+        _thinkingAnimTimer.Interval = TimeSpan.FromMilliseconds(48);
+        _thinkingAnimTimer.Tick += OnThinkingAnimTick;
+
         Closed += (_, _) =>
         {
             CompanionHub.StateChanged -= OnHubState;
             CompanionHub.JumpToTargetScreenRect -= OnJumpToTargetScreenRect;
             _timer.Stop();
+            _thinkingAnimTimer.Stop();
         };
 
         Activated += OnFirstActivated;
@@ -112,7 +120,58 @@ public sealed partial class KarlCompanionWinUiWindow
         };
 
         AuraEllipse.Fill = new SolidColorBrush(ParseHexColor(hex));
+        AuraEllipse.Opacity = AuraBaseOpacity;
         StateTag.Text = label;
+
+        if (state == CompanionVisualState.Thinking)
+        {
+            _thinkPhase = 0;
+            _thinkingAnimTimer.Start();
+        }
+        else
+        {
+            _thinkingAnimTimer.Stop();
+            ResetPupilTransforms();
+        }
+    }
+
+    private void ResetPupilTransforms()
+    {
+        if (LeftPupil.RenderTransform is TranslateTransform lt)
+        {
+            lt.X = 0;
+            lt.Y = 0;
+        }
+
+        if (RightPupil.RenderTransform is TranslateTransform rt)
+        {
+            rt.X = 0;
+            rt.Y = 0;
+        }
+    }
+
+    private void OnThinkingAnimTick(DispatcherQueueTimer sender, object args)
+    {
+        _thinkPhase += 0.22;
+        const double r = 3.4;
+        var dxL = r * Math.Cos(_thinkPhase);
+        var dyL = r * Math.Sin(_thinkPhase);
+        var dxR = r * Math.Cos(_thinkPhase + 0.5);
+        var dyR = r * Math.Sin(_thinkPhase + 0.5);
+
+        if (LeftPupil.RenderTransform is TranslateTransform lt)
+        {
+            lt.X = dxL;
+            lt.Y = dyL;
+        }
+
+        if (RightPupil.RenderTransform is TranslateTransform rt)
+        {
+            rt.X = dxR;
+            rt.Y = dyR;
+        }
+
+        AuraEllipse.Opacity = AuraBaseOpacity + 0.14 * Math.Sin(_thinkPhase * 1.4);
     }
 
     private static Color ParseHexColor(string hex)

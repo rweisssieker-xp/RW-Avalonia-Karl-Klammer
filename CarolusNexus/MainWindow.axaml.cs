@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -23,6 +24,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _dashboardTimer;
     private readonly DispatcherTimer _releasePollTimer;
     private readonly DispatcherTimer _pollFallbackTimer;
+    private readonly DispatcherTimer _statusActivityTimer;
     private PushToTalkHotkeyWindow? _hotkeyWindow;
     private bool _pollFallbackDown;
     private int _pttVk = PushToTalkKey.DefaultVirtualKey;
@@ -46,6 +48,8 @@ public partial class MainWindow : Window
         AppPaths.EnsureDataTree();
 
         NexusShell.AppendGlobalLog = line => TabDiagnostics.Append(line);
+        NexusShell.SetGlobalStatusLine = t => GlobalStatusBar.Text = t;
+        NexusShell.SetGlobalBusyIndicator = v => GlobalStatusBusyBar.IsVisible = v;
 
         _dashboardTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
         _dashboardTimer.Tick += (_, _) => RefreshDashboard();
@@ -54,9 +58,13 @@ public partial class MainWindow : Window
         _pollFallbackTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
         _pollFallbackTimer.Tick += OnPollFallbackTick;
 
+        _statusActivityTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _statusActivityTimer.Tick += (_, _) => ActivityStatusHub.RefreshFromStores();
+
         Loaded += OnLoaded;
         Closing += OnWindowClosing;
         CompanionHub.StateChanged += OnCompanionVisualState;
+        KeyDown += OnMainWindowKeyDown;
 
         BtnRefreshAll.Click += OnRefreshAll;
         BtnSaveSettings.Click += OnSaveSettings;
@@ -66,6 +74,78 @@ public partial class MainWindow : Window
 
         _dashboardTimer.Start();
         SetupPushToTalk();
+    }
+
+    private void OnMainWindowKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.P)
+        {
+            e.Handled = true;
+            ShowCommandPalette();
+        }
+    }
+
+    private async void ShowCommandPalette()
+    {
+        var labels = new[]
+        {
+            "Ask", "Dashboard", "Setup", "Knowledge", "Operator flows", "History", "Diagnostics", "Console",
+            "Live Context", "Experiments"
+        };
+        var list = new ListBox
+        {
+            Margin = new Thickness(8),
+            MinHeight = 300,
+            ItemsSource = labels
+        };
+        var dlg = new Window
+        {
+            Title = "Go to page",
+            Width = 460,
+            Height = 420,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Margin = new Thickness(8),
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "Double‑click or Enter — same order as the main tabs.",
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                        FontSize = 11
+                    },
+                    list
+                }
+            }
+        };
+
+        void Go()
+        {
+            if (list.SelectedIndex < 0)
+                return;
+            MainTabs.SelectedIndex = list.SelectedIndex;
+            NexusShell.Log("Command palette: " + labels[list.SelectedIndex]);
+            dlg.Close();
+        }
+
+        list.DoubleTapped += (_, _) => Go();
+        dlg.KeyDown += (_, ke) =>
+        {
+            if (ke.Key == Key.Enter)
+            {
+                ke.Handled = true;
+                Go();
+            }
+            else if (ke.Key == Key.Escape)
+            {
+                ke.Handled = true;
+                dlg.Close();
+            }
+        };
+
+        await dlg.ShowDialog(this);
     }
 
     private void RefreshPushToTalkKey() =>
@@ -174,6 +254,8 @@ public partial class MainWindow : Window
         NexusShell.Log(OfflineEdgeCapabilities.Describe());
         ApplyLocalToolHost();
         ApplyHeaderTilesResponsive();
+        ActivityStatusHub.RefreshFromStores();
+        _statusActivityTimer.Start();
     }
 
     private void ApplyHeaderTilesResponsive()
@@ -257,6 +339,9 @@ public partial class MainWindow : Window
         _dashboardTimer.Stop();
         _releasePollTimer.Stop();
         _pollFallbackTimer.Stop();
+        _statusActivityTimer.Stop();
+        NexusShell.SetGlobalStatusLine = null;
+        NexusShell.SetGlobalBusyIndicator = null;
         _hotkeyWindow?.Dispose();
         _hotkeyWindow = null;
         _toolHost?.Dispose();
@@ -418,7 +503,7 @@ public partial class MainWindow : Window
 
             proactive =
                 "Not in watch mode — live snapshot.\n" +
-                $"Knowledge files: {knowCount} · Ritual recipes: {ritualCount} · Jobs pending: {pending}\n" +
+                $"Knowledge files: {knowCount} · Operator flows: {ritualCount} · Jobs pending: {pending}\n" +
                 $"LLM .env: {(keyOk ? "key OK" : "key missing")} ({_settings.Provider})";
         }
 
@@ -432,7 +517,7 @@ public partial class MainWindow : Window
             live: TileLive.Text ?? "—",
             proactive,
             gov:
-            $"Profile: {_settings.Safety.Profile}\nPanic: {_settings.Safety.PanicStopEnabled}\nneverAutoSend: {_settings.Safety.NeverAutoSend}\n\n— Ritual jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}",
+            $"Profile: {_settings.Safety.Profile}\nPanic: {_settings.Safety.PanicStopEnabled}\nneverAutoSend: {_settings.Safety.NeverAutoSend}\n\n— Flow jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}",
             rituals: FormatRitualsDashboardCard(),
             watch: WatchSessionService.FormatDashboardSummary()
         );
@@ -447,7 +532,7 @@ public partial class MainWindow : Window
             var sb = new StringBuilder();
             sb.AppendLine($"Recipes in library: {list.Count} · jobs pending: {pending}");
             if (list.Count == 0)
-                sb.Append("(none yet — Rituals tab)");
+                sb.Append("(none yet — Operator flows tab)");
             else
             {
                 sb.AppendLine("Excerpt:");
@@ -459,7 +544,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            return "(Rituals: " + ex.Message + ")";
+            return "(Operator flows: " + ex.Message + ")";
         }
     }
 

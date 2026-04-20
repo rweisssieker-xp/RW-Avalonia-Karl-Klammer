@@ -66,6 +66,53 @@ public sealed class NexusSettings
     /// <summary>Hinweis für UI: gebündelte Edge-Modelle sind optional — siehe OfflineEdgeCapabilities.</summary>
     [JsonPropertyName("showOfflineCapabilityBanner")]
     public bool ShowOfflineCapabilityBanner { get; set; } = true;
+
+    /// <summary>AX-/Dynamics-Token (<c>ax.*</c>) und Kontext — abschaltbar für reine Demo-Umgebungen.</summary>
+    [JsonPropertyName("axIntegrationEnabled")]
+    public bool AxIntegrationEnabled { get; set; } = true;
+
+    /// <summary>Freitext nur für Logs/Kontext (z. B. Testmandant) — kein Secret.</summary>
+    [JsonPropertyName("axTestTenantLabel")]
+    public string AxTestTenantLabel { get; set; } = "";
+
+    /// <summary>
+    /// <c>foreground_uia</c> = nur Vordergrund/UIA (Standard). <c>odata</c> = AX-2012-OData-HTTP (Testmandant/Datenbereich).
+    /// <c>com_bc</c> = Business Connector .NET (lokal installierte DLL, kein Secret im JSON).
+    /// </summary>
+    [JsonPropertyName("axIntegrationBackend")]
+    public string AxIntegrationBackend { get; set; } = "foreground_uia";
+
+    /// <summary>Basis-URL für OData (z. B. <c>https://AOS/AX/Data/</c> oder /AX/Services/). Keine Secrets hier.</summary>
+    [JsonPropertyName("axODataBaseUrl")]
+    public string AxODataBaseUrl { get; set; } = "";
+
+    /// <summary>Wenn true: <see cref="System.Net.CredentialCache.DefaultNetworkCredentials"/> / DefaultCredentials; sonst Basic mit <c>AX_HTTP_USER</c> / <c>AX_HTTP_PASSWORD</c> in .env.</summary>
+    [JsonPropertyName("axODataUseDefaultCredentials")]
+    public bool AxODataUseDefaultCredentials { get; set; } = true;
+
+    /// <summary>Optional: Basis-URL für AIF-SOAP-Endpunkte (Health/Ping). Erweiterungspunkt für SOAP-Client.</summary>
+    [JsonPropertyName("axAifServiceBaseUrl")]
+    public string AxAifServiceBaseUrl { get; set; } = "";
+
+    /// <summary>AX-Datenbereich / Firmenkennung (z. B. USMF, DAT) — Testmandant.</summary>
+    [JsonPropertyName("axDataAreaId")]
+    public string AxDataAreaId { get; set; } = "";
+
+    /// <summary>Vollständiger Pfad zu <c>Microsoft.Dynamics.BusinessConnectorNet.dll</c> (Client-Bin).</summary>
+    [JsonPropertyName("axBusinessConnectorNetAssemblyPath")]
+    public string AxBusinessConnectorNetAssemblyPath { get; set; } = "";
+
+    /// <summary>AOS für COM-Logon, z. B. <c>localhost:2712</c> oder NetBIOS.</summary>
+    [JsonPropertyName("axBcObjectServer")]
+    public string AxBcObjectServer { get; set; } = "";
+
+    /// <summary>SQL-/Anwendungsdatenbankname für COM-Logon.</summary>
+    [JsonPropertyName("axBcDatabase")]
+    public string AxBcDatabase { get; set; } = "";
+
+    /// <summary>Sprache für COM-Logon (z. B. en-us, de).</summary>
+    [JsonPropertyName("axBcLanguage")]
+    public string AxBcLanguage { get; set; } = "en-us";
 }
 
 public sealed class SafetySettings

@@ -84,7 +84,7 @@ public sealed class DashboardShellPage : Page
         Add(0, 2, "3 · Live Context", _cardLive);
         Add(1, 0, "4 · Proactive Karl + shell log", _cardPro);
         Add(1, 1, "5 · Governance + Audit", _cardGov);
-        Add(1, 2, "6 · Recent Rituals", _cardRit);
+        Add(1, 2, "6 · Recent operator flows", _cardRit);
         Add(2, 0, "7 · Recent Watch Sessions", _cardWatch, 3);
 
         stack.Children.Add(grid);

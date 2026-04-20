@@ -39,7 +39,15 @@ public sealed partial class MainWindow : Window
     private readonly TextBlock _tileMemory = new() { TextWrapping = TextWrapping.Wrap, FontSize = 11 };
     private readonly TextBlock _tileLive = new() { TextWrapping = TextWrapping.Wrap, FontSize = 11 };
     private readonly TextBlock _tileEnv = new() { TextWrapping = TextWrapping.Wrap, FontSize = 11 };
-    private readonly TextBlock _statusLine = new() { FontSize = 12, Text = "Ready" };
+    private readonly TextBlock _statusLine = new() { FontSize = 12, Text = "Bereit" };
+    private readonly ProgressBar _globalStatusBusyBar = new()
+    {
+        Width = 56,
+        Height = 4,
+        VerticalAlignment = VerticalAlignment.Center,
+        IsIndeterminate = true,
+        Visibility = Microsoft.UI.Xaml.Visibility.Collapsed
+    };
     private readonly CheckBox _companionToggle = new()
     {
         Content = "Companion at cursor",
@@ -58,7 +66,7 @@ public sealed partial class MainWindow : Window
         _nav.MenuItems.Add(Mk("Dashboard", typeof(DashboardShellPage), Symbol.Home));
         _nav.MenuItems.Add(Mk("Setup", typeof(SetupShellPage), Symbol.Setting));
         _nav.MenuItems.Add(Mk("Knowledge", typeof(KnowledgeShellPage), Symbol.Bookmarks));
-        _nav.MenuItems.Add(Mk("Rituals", typeof(RitualsShellPage), Symbol.AllApps));
+        _nav.MenuItems.Add(Mk("Operator flows", typeof(RitualsShellPage), Symbol.AllApps));
         _nav.MenuItems.Add(Mk("History", typeof(HistoryShellPage), Symbol.Clock));
         _nav.MenuItems.Add(Mk("Diagnostics", typeof(DiagnosticsShellPage), Symbol.Remote));
         _nav.MenuItems.Add(Mk("Console", typeof(ConsoleShellPage), Symbol.Keyboard));
@@ -148,7 +156,10 @@ public sealed partial class MainWindow : Window
             FontSize = 12,
             Opacity = 0.65
         });
-        titleBlock.Children.Add(_statusLine);
+        var statusRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        statusRow.Children.Add(_globalStatusBusyBar);
+        statusRow.Children.Add(_statusLine);
+        titleBlock.Children.Add(statusRow);
         Grid.SetColumn(titleBlock, 0);
         titleRow.Children.Add(titleBlock);
 
@@ -448,7 +459,7 @@ public sealed partial class MainWindow : Window
             ("Dashboard", typeof(DashboardShellPage)),
             ("Setup", typeof(SetupShellPage)),
             ("Knowledge", typeof(KnowledgeShellPage)),
-            ("Rituals", typeof(RitualsShellPage)),
+            ("Operator flows", typeof(RitualsShellPage)),
             ("History", typeof(HistoryShellPage)),
             ("Diagnostics", typeof(DiagnosticsShellPage)),
             ("Console", typeof(ConsoleShellPage)),

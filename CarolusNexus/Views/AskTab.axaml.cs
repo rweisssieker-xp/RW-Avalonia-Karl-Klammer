@@ -1093,7 +1093,7 @@ public partial class AskTab : Avalonia.Controls.UserControl
         if (title.Length > 120)
             title = title[..120];
         if (string.IsNullOrWhiteSpace(title))
-            title = "Ritual " + DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            title = "Flow " + DateTime.Now.ToString("yyyy-MM-dd HH:mm");
 
         var recipe = new AutomationRecipe
         {
@@ -1102,12 +1102,13 @@ public partial class AskTab : Avalonia.Controls.UserControl
             Steps = steps.ToList()
         };
         RitualRecipeStore.AppendRecipe(recipe);
-        NexusShell.Log($"Saved as ritual: {recipe.Name}");
+        NexusShell.Log($"Saved as flow: {recipe.Name}");
     }
 
     private void SetBusy(bool busy)
     {
         _operationBusy = busy;
+        ActivityStatusHub.SetAskBusy(busy);
         AskBusyBar.IsVisible = busy;
         BtnAskNow.IsEnabled = !busy;
         BtnSmoke.IsEnabled = !busy;

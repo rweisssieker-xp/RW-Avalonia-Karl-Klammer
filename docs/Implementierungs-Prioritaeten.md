@@ -8,6 +8,19 @@ Dieses Dokument ergänzt [Carolus-Nexus-Benutzerhandbuch.md](Carolus-Nexus-Benut
 2. **Risiko:** Hochriskante Änderungen (Fat-Client, Installer) nach klaren Guardrails.
 3. **Abhängigkeiten:** Token-Runtime vor domänenspezifischer Tiefe (AX).
 
+## Umsetzungsstand (Kurz, Branch-Stand)
+
+| Bereich | Status |
+|--------|--------|
+| Generische Tokens `app\|…` / `browser.*` / `uia.*` / `ax.*` (Kontext + Delegation an UIA) | **Eingebaut** — siehe `AppFamilyLauncher`, `AxClientAutomationService`, `Win32AutomationExecutor`, `ForegroundUiAutomationContext`, Setup „AX / Dynamics“. |
+| Live Context: Form-/UIA-Summary + Selektions-Hinweis | **Eingebaut** (`ForegroundUiAutomationContext`, Aktualisierung in `LiveContextTab`). |
+| AX 2012 schmal: `ax.read_context` / `ax.form_summary` / `ax→uia` | **Eingebaut** hinter Feature-Flags; kein separater COM-Dynamics-Client. |
+| Distribution | **Portable-Zip-Skript** (`scripts/Package-Portable.ps1`, `docs/Distribution.md`); MSI/MSIX weiterhin optional. |
+| Avalonia: Experiments + Ctrl+P | **Eingebaut** (Tab „Experiments“, Command Palette). |
+| Flow-Bibliothek: Filter Risk/State/Archive/Category/Source | **Eingebaut** (Avalonia); WinUI: Kategorie-Feld + Textsuche. |
+
+---
+
 ## Empfohlene Reihenfolge
 
 ### 1. Operator-Adapter-Runtime (generische Plan-Tokens)

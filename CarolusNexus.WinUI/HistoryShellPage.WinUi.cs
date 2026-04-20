@@ -42,7 +42,7 @@ public sealed class HistoryShellPage : Page
             if (hint != null)
                 NexusShell.Log("Self-heal: " + hint);
         };
-        var createRitual = new Button { Content = "Create ritual from selection", Padding = new Thickness(10, 6, 10, 6) };
+        var createRitual = new Button { Content = "Create flow from selection", Padding = new Thickness(10, 6, 10, 6) };
         createRitual.Click += (_, _) => CreateRitualFromSelection();
         var refresh = new Button { Content = "Reload from disk", Padding = new Thickness(10, 6, 10, 6) };
         refresh.Click += (_, _) => Refresh();
@@ -140,7 +140,7 @@ public sealed class HistoryShellPage : Page
         _entries = doc.Entries.OrderByDescending(e => e.UtcAt).ToList();
         if (_entries.Count == 0)
         {
-            RebuildListPlaceholder("(no entries in action-history.json yet — run a plan/ritual)");
+            RebuildListPlaceholder("(no entries in action-history.json yet — run a plan or operator flow)");
             _histDetail.Text = "";
             return;
         }
@@ -221,6 +221,6 @@ public sealed class HistoryShellPage : Page
             }).ToList()
         };
         RitualRecipeStore.AppendRecipe(recipe);
-        NexusShell.Log($"Ritual created from history: {recipe.Name} ({recipe.Steps.Count} steps).");
+        NexusShell.Log($"Operator flow created from history: {recipe.Name} ({recipe.Steps.Count} steps).");
     }
 }

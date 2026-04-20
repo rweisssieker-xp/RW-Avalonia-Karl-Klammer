@@ -65,7 +65,7 @@
                 HorizontalAlignment="Stretch"
                 Background="{DynamicResource NexusTileBackgroundBrush}">
           <StackPanel>
-            <TextBlock Text="6 · Recent Rituals" FontWeight="SemiBold" />
+            <TextBlock Text="6 · Recent operator flows" FontWeight="SemiBold" />
             <TextBox x:Name="CardRituals" IsReadOnly="True" AcceptsReturn="True" MinHeight="72" TextWrapping="Wrap" />
           </StackPanel>
         </Border>

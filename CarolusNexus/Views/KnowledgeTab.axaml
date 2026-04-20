@@ -9,7 +9,7 @@
         <Button x:Name="BtnImport" Content="import files" HorizontalAlignment="Stretch" />
         <Button x:Name="BtnRemove" Content="remove doc" HorizontalAlignment="Stretch" />
         <Button x:Name="BtnReindex" Content="reindex" HorizontalAlignment="Stretch" />
-        <Button x:Name="BtnSuggestRitual" Content="suggest ritual from doc" HorizontalAlignment="Stretch" />
+        <Button x:Name="BtnSuggestRitual" Content="suggest flow from doc (LLM)" HorizontalAlignment="Stretch" />
       </StackPanel>
       <TextBlock DockPanel.Dock="Top" Text="Documents" FontWeight="SemiBold" Margin="0,0,0,6" />
       <ListBox x:Name="DocList" />

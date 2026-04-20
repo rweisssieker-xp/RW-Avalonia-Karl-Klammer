@@ -25,7 +25,7 @@ public static class VoiceIntentService
         {
             result = new VoiceIntentResult(
                 "dry_run_hint",
-                "Explain briefly: to dry-run a ritual, open the Rituals tab, select a ritual, and use dry run.",
+                "Explain briefly: to dry-run an operator flow, open Operator flows, select a flow, and use dry run.",
                 false);
             return true;
         }

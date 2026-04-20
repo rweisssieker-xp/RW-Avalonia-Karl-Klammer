@@ -15,6 +15,7 @@ public partial class SetupTab : UserControl
         ModeBox.ItemsSource = new[] { "companion", "agent", "automation", "watch" };
         UiThemeBox.ItemsSource = new[] { "Dark", "Light", "Default" };
         SafetyProfile.ItemsSource = new[] { "strict", "balanced", "power-user" };
+        AxBackendBox.ItemsSource = new[] { "foreground_uia", "odata", "com_bc" };
     }
 
     public void Apply(NexusSettings s)
@@ -40,6 +41,17 @@ public partial class SetupTab : UserControl
         ProactiveIntervalBox.Text = s.ProactiveLlmMinIntervalSeconds.ToString();
         EnableToolHost.IsChecked = s.EnableLocalToolHost;
         ToolHostPortBox.Text = s.LocalToolHostPort.ToString();
+        AxIntegrationEnabled.IsChecked = s.AxIntegrationEnabled;
+        AxTenantLabel.Text = s.AxTestTenantLabel ?? "";
+        AxBackendBox.SelectedItem = string.IsNullOrWhiteSpace(s.AxIntegrationBackend) ? "foreground_uia" : s.AxIntegrationBackend;
+        AxODataBaseUrlBox.Text = s.AxODataBaseUrl ?? "";
+        AxODataUseWinCred.IsChecked = s.AxODataUseDefaultCredentials;
+        AxAifBaseUrlBox.Text = s.AxAifServiceBaseUrl ?? "";
+        AxDataAreaBox.Text = s.AxDataAreaId ?? "";
+        AxBcDllBox.Text = s.AxBusinessConnectorNetAssemblyPath ?? "";
+        AxBcAosBox.Text = s.AxBcObjectServer ?? "";
+        AxBcDbBox.Text = s.AxBcDatabase ?? "";
+        AxBcLangBox.Text = string.IsNullOrWhiteSpace(s.AxBcLanguage) ? "en-us" : s.AxBcLanguage;
     }
 
     public NexusSettings Gather()
@@ -65,6 +77,17 @@ public partial class SetupTab : UserControl
             ProactiveLlmMinIntervalSeconds = ParseInt(ProactiveIntervalBox.Text, 180, 60, 3600),
             EnableLocalToolHost = EnableToolHost.IsChecked == true,
             LocalToolHostPort = ParseInt(ToolHostPortBox.Text, 17888, 1024, 65535),
+            AxIntegrationEnabled = AxIntegrationEnabled.IsChecked != false,
+            AxTestTenantLabel = AxTenantLabel.Text?.Trim() ?? "",
+            AxIntegrationBackend = AxBackendBox.SelectedItem?.ToString() ?? "foreground_uia",
+            AxODataBaseUrl = AxODataBaseUrlBox.Text?.Trim() ?? "",
+            AxODataUseDefaultCredentials = AxODataUseWinCred.IsChecked != false,
+            AxAifServiceBaseUrl = AxAifBaseUrlBox.Text?.Trim() ?? "",
+            AxDataAreaId = AxDataAreaBox.Text?.Trim() ?? "",
+            AxBusinessConnectorNetAssemblyPath = AxBcDllBox.Text?.Trim() ?? "",
+            AxBcObjectServer = AxBcAosBox.Text?.Trim() ?? "",
+            AxBcDatabase = AxBcDbBox.Text?.Trim() ?? "",
+            AxBcLanguage = string.IsNullOrWhiteSpace(AxBcLangBox.Text) ? "en-us" : AxBcLangBox.Text.Trim(),
             Safety = new SafetySettings
             {
                 Profile = SafetyProfile.SelectedItem?.ToString() ?? "balanced",

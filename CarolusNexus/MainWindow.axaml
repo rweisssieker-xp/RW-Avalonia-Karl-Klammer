@@ -9,6 +9,15 @@
         MinHeight="520"
         WindowStartupLocation="CenterScreen">
   <DockPanel>
+    <Border DockPanel.Dock="Bottom" Background="{DynamicResource NexusHeaderBackgroundBrush}"
+            BorderBrush="{DynamicResource NexusHeaderBorderBrush}" BorderThickness="0,1,0,0" Padding="10,6">
+      <Grid ColumnDefinitions="Auto,*">
+        <ProgressBar x:Name="GlobalStatusBusyBar" Grid.Column="0" Width="56" Height="4" Margin="0,0,10,0" VerticalAlignment="Center"
+                     IsIndeterminate="True" IsVisible="False" />
+        <TextBlock x:Name="GlobalStatusBar" Grid.Column="1" Text="Bereit" FontSize="12" TextWrapping="Wrap"
+                   VerticalAlignment="Center" />
+      </Grid>
+    </Border>
     <Border DockPanel.Dock="Top" Background="{DynamicResource NexusHeaderBackgroundBrush}"
             BorderBrush="{DynamicResource NexusHeaderBorderBrush}" BorderThickness="0,0,0,1" Padding="14,10">
       <StackPanel Spacing="10">
@@ -17,7 +26,6 @@
             <TextBlock Text="Carolus Nexus" FontSize="22" FontWeight="Bold" />
             <TextBlock Text="Windows operator desktop · persona: Karl Klammer" FontSize="12"
                        Foreground="{DynamicResource NexusMutedForegroundBrush}" />
-            <TextBlock x:Name="StatusLine" Text="Ready" FontSize="12" />
           </StackPanel>
           <CheckBox x:Name="CompanionToggle"
  Grid.Column="1"
@@ -105,7 +113,7 @@
       <TabItem Header="Knowledge">
         <views:KnowledgeTab x:Name="TabKnowledge" Margin="8" />
       </TabItem>
-      <TabItem Header="Rituals">
+      <TabItem Header="Operator flows">
         <views:RitualsTab x:Name="TabRituals" Margin="8" />
       </TabItem>
       <TabItem Header="History">
@@ -119,6 +127,9 @@
       </TabItem>
       <TabItem Header="Live Context">
         <views:LiveContextTab x:Name="TabLive" Margin="8" />
+      </TabItem>
+      <TabItem Header="Experiments">
+        <views:ExperimentsTab x:Name="TabExperiments" Margin="8" />
       </TabItem>
     </TabControl>
   </DockPanel>

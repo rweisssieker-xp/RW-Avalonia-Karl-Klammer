@@ -75,7 +75,7 @@ public sealed class LiveContextShellPage : Page
         _snapCross.Text =
             "Adapter buttons compare the selected family with the active window.\r\n" +
             "Custom action + “run”: tries executable tokens (power-user + PlanGuard) and shows the result.\r\n" +
-            "Teach mode (Rituals): “run” and adapter clicks create ritual steps.";
+            "Teach mode (Operator flows): “run” and adapter clicks create flow steps.";
 
         RefreshActiveSnapshot();
     }

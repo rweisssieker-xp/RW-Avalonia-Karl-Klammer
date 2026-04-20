@@ -27,7 +27,18 @@ public partial class RitualsTab : UserControl
         InitializeComponent();
         ApprovalModeBox.ItemsSource = new[] { "manual", "auto" };
         RiskLevelBox.ItemsSource = new[] { "low", "medium", "high" };
+        FilterRisk.ItemsSource = new[] { "any", "low", "medium", "high" };
+        FilterPublication.ItemsSource = new[] { "any", "draft", "published" };
+        FilterArchive.ItemsSource = new[] { "any", "active", "archived" };
+        FilterRisk.SelectedIndex = 0;
+        FilterPublication.SelectedIndex = 0;
+        FilterArchive.SelectedIndex = 0;
         LibFilter.TextChanged += (_, _) => FilterList();
+        FilterCategory.TextChanged += (_, _) => FilterList();
+        FilterSource.TextChanged += (_, _) => FilterList();
+        FilterRisk.SelectionChanged += (_, _) => FilterList();
+        FilterPublication.SelectionChanged += (_, _) => FilterList();
+        FilterArchive.SelectionChanged += (_, _) => FilterList();
         RitualList.SelectionChanged += OnRitualSelected;
 
         BtnSaveRitual.Click += (_, _) => SaveCurrent();
@@ -141,7 +152,7 @@ public partial class RitualsTab : UserControl
         var entry = ActionHistoryService.GetLatestPlanRunWithSteps();
         if (entry == null)
         {
-            NexusShell.Log("promote from history: no plan run with steps — run „run plan“ / ritual first.");
+            NexusShell.Log("promote from history: no plan run with steps — run „run plan“ / operator flow first.");
             return;
         }
 
@@ -255,9 +266,10 @@ public partial class RitualsTab : UserControl
         RitualRecipeStore.AppendRecipe(recipe);
         _selected = recipe;
         RitualName.Text = recipe.Name;
+        RitualCategory.Text = recipe.Category ?? "";
         RitualDesc.Text = recipe.Description;
         StepsEditor.Text = JsonSerializer.Serialize(recipe.Steps, new JsonSerializerOptions { WriteIndented = true });
-        NexusShell.Log($"Teach: ritual saved — {recipe.Name} ({recipe.Steps.Count} steps).");
+        NexusShell.Log($"Teach: flow saved — {recipe.Name} ({recipe.Steps.Count} steps).");
         ReloadLibrary();
     }
 
@@ -290,12 +302,33 @@ public partial class RitualsTab : UserControl
     private void FilterList()
     {
         var q = LibFilter.Text?.Trim() ?? "";
-        var src = string.IsNullOrEmpty(q)
-            ? _all
-            : _all.Where(r =>
+        IEnumerable<AutomationRecipe> query = _all;
+
+        if (FilterRisk.SelectedItem is string fr && !string.Equals(fr, "any", StringComparison.OrdinalIgnoreCase))
+            query = query.Where(r => string.Equals(r.RiskLevel ?? "medium", fr, StringComparison.OrdinalIgnoreCase));
+
+        if (FilterPublication.SelectedItem is string fp && !string.Equals(fp, "any", StringComparison.OrdinalIgnoreCase))
+            query = query.Where(r =>
+                string.Equals(r.PublicationState?.Trim() ?? "draft", fp, StringComparison.OrdinalIgnoreCase));
+
+        if (FilterArchive.SelectedItem is string fa && !string.Equals(fa, "any", StringComparison.OrdinalIgnoreCase))
+            query = fa == "archived" ? query.Where(r => r.Archived) : query.Where(r => !r.Archived);
+
+        var fc = FilterCategory.Text?.Trim() ?? "";
+        if (fc.Length > 0)
+            query = query.Where(r => (r.Category ?? "").Contains(fc, StringComparison.OrdinalIgnoreCase));
+
+        var fsrc = FilterSource.Text?.Trim() ?? "";
+        if (fsrc.Length > 0)
+            query = query.Where(r => (r.ConfidenceSource ?? "").Contains(fsrc, StringComparison.OrdinalIgnoreCase));
+
+        if (!string.IsNullOrEmpty(q))
+            query = query.Where(r =>
                 r.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                r.Description.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
-        RitualList.ItemsSource = src;
+                r.Description.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                (r.Category ?? "").Contains(q, StringComparison.OrdinalIgnoreCase));
+
+        RitualList.ItemsSource = query.ToList();
     }
 
     private void OnRitualSelected(object? s, SelectionChangedEventArgs e)
@@ -310,6 +343,7 @@ public partial class RitualsTab : UserControl
     private void ApplySelection(AutomationRecipe r)
     {
         RitualName.Text = r.Name;
+        RitualCategory.Text = r.Category ?? "";
         RitualDesc.Text = r.Description;
         ApprovalModeBox.SelectedItem = string.IsNullOrWhiteSpace(r.ApprovalMode) ? "manual" : r.ApprovalMode;
         RiskLevelBox.SelectedItem = string.IsNullOrWhiteSpace(r.RiskLevel) ? "medium" : r.RiskLevel;
@@ -357,12 +391,12 @@ public partial class RitualsTab : UserControl
         if (!qa.Ok)
         {
             var msg = string.Join("\n", qa.Issues);
-            NexusShell.Log("Ritual QA blocked save: " + msg);
+            NexusShell.Log("Flow QA blocked save: " + msg);
             if (OperatingSystem.IsWindows())
             {
                 System.Windows.Forms.MessageBox.Show(
                     msg,
-                    "Carolus Nexus — ritual QA",
+                    "Carolus Nexus — flow QA",
                     System.Windows.Forms.MessageBoxButtons.OK,
                     System.Windows.Forms.MessageBoxIcon.Warning);
             }
@@ -372,7 +406,7 @@ public partial class RitualsTab : UserControl
 
         RitualRecipeStore.Upsert(recipe);
         _selected = recipe;
-        NexusShell.Log($"Ritual saved: {recipe.Name} ({recipe.Steps.Count} steps).");
+        NexusShell.Log($"Flow saved: {recipe.Name} ({recipe.Steps.Count} steps).");
         ReloadLibrary();
     }
 
@@ -383,6 +417,7 @@ public partial class RitualsTab : UserControl
         RitualRecipeStore.DeleteById(_selected.Id);
         _selected = null;
         RitualName.Text = "";
+        RitualCategory.Text = "";
         RitualDesc.Text = "";
         ApprovalModeBox.SelectedItem = "manual";
         RiskLevelBox.SelectedItem = "medium";
@@ -390,7 +425,7 @@ public partial class RitualsTab : UserControl
         ConfidenceSourceBox.Text = "";
         MaxAutonomyStepsBox.Text = "";
         StepsEditor.Text = "[]";
-        NexusShell.Log("Ritual deleted.");
+        NexusShell.Log("Flow deleted.");
         ReloadLibrary();
     }
 
@@ -405,7 +440,7 @@ public partial class RitualsTab : UserControl
         clone.Id = Guid.NewGuid().ToString("n");
         clone.Name = (clone.Name ?? "") + " (copy)";
         RitualRecipeStore.AppendRecipe(clone);
-        NexusShell.Log("Ritual cloned.");
+        NexusShell.Log("Flow cloned.");
         ReloadLibrary();
     }
 
@@ -413,14 +448,14 @@ public partial class RitualsTab : UserControl
     {
         if (_selected == null)
         {
-            NexusShell.Log("Archive: no ritual selected.");
+            NexusShell.Log("Archive: no flow selected.");
             return;
         }
 
         SaveCurrent();
         _selected.Archived = true;
         RitualRecipeStore.Upsert(_selected);
-        NexusShell.Log($"Ritual archived: {_selected.Name}");
+        NexusShell.Log($"Flow archived: {_selected.Name}");
         ReloadLibrary();
     }
 
@@ -428,7 +463,7 @@ public partial class RitualsTab : UserControl
     {
         if (_selected == null)
         {
-            NexusShell.Log("Publish: no ritual selected.");
+            NexusShell.Log("Publish: no flow selected.");
             return;
         }
 
@@ -443,7 +478,7 @@ public partial class RitualsTab : UserControl
     {
         if (_selected == null)
         {
-            NexusShell.Log("Queue: no ritual selected — save or pick one first.");
+            NexusShell.Log("Queue: no flow selected — save or pick one first.");
             RefreshQueueStatus();
             return;
         }
@@ -451,7 +486,7 @@ public partial class RitualsTab : UserControl
         SaveCurrent();
         if (_selected.Archived)
         {
-            NexusShell.Log("Queue: archived rituals are not enqueued.");
+            NexusShell.Log("Queue: archived flows are not enqueued.");
             RefreshQueueStatus();
             return;
         }
@@ -551,7 +586,7 @@ public partial class RitualsTab : UserControl
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
             const string sys =
-                "Suggest exactly one short factual ritual name in English (at most 6 words). " +
+                "Suggest exactly one short factual operator-flow name in English (at most 6 words). " +
                 "Output only the name, no quotes, no extra text.";
             var name = await LlmChatService.CompleteUtilityAsync(settings, sys, userBlob, cts.Token).ConfigureAwait(true);
             if (name.StartsWith("Missing ", StringComparison.Ordinal) ||
@@ -598,7 +633,7 @@ public partial class RitualsTab : UserControl
             && string.Equals(_selected.ApprovalMode, "manual", StringComparison.OrdinalIgnoreCase))
         {
             NexusShell.Log(
-                "Direct run blocked: ritual is „published“ with approval „manual“ — use „queue for run“ and „approve next job“.");
+                "Direct run blocked: flow is „published“ with approval „manual“ — use „queue for run“ and „approve next job“.");
             return;
         }
 
@@ -625,7 +660,7 @@ public partial class RitualsTab : UserControl
             && string.Equals(_selected.ApprovalMode, "manual", StringComparison.OrdinalIgnoreCase))
         {
             NexusShell.Log(
-                "Step blocked: „published“ + „manual“ — use queue + approve.");
+                "Step blocked: published flow + manual approval — use queue + approve.");
             return;
         }
 

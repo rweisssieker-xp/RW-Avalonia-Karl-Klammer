@@ -7,8 +7,8 @@
       <Button x:Name="BtnExport" Content="export" Margin="0,0,8,8" />
       <Button x:Name="BtnCopy" Content="copy all" Margin="0,0,8,8" />
       <Button x:Name="BtnClear" Content="clear logs" Margin="0,0,8,8" />
-      <Button x:Name="BtnAudit" Content="ritual audit" Margin="0,0,8,8"
-              ToolTip.Tip="Loads the latest lines from ritual-step-audit.jsonl." />
+      <Button x:Name="BtnAudit" Content="flow audit" Margin="0,0,8,8"
+              ToolTip.Tip="Loads the latest lines from ritual-step-audit.jsonl (operator-flow step log)." />
     </WrapPanel>
     <TextBox x:Name="DiagLog" AcceptsReturn="True" IsReadOnly="True" FontFamily="Consolas,Courier New,monospace"
              TextWrapping="Wrap" />

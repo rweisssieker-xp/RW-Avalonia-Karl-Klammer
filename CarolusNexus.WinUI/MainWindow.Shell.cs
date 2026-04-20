@@ -8,6 +8,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using WinUiVisibility = Microsoft.UI.Xaml.Visibility;
 using WinRT.Interop;
 
 namespace CarolusNexus_WinUI;
@@ -21,6 +22,7 @@ public sealed partial class MainWindow
     private DispatcherQueueTimer? _releasePollTimer;
     private DispatcherQueueTimer? _pollFallbackTimer;
     private DispatcherQueueTimer? _dashTimer;
+    private DispatcherQueueTimer? _statusActivityTimer;
     private bool _pollFallbackDown;
     private bool _exitRequested;
     private int _pttVk = PushToTalkKey.DefaultVirtualKey;
@@ -29,8 +31,11 @@ public sealed partial class MainWindow
     private void OnMainShellLoaded(object sender, RoutedEventArgs e)
     {
         WinUiShellState.MainWindowRef = this;
-        WinUiShellState.SetStatusLine = t => _statusLine.Text = t;
-        WinUiShellState.SetStatus("Ready");
+        NexusShell.SetGlobalStatusLine = t => _statusLine.Text = t;
+        NexusShell.SetGlobalBusyIndicator = v =>
+            _globalStatusBusyBar.Visibility = v ? WinUiVisibility.Visible : WinUiVisibility.Collapsed;
+        WinUiShellState.SetStatusLine = NexusShell.SetGlobalStatus;
+        ActivityStatusHub.RefreshFromStores();
 
         try
         {
@@ -84,8 +89,13 @@ public sealed partial class MainWindow
         _dashTimer.Interval = TimeSpan.FromSeconds(4);
         _dashTimer.Tick += OnDashboardTick;
 
+        _statusActivityTimer = dq.CreateTimer();
+        _statusActivityTimer.Interval = TimeSpan.FromSeconds(1);
+        _statusActivityTimer.Tick += (_, _) => ActivityStatusHub.RefreshFromStores();
+
         SetupPushToTalk();
         _dashTimer.Start();
+        _statusActivityTimer.Start();
         NexusShell.Log("WinUI: tray · companion · PTT · cached pages · dashboard timer.");
     }
 

@@ -37,6 +37,17 @@ public sealed class SetupShellPage : Page
     private readonly TextBox _proactiveIv = new() { Header = "LLM min interval (s)" };
     private readonly CheckBox _toolHost = new() { Content = "Start local tool host (127.0.0.1)" };
     private readonly TextBox _toolPort = new() { Header = "Tool host port" };
+    private readonly CheckBox _axEnabled = new() { Content = "Enable ax.* integration tokens", IsChecked = true };
+    private readonly TextBox _axTenant = new() { Header = "AX test tenant label (optional, non-secret)" };
+    private readonly ComboBox _axBackend = new() { Header = "AX integration backend" };
+    private readonly TextBox _axODataUrl = new() { Header = "AX OData base URL (e.g. https://AOS/AX/Data/)" };
+    private readonly CheckBox _axODataWin = new() { Content = "OData/AIF: use Windows default credentials", IsChecked = true };
+    private readonly TextBox _axAifUrl = new() { Header = "AIF service base URL (optional ping)" };
+    private readonly TextBox _axDataArea = new() { Header = "DataAreaId / company (test)" };
+    private readonly TextBox _axBcDll = new() { Header = "BusinessConnectorNet.dll path (COM)" };
+    private readonly TextBox _axAos = new() { Header = "COM: AOS (host:port)" };
+    private readonly TextBox _axDb = new() { Header = "COM: database name" };
+    private readonly TextBox _axLang = new() { Header = "COM: language (e.g. en-us)" };
     private readonly TextBox _envSummary = new()
     {
         IsReadOnly = true,
@@ -58,6 +69,9 @@ public sealed class SetupShellPage : Page
             _uiTheme.Items.Add(t);
         foreach (var x in new[] { "strict", "balanced", "power-user" })
             _safety.Items.Add(x);
+        foreach (var b in new[] { "foreground_uia", "odata", "com_bc" })
+            _axBackend.Items.Add(b);
+        _axBackend.SelectedIndex = 0;
 
         var sp = new StackPanel { Spacing = 10, Margin = new Thickness(12), MaxWidth = 820 };
         sp.Children.Add(new TextBlock { Text = "Setup (aligned with Avalonia §5.4)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 14 });
@@ -84,6 +98,23 @@ public sealed class SetupShellPage : Page
         sp.Children.Add(_proactiveIv);
         sp.Children.Add(_toolHost);
         sp.Children.Add(_toolPort);
+        sp.Children.Add(new TextBlock
+        {
+            Text = "Dynamics AX 2012 — AIF / OData / COM (optional, test tenant)",
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Margin = new Thickness(0, 8, 0, 0)
+        });
+        sp.Children.Add(_axEnabled);
+        sp.Children.Add(_axTenant);
+        sp.Children.Add(_axBackend);
+        sp.Children.Add(_axODataUrl);
+        sp.Children.Add(_axODataWin);
+        sp.Children.Add(_axAifUrl);
+        sp.Children.Add(_axDataArea);
+        sp.Children.Add(_axBcDll);
+        sp.Children.Add(_axAos);
+        sp.Children.Add(_axDb);
+        sp.Children.Add(_axLang);
         sp.Children.Add(new TextBlock { Text = ".env overview (keys only)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 0) });
         sp.Children.Add(_envSummary);
         sp.Children.Add(_envPath);
@@ -176,6 +207,17 @@ public sealed class SetupShellPage : Page
         _proactiveIv.Text = s.ProactiveLlmMinIntervalSeconds.ToString();
         _toolHost.IsChecked = s.EnableLocalToolHost;
         _toolPort.Text = s.LocalToolHostPort.ToString();
+        _axEnabled.IsChecked = s.AxIntegrationEnabled;
+        _axTenant.Text = s.AxTestTenantLabel ?? "";
+        _axBackend.SelectedItem = string.IsNullOrWhiteSpace(s.AxIntegrationBackend) ? "foreground_uia" : s.AxIntegrationBackend;
+        _axODataUrl.Text = s.AxODataBaseUrl ?? "";
+        _axODataWin.IsChecked = s.AxODataUseDefaultCredentials;
+        _axAifUrl.Text = s.AxAifServiceBaseUrl ?? "";
+        _axDataArea.Text = s.AxDataAreaId ?? "";
+        _axBcDll.Text = s.AxBusinessConnectorNetAssemblyPath ?? "";
+        _axAos.Text = s.AxBcObjectServer ?? "";
+        _axDb.Text = s.AxBcDatabase ?? "";
+        _axLang.Text = string.IsNullOrWhiteSpace(s.AxBcLanguage) ? "en-us" : s.AxBcLanguage;
         RefreshEnvSummary();
     }
 
@@ -202,6 +244,17 @@ public sealed class SetupShellPage : Page
             ProactiveLlmMinIntervalSeconds = Pi(_proactiveIv.Text, 180, 60, 3600),
             EnableLocalToolHost = _toolHost.IsChecked == true,
             LocalToolHostPort = Pi(_toolPort.Text, 17888, 1024, 65535),
+            AxIntegrationEnabled = _axEnabled.IsChecked != false,
+            AxTestTenantLabel = _axTenant.Text?.Trim() ?? "",
+            AxIntegrationBackend = _axBackend.SelectedItem?.ToString() ?? "foreground_uia",
+            AxODataBaseUrl = _axODataUrl.Text?.Trim() ?? "",
+            AxODataUseDefaultCredentials = _axODataWin.IsChecked != false,
+            AxAifServiceBaseUrl = _axAifUrl.Text?.Trim() ?? "",
+            AxDataAreaId = _axDataArea.Text?.Trim() ?? "",
+            AxBusinessConnectorNetAssemblyPath = _axBcDll.Text?.Trim() ?? "",
+            AxBcObjectServer = _axAos.Text?.Trim() ?? "",
+            AxBcDatabase = _axDb.Text?.Trim() ?? "",
+            AxBcLanguage = string.IsNullOrWhiteSpace(_axLang.Text) ? "en-us" : _axLang.Text!.Trim(),
             Safety = new SafetySettings
             {
                 Profile = _safety.SelectedItem?.ToString() ?? "balanced",

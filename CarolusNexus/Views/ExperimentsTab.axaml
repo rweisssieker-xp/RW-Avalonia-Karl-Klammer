@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="CarolusNexus.Views.ExperimentsTab">
+  <ScrollViewer>
+    <StackPanel Spacing="12" Margin="8">
+      <TextBlock Text="Experiments (Tier C)" FontWeight="SemiBold" FontSize="16" />
+      <TextBlock TextWrapping="Wrap"
+                 Text="Optional research and unstable toggles — same scope as the WinUI shell. Not part of the default product promise." />
+      <Border Padding="12" CornerRadius="6" BorderBrush="{DynamicResource NexusTileBorderBrush}"
+              BorderThickness="1" Background="{DynamicResource NexusTileBackgroundBrush}">
+        <StackPanel Spacing="6">
+          <TextBlock FontWeight="SemiBold" Text="Tag" />
+          <TextBlock x:Name="TagLine" FontFamily="Consolas,Courier New,monospace" />
+        </StackPanel>
+      </Border>
+      <TextBlock TextWrapping="Wrap" FontSize="11"
+                 Foreground="{DynamicResource NexusMutedForegroundBrush}"
+                 Text="Use the main Setup tab for provider and safety. Tier C hooks may read optional keys from windows/.env when documented." />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

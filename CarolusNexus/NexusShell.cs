@@ -13,6 +13,14 @@ public static class NexusShell
 
     public static Action<string>? AppendGlobalLog { get; set; }
 
+    /// <summary>Global footer / header status line (merged activity).</summary>
+    public static Action<string>? SetGlobalStatusLine { get; set; }
+
+    /// <summary>Optional: indeterminate busy bar (Ask, flow, or active companion).</summary>
+    public static Action<bool>? SetGlobalBusyIndicator { get; set; }
+
+    public static void SetGlobalStatus(string text) => SetGlobalStatusLine?.Invoke(text);
+
     public static void Log(string message)
     {
         var line = $"[{DateTime.Now:HH:mm:ss}] {message}";

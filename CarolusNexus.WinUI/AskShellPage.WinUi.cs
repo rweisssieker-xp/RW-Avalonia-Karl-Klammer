@@ -33,7 +33,6 @@ public sealed class AskShellPage : Page
     private int _planStepIndex;
     private WindowsMicRecorder? _mic;
     private bool _isRecording;
-    private bool _operationBusy;
     private bool _awaitGlobalHotkeyRelease;
     public AskShellPage()
     {
@@ -57,7 +56,7 @@ public sealed class AskShellPage : Page
         bApr.Click += async (_, _) => await ExecutePlanAfterConfirmAsync();
         var bNext = new Button { Content = "run next step" };
         bNext.Click += async (_, _) => await RunNextPlanStepAsync();
-        var bSave = new Button { Content = "save plan as ritual" };
+        var bSave = new Button { Content = "save plan as flow" };
         bSave.Click += (_, _) => SavePlanAsRitual();
         var bClr = new Button { Content = "clear plan" };
         bClr.Click += (_, _) =>
@@ -137,8 +136,14 @@ public sealed class AskShellPage : Page
             WinUiShellState.OnPttPressed = OnGlobalPttPressed;
             WinUiShellState.PttAwaitsHotkeyRelease = () => _isRecording && _awaitGlobalHotkeyRelease;
             WinUiShellState.OnPttReleasedAsync = StopMicTranscribeAndAskAsync;
-            WinUiShellState.SetStatus("Ask ready");
+            ActivityStatusHub.RefreshFromStores();
         };
+    }
+
+    private void SetBusyBar(bool busy)
+    {
+        _busy.IsOpen = busy;
+        ActivityStatusHub.SetAskBusy(busy);
     }
 
     private void OnGlobalPttPressed()
@@ -211,7 +216,7 @@ public sealed class AskShellPage : Page
             return;
         }
 
-        _busy.IsOpen = true;
+        SetBusyBar(true);
         CompanionHub.Publish(CompanionVisualState.Transcribing);
         try
         {
@@ -244,7 +249,7 @@ public sealed class AskShellPage : Page
         }
         finally
         {
-            _busy.IsOpen = false;
+            SetBusyBar(false);
             try
             {
                 File.Delete(path);
@@ -274,7 +279,7 @@ public sealed class AskShellPage : Page
         var f = await p.PickSingleFileAsync();
         if (f == null)
             return;
-        _busy.IsOpen = true;
+        SetBusyBar(true);
         try
         {
             _cts = new CancellationTokenSource();
@@ -297,13 +302,13 @@ public sealed class AskShellPage : Page
         }
         finally
         {
-            _busy.IsOpen = false;
+            SetBusyBar(false);
         }
     }
 
     private async Task RunSmokeAsync()
     {
-        _busy.IsOpen = true;
+        SetBusyBar(true);
         CompanionHub.Publish(CompanionVisualState.Thinking);
         try
         {
@@ -317,7 +322,7 @@ public sealed class AskShellPage : Page
         }
         finally
         {
-            _busy.IsOpen = false;
+            SetBusyBar(false);
             CompanionHub.Publish(CompanionVisualState.Ready);
         }
     }
@@ -331,7 +336,7 @@ public sealed class AskShellPage : Page
             return;
         }
 
-        _busy.IsOpen = true;
+        SetBusyBar(true);
         CompanionHub.Publish(CompanionVisualState.Thinking);
         try
         {
@@ -401,7 +406,7 @@ public sealed class AskShellPage : Page
         }
         finally
         {
-            _busy.IsOpen = false;
+            SetBusyBar(false);
             CompanionHub.Publish(CompanionVisualState.Ready);
         }
     }
@@ -497,7 +502,7 @@ public sealed class AskShellPage : Page
             return;
         var title = _prompt.Text?.Trim();
         if (string.IsNullOrWhiteSpace(title))
-            title = "Ritual " + DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            title = "Flow " + DateTime.Now.ToString("yyyy-MM-dd HH:mm");
         if (title.Length > 120)
             title = title[..120];
         var recipe = new AutomationRecipe
@@ -508,7 +513,7 @@ public sealed class AskShellPage : Page
             Steps = steps.ToList()
         };
         RitualRecipeStore.AppendRecipe(recipe);
-        NexusShell.Log("Saved ritual: " + recipe.Name);
+        NexusShell.Log("Saved flow: " + recipe.Name);
     }
 
     private async Task SpeakAsync()
@@ -516,7 +521,7 @@ public sealed class AskShellPage : Page
         var t = _assistant.Text?.Trim();
         if (string.IsNullOrEmpty(t))
             return;
-        _busy.IsOpen = true;
+        SetBusyBar(true);
         CompanionHub.Publish(CompanionVisualState.Speaking);
         try
         {
@@ -527,7 +532,7 @@ public sealed class AskShellPage : Page
         }
         finally
         {
-            _busy.IsOpen = false;
+            SetBusyBar(false);
             CompanionHub.Publish(CompanionVisualState.Ready);
         }
     }

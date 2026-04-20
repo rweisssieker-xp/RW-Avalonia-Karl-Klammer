@@ -75,7 +75,7 @@ public static class WinUiDashboardData
 
             proactive =
                 "Not in watch mode — live snapshot.\n" +
-                $"Knowledge files: {knowCount} · Ritual recipes: {ritualCount} · Jobs pending: {pending}\n" +
+                $"Knowledge files: {knowCount} · Operator flows: {ritualCount} · Jobs pending: {pending}\n" +
                 $"LLM .env: {(keyOk ? "key OK" : "key missing")} ({settings.Provider})";
         }
 
@@ -90,7 +90,7 @@ public static class WinUiDashboardData
         setLive(string.IsNullOrWhiteSpace(tileLiveText) ? "—" : tileLiveText);
         setProactive(proactive);
         setGov(
-            $"Profile: {settings.Safety.Profile}\nPanic: {settings.Safety.PanicStopEnabled}\nneverAutoSend: {settings.Safety.NeverAutoSend}\n\n— Ritual jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}");
+            $"Profile: {settings.Safety.Profile}\nPanic: {settings.Safety.PanicStopEnabled}\nneverAutoSend: {settings.Safety.NeverAutoSend}\n\n— Flow jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}");
         setRituals(FormatRitualsDashboardCard());
         setWatch(WatchSessionService.FormatDashboardSummary());
     }
@@ -244,7 +244,7 @@ public static class WinUiDashboardData
             var sb = new StringBuilder();
             sb.AppendLine($"Recipes in library: {list.Count} · jobs pending: {pending}");
             if (list.Count == 0)
-                sb.Append("(none yet — Rituals page)");
+                sb.Append("(none yet — Operator flows)");
             else
             {
                 sb.AppendLine("Excerpt:");
@@ -256,7 +256,7 @@ public static class WinUiDashboardData
         }
         catch (Exception ex)
         {
-            return "(Rituals: " + ex.Message + ")";
+            return "(Operator flows: " + ex.Message + ")";
         }
     }
 }

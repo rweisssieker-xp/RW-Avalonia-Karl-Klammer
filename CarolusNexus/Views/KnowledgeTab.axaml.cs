@@ -177,7 +177,7 @@ public partial class KnowledgeTab : UserControl
         }
 
         var prompt =
-            "From the following document, extract a short ritual checklist as **only** a JSON array " +
+            "From the following document, extract a short operator-flow checklist as **only** a JSON array " +
             "of objects {\"actionType\":\"token\",\"actionArgument\":\"…\",\"waitMs\":0}. " +
             "actionArgument: concrete steps or [ACTION:hotkey|Ctrl+S] style. Max. 12 steps. No markdown.\n\n" +
             doc;
@@ -185,7 +185,7 @@ public partial class KnowledgeTab : UserControl
         try
         {
             var s = NexusContext.GetSettings();
-            NexusShell.Log("LLM: ritual suggestion …");
+            NexusShell.Log("LLM: flow suggestion …");
             var json = await LlmChatService.CompleteAsync(s, prompt, false, false).ConfigureAwait(true);
             NexusShell.Log("Ritual suggestion ready — paste into Rituals tab.");
             // Optional: clipboard possible; user copies from log/preview
@@ -193,7 +193,7 @@ public partial class KnowledgeTab : UserControl
         }
         catch (Exception ex)
         {
-            NexusShell.Log("suggest ritual: " + ex.Message);
+            NexusShell.Log("suggest flow: " + ex.Message);
         }
     }
 

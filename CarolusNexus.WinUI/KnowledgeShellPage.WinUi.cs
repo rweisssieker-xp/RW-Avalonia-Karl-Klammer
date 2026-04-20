@@ -38,7 +38,7 @@ public sealed class KnowledgeShellPage : Page
         tools.Children.Add(Mk("Import…", async (_, _) => await ImportAsync()));
         tools.Children.Add(Mk("Remove", (_, _) => RemoveSelected()));
         tools.Children.Add(Mk("Reindex", (_, _) => OnReindex()));
-        tools.Children.Add(Mk("Suggest ritual (LLM)", async (_, _) => await SuggestRitualAsync()));
+        tools.Children.Add(Mk("Suggest flow (LLM)", async (_, _) => await SuggestRitualAsync()));
 
         _leftPane.Children.Add(new TextBlock
         {
@@ -218,7 +218,7 @@ public sealed class KnowledgeShellPage : Page
         }
 
         var prompt =
-            "From the following document, extract a short ritual checklist as **only** a JSON array " +
+            "From the following document, extract a short operator-flow checklist as **only** a JSON array " +
             "of objects {\"actionType\":\"token\",\"actionArgument\":\"…\",\"waitMs\":0}. " +
             "actionArgument: concrete steps or [ACTION:hotkey|Ctrl+S] style. Max. 12 steps. No markdown.\n\n" +
             doc;
@@ -226,14 +226,14 @@ public sealed class KnowledgeShellPage : Page
         try
         {
             var s = WinUiShellState.Settings;
-            NexusShell.Log("LLM: ritual suggestion …");
+            NexusShell.Log("LLM: flow suggestion …");
             var json = await LlmChatService.CompleteAsync(s, prompt, false, false).ConfigureAwait(true);
-            NexusShell.Log("Ritual suggestion ready — paste into Rituals tab.");
+            NexusShell.Log("Flow suggestion ready — paste into Operator flows.");
             _preview.Text = "Suggestion (JSON):\n\n" + json;
         }
         catch (Exception ex)
         {
-            NexusShell.Log("suggest ritual: " + ex.Message);
+            NexusShell.Log("suggest flow: " + ex.Message);
         }
     }
 

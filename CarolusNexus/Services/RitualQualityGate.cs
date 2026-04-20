@@ -13,7 +13,7 @@ public static class RitualQualityGate
     {
         var issues = new List<string>();
         if (string.IsNullOrWhiteSpace(recipe.Name))
-            issues.Add("Ritual name is empty.");
+            issues.Add("Flow name is empty.");
 
         for (var i = 0; i < recipe.Steps.Count; i++)
         {
@@ -30,7 +30,7 @@ public static class RitualQualityGate
 
         if (string.Equals(recipe.RiskLevel, "high", StringComparison.OrdinalIgnoreCase) &&
             recipe.Steps.Count > 25)
-            issues.Add("High risk with many steps — trim or split the ritual.");
+            issues.Add("High risk with many steps — trim or split the flow.");
 
         return new Result(issues.Count == 0, issues);
     }

@@ -99,7 +99,7 @@ public partial class HistoryTab : UserControl
         _entries = doc.Entries.OrderByDescending(e => e.UtcAt).ToList();
         if (_entries.Count == 0)
         {
-            HistList.ItemsSource = new[] { "(no entries in action-history.json yet — run a plan/ritual)" };
+            HistList.ItemsSource = new[] { "(no entries in action-history.json yet — run a plan or operator flow)" };
             HistDetail.Text = "";
             return;
         }
@@ -149,6 +149,6 @@ public partial class HistoryTab : UserControl
             }).ToList()
         };
         RitualRecipeStore.AppendRecipe(recipe);
-        NexusShell.Log($"Ritual created from history: {recipe.Name} ({recipe.Steps.Count} steps).");
+        NexusShell.Log($"Operator flow created from history: {recipe.Name} ({recipe.Steps.Count} steps).");
     }
 }

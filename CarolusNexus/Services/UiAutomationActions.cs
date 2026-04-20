@@ -22,6 +22,10 @@ public static class UiAutomationActions
         @"^uia\.setvalue:(.+)$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    private static readonly Regex ExpandRx = new(
+        @"^uia\.expand:(.+)$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     public static bool TryParseAndExecute(string argument, NexusSettings settings, out string message)
     {
         message = "";
@@ -108,6 +112,29 @@ public static class UiAutomationActions
                 }
 
                 message = "[ERR] ValuePattern not available";
+                return true;
+            }
+
+            var mExp = ExpandRx.Match(arg);
+            if (mExp.Success)
+            {
+                var q = ParseQuery(mExp.Groups[1].Value);
+                var el = FindElement(root, q);
+                if (el == null)
+                {
+                    message = "[ERR] UIA element not found for expand";
+                    return true;
+                }
+
+                if (el.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out var epObj) && epObj is ExpandCollapsePattern exp)
+                {
+                    exp.Expand();
+                    TryPublishCompanionJump(el);
+                    message = "[OK] uia.expand";
+                    return true;
+                }
+
+                message = "[ERR] ExpandCollapsePattern not available";
                 return true;
             }
 

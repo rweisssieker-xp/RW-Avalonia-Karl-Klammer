@@ -14,6 +14,10 @@ public sealed class AutomationRecipe
     [JsonPropertyName("description")]
     public string Description { get; set; } = "";
 
+    /// <summary>Freie Kategorie (SOP-Bucket, Team, …) — Filter in der Flow-Bibliothek.</summary>
+    [JsonPropertyName("category")]
+    public string Category { get; set; } = "";
+
     /// <summary>z. B. <c>draft</c> oder <c>published</c> — Governance / Freigabe.</summary>
     [JsonPropertyName("publicationState")]
     public string PublicationState { get; set; } = "draft";
@@ -53,7 +57,8 @@ public sealed class AutomationRecipe
             var arch = Archived ? " · archived" : "";
             var state = string.IsNullOrWhiteSpace(PublicationState) ? "draft" : PublicationState;
             var risk = string.IsNullOrWhiteSpace(RiskLevel) ? "" : $" · {RiskLevel}";
-            return $"{name}{arch} · {state}{risk}";
+            var cat = string.IsNullOrWhiteSpace(Category) ? "" : $" · [{Category}]";
+            return $"{name}{arch} · {state}{risk}{cat}";
         }
     }
 }

@@ -66,6 +66,12 @@ public static class Win32AutomationExecutor
             if (UiAutomationActions.TryParseAndExecute(arg, settings, out var uiaMsg))
                 return uiaMsg;
 
+            if (AppFamilyLauncher.TryLaunch(arg, settings, out var appMsg))
+                return appMsg;
+
+            if (AxClientAutomationService.TryExecute(arg, settings, out var axMsg))
+                return axMsg;
+
             var m = ActionRx.Match(arg);
             if (m.Success)
             {

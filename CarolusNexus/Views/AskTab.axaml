@@ -23,7 +23,7 @@
         <Button x:Name="BtnApproveRun" Content="approve + run" Margin="0,0,6,6" Padding="10,6"
                 ToolTip.Tip="Confirmation dialog — explicit gate before execution." />
         <Button x:Name="BtnRunNext" Content="run next step" Margin="0,0,6,6" Padding="10,6" />
-        <Button x:Name="BtnSaveRitual" Content="save plan as ritual" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnSaveRitual" Content="save plan as flow" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnClearPlan" Content="clear plan" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnPanic" Content="panic stop" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnSpeak" Content="speak response" Margin="0,0,6,6" Padding="10,6" />

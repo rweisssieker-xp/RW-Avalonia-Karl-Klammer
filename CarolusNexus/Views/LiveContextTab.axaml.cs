@@ -35,7 +35,7 @@ public partial class LiveContextTab : UserControl
         SnapCross.Text =
             "Adapter buttons compare the selected family with the active window.\r\n" +
             "Custom action + “run”: tries executable tokens (power-user + PlanGuard) and shows the result.\r\n" +
-            "Teach mode (Rituals): “run” and adapter clicks create ritual steps.";
+            "Teach mode (Operator flows): “run” and adapter clicks create flow steps.";
 
         RefreshActiveSnapshot();
     }
@@ -144,6 +144,21 @@ public partial class LiveContextTab : UserControl
         sb.AppendLine($"Bounds: {d.Value.Left}, {d.Value.Top} · {d.Value.Width}×{d.Value.Height}");
         sb.AppendLine($"Adapter family (heuristic): {fam}");
         sb.AppendLine($"Known families: {string.Join(", ", OperatorAdapterRegistry.KnownFamilies)}");
+        var settings = NexusContext.GetSettings?.Invoke() ?? new NexusSettings();
+        if (OperatingSystem.IsWindows()
+            && string.Equals(settings.Safety.Profile, "power-user", StringComparison.OrdinalIgnoreCase))
+        {
+            sb.AppendLine();
+            sb.AppendLine("--- UIA form summary (power-user) ---");
+            sb.AppendLine(ForegroundUiAutomationContext.BuildFormSummary(settings, 40, 12));
+            var selHint = ForegroundUiAutomationContext.TryReadSelectionHint(settings);
+            if (!string.IsNullOrEmpty(selHint))
+            {
+                sb.AppendLine("---");
+                sb.AppendLine(selHint);
+            }
+        }
+
         SnapActive.Text = sb.ToString();
 
         if (fam == "ax2012")
