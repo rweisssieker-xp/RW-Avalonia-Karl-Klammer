@@ -2,47 +2,47 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="CarolusNexus.Views.SetupTab">
   <ScrollViewer>
-    <StackPanel Spacing="10" MaxWidth="720">
-      <TextBlock Text="Setup · Provider, Modus, Safety (§5.4)" FontWeight="SemiBold" FontSize="14" />
+    <StackPanel Spacing="10" HorizontalAlignment="Stretch">
+      <TextBlock Text="Setup · provider, mode, safety (§5.4)" FontWeight="SemiBold" FontSize="14" />
       <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
         <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Provider" />
         <ComboBox x:Name="ProviderBox" Grid.Row="0" Grid.Column="1" />
-        <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Modus" />
+        <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Mode" />
         <ComboBox x:Name="ModeBox" Grid.Row="1" Grid.Column="1" />
-        <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Modell" />
+        <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Model" />
         <TextBox x:Name="ModelBox" Grid.Row="2" Grid.Column="1" />
-        <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="UI-Thema" />
+        <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="UI theme" />
         <ComboBox x:Name="UiThemeBox" Grid.Row="3" Grid.Column="1"
-                  ToolTip.Tip="Dark / Light / System (Default) — sofort nach „save settings“." />
-        <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Text="Schalter" FontWeight="SemiBold" Margin="0,8,0,0" />
+                  ToolTip.Tip="Dark / Light / System (Default) — applied after „save settings“." />
+        <TextBlock Grid.Row="4" Grid.ColumnSpan="2" Text="Toggles" FontWeight="SemiBold" Margin="0,8,0,0" />
         <CheckBox x:Name="SpeakResponses" Grid.Row="5" Grid.ColumnSpan="2" Content="speak responses" />
         <CheckBox x:Name="UseLocalKnowledge" Grid.Row="6" Grid.ColumnSpan="2" Content="use local knowledge" />
         <CheckBox x:Name="SuggestAutomations" Grid.Row="7" Grid.ColumnSpan="2" Content="suggest automations" />
         <CheckBox x:Name="IncludeUiaInAsk" Grid.Row="8" Grid.ColumnSpan="2"
-                  Content="Ask: UIA-Snapshot des Vordergrundfensters anhängen (Windows)" />
+                  Content="Ask: attach UIA snapshot of foreground window (Windows)" />
         <TextBlock Grid.Row="9" Grid.ColumnSpan="2" Text="Safety Center" FontWeight="SemiBold" Margin="0,8,0,0" />
-        <TextBlock Grid.Row="10" VerticalAlignment="Center" Text="Profil" />
+        <TextBlock Grid.Row="10" VerticalAlignment="Center" Text="Profile" />
         <ComboBox x:Name="SafetyProfile" Grid.Row="10" Grid.Column="1" />
       </Grid>
       <CheckBox x:Name="NeverAutoSend" Content="never auto-send" />
       <CheckBox x:Name="NeverAutoPost" Content="never auto-post / book" />
       <CheckBox x:Name="PanicStop" Content="panic stop enabled" />
-      <TextBlock Text="Denylist (kommagetrennt)" />
+      <TextBlock Text="Denylist (comma-separated)" />
       <TextBox x:Name="DenylistBox" />
-      <TextBlock Text="Watch &amp; lokaler Tool-Host" FontWeight="SemiBold" Margin="0,8,0,0" />
+      <TextBlock Text="Watch &amp; local tool host" FontWeight="SemiBold" Margin="0,8,0,0" />
       <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
-        <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Watch-Intervall (s)" />
-        <TextBox x:Name="WatchIntervalBox" Grid.Row="0" Grid.Column="1" Watermark="15–600, Standard 45" />
+        <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Watch interval (s)" />
+        <TextBox x:Name="WatchIntervalBox" Grid.Row="0" Grid.Column="1" Watermark="15–600, default 45" />
         <CheckBox x:Name="ProactiveLlm" Grid.Row="1" Grid.ColumnSpan="2"
-                  Content="proaktiver LLM-Hinweis (Dashboard, nur Modus watch)" />
-        <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="LLM-Mindestabstand (s)" />
-        <TextBox x:Name="ProactiveIntervalBox" Grid.Row="2" Grid.Column="1" Watermark="60–3600, Standard 180" />
+                  Content="Proactive LLM hint (Dashboard, watch mode only)" />
+        <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="LLM min interval (s)" />
+        <TextBox x:Name="ProactiveIntervalBox" Grid.Row="2" Grid.Column="1" Watermark="60–3600, default 180" />
         <CheckBox x:Name="EnableToolHost" Grid.Row="3" Grid.ColumnSpan="2"
-                  Content="lokalen Tool-Host starten (127.0.0.1, siehe LOCAL_TOOL_TOKEN)" />
-        <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Tool-Host-Port" />
+                  Content="Start local tool host (127.0.0.1, see LOCAL_TOOL_TOKEN)" />
+        <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Tool host port" />
         <TextBox x:Name="ToolHostPortBox" Grid.Row="4" Grid.Column="1" Watermark="17888" />
       </Grid>
-      <TextBlock Text=".env-Übersicht (nur Schlüssel)" FontWeight="SemiBold" Margin="0,8,0,0" />
+      <TextBlock Text=".env overview (keys only)" FontWeight="SemiBold" Margin="0,8,0,0" />
       <TextBox x:Name="EnvSummary" IsReadOnly="True" AcceptsReturn="True" MinHeight="100" FontFamily="Consolas,Courier New,monospace" />
       <TextBlock x:Name="EnvPathHint" FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}"
                  TextWrapping="Wrap" />

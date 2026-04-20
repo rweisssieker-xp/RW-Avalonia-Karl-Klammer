@@ -8,15 +8,15 @@ public static class SoulPrompt
     {
         var p = Path.Combine(AppPaths.RepoRoot, "SOUL.md");
         if (!File.Exists(p))
-            return "Du bist Karl Klammer, ein freundlicher Assistent.";
+            return "You are Karl Klammer, a friendly assistant.";
         try
         {
             var t = File.ReadAllText(p);
-            return string.IsNullOrWhiteSpace(t) ? "Du bist Karl Klammer." : t.Trim();
+            return string.IsNullOrWhiteSpace(t) ? "You are Karl Klammer." : t.Trim();
         }
         catch
         {
-            return "Du bist Karl Klammer.";
+            return "You are Karl Klammer.";
         }
     }
 }

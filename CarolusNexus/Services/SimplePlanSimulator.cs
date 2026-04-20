@@ -29,7 +29,7 @@ public static class SimplePlanSimulator
             ct.ThrowIfCancellationRequested();
             var s = steps[i];
             var line =
-                $"{prefix} Schritt {i + 1}/{steps.Count}: {s.ActionType} · {s.ActionArgument} (wait {s.WaitMs}ms)";
+                $"{prefix} step {i + 1}/{steps.Count}: {s.ActionType} · {s.ActionArgument} (wait {s.WaitMs}ms)";
             sb.AppendLine(line);
             NexusShell.Log(line);
 
@@ -58,9 +58,9 @@ public static class SimplePlanSimulator
             else
             {
                 stepResult = !System.OperatingSystem.IsWindows()
-                    ? "[SIM] nicht Windows"
+                    ? "[SIM] not Windows"
                     : !string.Equals(safety?.Safety.Profile, "power-user", System.StringComparison.OrdinalIgnoreCase)
-                        ? "[SIM] Profil ≠ power-user — kein Win32"
+                        ? "[SIM] profile ≠ power-user — no Win32"
                         : "[SIM]";
             }
 
@@ -71,10 +71,10 @@ public static class SimplePlanSimulator
         }
 
         if (steps.Count == 0)
-            sb.AppendLine("(keine Schritte)");
+            sb.AppendLine("(no steps)");
         if (!dryRun && safety != null &&
             !string.Equals(safety.Safety.Profile, "power-user", System.StringComparison.OrdinalIgnoreCase))
-            sb.AppendLine("(Hinweis: echte Ausführung nur bei Safety-Profil „power-user“.)");
+            sb.AppendLine("(Note: real execution only with safety profile “power-user”.)");
 
         var logText = sb.ToString().TrimEnd();
         ActionHistoryService.AppendPlanRun(steps, dryRun, logText.Length > 4000 ? logText[..4000] + "…" : logText);
@@ -96,7 +96,7 @@ public static class SimplePlanSimulator
             var dot = t.IndexOf(". ");
             if (dot > 0 && int.TryParse(t[..dot], out _))
                 t = t[(dot + 2)..].Trim();
-            if (t.StartsWith('(') && t.Contains("keine Action"))
+            if (t.StartsWith('(') && (t.Contains("keine Action", System.StringComparison.Ordinal) || t.Contains("no action", System.StringComparison.OrdinalIgnoreCase)))
                 continue;
             steps.Add(new RecipeStep { ActionType = "token", ActionArgument = t, WaitMs = 0 });
         }

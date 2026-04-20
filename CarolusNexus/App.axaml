@@ -22,9 +22,9 @@
       <TrayIcon Icon="/Assets/tray.png" ToolTipText="Carolus Nexus" IsVisible="True">
         <TrayIcon.Menu>
           <NativeMenu>
-            <NativeMenuItem Header="Carolus Nexus öffnen" Click="OnTrayOpen" />
-            <NativeMenuItem Header="Ask aus Zwischenablage" Click="OnTrayAskClipboard" />
-            <NativeMenuItem Header="Beenden" Click="OnTrayQuit" />
+            <NativeMenuItem Header="Open Carolus Nexus" Click="OnTrayOpen" />
+            <NativeMenuItem Header="Ask from clipboard" Click="OnTrayAskClipboard" />
+            <NativeMenuItem Header="Quit" Click="OnTrayQuit" />
           </NativeMenu>
         </TrayIcon.Menu>
       </TrayIcon>

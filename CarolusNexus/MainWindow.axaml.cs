@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -30,10 +31,12 @@ public partial class MainWindow : Window
     private DateTime _lastProactiveUtc = DateTime.MinValue;
     private string _proactiveHintCache = "";
     private bool _proactiveBusy;
+    private bool? _headerTilesNarrowMode;
 
     public MainWindow()
     {
         InitializeComponent();
+        LayoutUpdated += (_, _) => ApplyHeaderTilesResponsive();
         AppPaths.DiscoverRepoRoot();
         AppPaths.EnsureDataTree();
 
@@ -86,7 +89,7 @@ public partial class MainWindow : Window
 
             if (_hotkeyWindow.TryRegister(_pttVk))
             {
-                NexusShell.Log($"PTT: globaler Hotkey (VK 0x{_pttVk:X}, MOD_NOREPEAT).");
+                NexusShell.Log($"PTT: global hotkey (VK 0x{_pttVk:X}, MOD_NOREPEAT).");
                 return;
             }
         }
@@ -98,7 +101,7 @@ public partial class MainWindow : Window
         _hotkeyWindow?.Dispose();
         _hotkeyWindow = null;
         _pollFallbackTimer.Start();
-        NexusShell.Log("PTT: Fallback-Polling (Hotkey konnte nicht registriert werden).");
+        NexusShell.Log("PTT: fallback polling (hotkey registration failed).");
     }
 
     private void OnReleasePollTick(object? sender, EventArgs e)
@@ -158,8 +161,49 @@ public partial class MainWindow : Window
                 _companion.Show();
         }
 
-        NexusShell.Log("Carolus Nexus — Tray-Icon; Schließen minimiert ins Tray. „power-user“: echte Plan-Schritte.");
+        NexusShell.Log("Carolus Nexus — tray icon; Close minimizes to tray. „power-user“: real plan steps.");
         ApplyLocalToolHost();
+        ApplyHeaderTilesResponsive();
+    }
+
+    private void ApplyHeaderTilesResponsive()
+    {
+        var w = Bounds.Width;
+        if (w <= 0)
+            return;
+        var narrow = w < ResponsiveLayout.NarrowMax;
+        if (_headerTilesNarrowMode == narrow)
+            return;
+        _headerTilesNarrowMode = narrow;
+
+        HeaderTilesGrid.ColumnDefinitions.Clear();
+        HeaderTilesGrid.RowDefinitions.Clear();
+        if (narrow)
+        {
+            HeaderTilesGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            HeaderTilesGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            HeaderTilesGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            HeaderTilesGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            Grid.SetColumn(HeaderTileMemory, 0);
+            Grid.SetRow(HeaderTileMemory, 0);
+            Grid.SetColumn(HeaderTileLive, 0);
+            Grid.SetRow(HeaderTileLive, 1);
+            Grid.SetColumn(HeaderTileEnv, 0);
+            Grid.SetRow(HeaderTileEnv, 2);
+        }
+        else
+        {
+            HeaderTilesGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            HeaderTilesGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            HeaderTilesGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            HeaderTilesGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            Grid.SetColumn(HeaderTileMemory, 0);
+            Grid.SetRow(HeaderTileMemory, 0);
+            Grid.SetColumn(HeaderTileLive, 1);
+            Grid.SetRow(HeaderTileLive, 0);
+            Grid.SetColumn(HeaderTileEnv, 2);
+            Grid.SetRow(HeaderTileEnv, 0);
+        }
     }
 
     public async Task AskFromClipboardAsync()
@@ -171,7 +215,7 @@ public partial class MainWindow : Window
         var board = Clipboard;
         if (board == null)
         {
-            NexusShell.Log("Tray Ask: Zwischenablage nicht verfügbar.");
+            NexusShell.Log("Tray Ask: clipboard not available.");
             MainTabs.SelectedIndex = 0;
             return;
         }
@@ -179,7 +223,7 @@ public partial class MainWindow : Window
         var clipText = await board.GetTextAsync().ConfigureAwait(true);
         if (string.IsNullOrWhiteSpace(clipText))
         {
-            NexusShell.Log("Tray Ask: Zwischenablage leer oder kein Text.");
+            NexusShell.Log("Tray Ask: clipboard empty or not text.");
             MainTabs.SelectedIndex = 0;
             return;
         }
@@ -194,7 +238,7 @@ public partial class MainWindow : Window
         {
             e.Cancel = true;
             Hide();
-            NexusShell.Log("Fenster ins Tray — Beenden: Tray-Menü „Beenden“.");
+            NexusShell.Log("Window sent to tray — Quit: tray menu „Quit“.");
             return;
         }
 
@@ -248,7 +292,7 @@ public partial class MainWindow : Window
         ThemeApplier.ApplyUiTheme(_settings.UiTheme);
         RefreshDashboard();
         RefreshHeaderBadges();
-        NexusShell.Log("refresh all — .env neu eingelesen.");
+        NexusShell.Log("refresh all — .env reloaded.");
         ApplyLocalToolHost();
     }
 
@@ -259,7 +303,7 @@ public partial class MainWindow : Window
         TabAsk.SetSettingsProvider(() => _settings);
         NexusContext.GetSettings = () => _settings;
         ThemeApplier.ApplyUiTheme(_settings.UiTheme);
-        NexusShell.Log("settings.json gespeichert.");
+        NexusShell.Log("settings.json saved.");
         RefreshHeaderBadges();
         ApplyLocalToolHost();
     }
@@ -271,20 +315,20 @@ public partial class MainWindow : Window
         TabRituals.ReloadLibrary();
         RefreshHeaderBadges();
         _ = EmbeddingRagService.RebuildIfConfiguredAsync(default);
-        NexusShell.Log("reindex knowledge → Index + Chunks; Embeddings werden im Hintergrund gebaut (OPENAI_API_KEY + RAG).");
+        NexusShell.Log("reindex knowledge → index + chunks; embeddings build in background (OPENAI_API_KEY + RAG).");
     }
 
     private void OnRefreshApp(object? sender, RoutedEventArgs e)
     {
         if (!OperatingSystem.IsWindows())
         {
-            NexusShell.Log("Aktives Fenster: nur unter Windows.");
+            NexusShell.Log("Active window: Windows only.");
             return;
         }
 
         var (title, proc) = ForegroundWindowInfo.TryRead();
         var fam = OperatorAdapterRegistry.ResolveFamily(proc, title);
-        TileLive.Text = $"Aktiv: {proc} · „{title}“ → Adapter-Familie: {fam} @ {DateTime.Now:T}";
+        TileLive.Text = $"Active: {proc} · „{title}“ → adapter family: {fam} @ {DateTime.Now:T}";
         NexusShell.Log("Live Context: " + TileLive.Text);
     }
 
@@ -293,18 +337,18 @@ public partial class MainWindow : Window
         BadgeEnv.Text = $"Environment: {_settings.Provider} / {_settings.Mode}";
         BadgeSpeech.Text = DotEnvStore.HasProviderKey(_settings.Provider)
             ? "LLM: .env Key OK"
-            : "LLM: Key fehlt";
-        BadgeKnow.Text = $"Knowledge: {(_settings.UseLocalKnowledge ? "ein" : "aus")}";
+            : "LLM: key missing";
+        BadgeKnow.Text = $"Knowledge: {(_settings.UseLocalKnowledge ? "on" : "off")}";
         BadgeAuto.Text = OperatingSystem.IsWindows() &&
                          string.Equals(_settings.Safety.Profile, "power-user", StringComparison.OrdinalIgnoreCase)
             ? "Automation: Win32 (power-user)"
             : "Automation: Simulation";
-        TileEnv.Text = $"Provider {_settings.Provider}, Modell „{_settings.Model}“, Safety {_settings.Safety.Profile}";
+        TileEnv.Text = $"Provider {_settings.Provider}, model „{_settings.Model}“, safety {_settings.Safety.Profile}";
         var idx = File.Exists(AppPaths.KnowledgeIndex);
         var ch = File.Exists(AppPaths.KnowledgeChunks);
         var emb = File.Exists(AppPaths.KnowledgeEmbeddings);
         TileMemory.Text =
-            $"Index: {(idx ? "ja" : "nein")}, Chunks: {(ch ? "ja" : "nein")}, Embeddings: {(emb ? "ja" : "nein")} — {AppPaths.DataDir}";
+            $"Index: {(idx ? "yes" : "no")}, Chunks: {(ch ? "yes" : "no")}, Embeddings: {(emb ? "yes" : "no")} — {AppPaths.DataDir}";
     }
 
     private void RefreshDashboard()
@@ -314,7 +358,7 @@ public partial class MainWindow : Window
             : 0;
         static string Cap(string? s, int max = 3500)
         {
-            if (string.IsNullOrEmpty(s)) return "(leer)";
+            if (string.IsNullOrEmpty(s)) return "(empty)";
             return s.Length <= max ? s : s[..max] + "\n…";
         }
 
@@ -335,28 +379,28 @@ public partial class MainWindow : Window
             if (_settings.ProactiveDashboardLlm && DotEnvStore.HasProviderKey(_settings.Provider))
             {
                 proactive = string.IsNullOrWhiteSpace(_proactiveHintCache)
-                    ? $"Watch: Snapshots alle {Math.Clamp(_settings.WatchSnapshotIntervalSeconds, 15, 600)}s. Proaktiver LLM-Hinweis wird geladen …"
+                    ? $"Watch: snapshots every {Math.Clamp(_settings.WatchSnapshotIntervalSeconds, 15, 600)}s. Proactive LLM hint loading …"
                     : _proactiveHintCache;
             }
             else
             {
                 proactive =
-                    $"Watch: Snapshots alle {Math.Clamp(_settings.WatchSnapshotIntervalSeconds, 15, 600)}s → {Path.GetFileName(AppPaths.WatchSessions)}";
+                    $"Watch: snapshots every {Math.Clamp(_settings.WatchSnapshotIntervalSeconds, 15, 600)}s → {Path.GetFileName(AppPaths.WatchSessions)}";
             }
         }
         else
         {
             proactive =
-                "Modus „watch“ + optional proaktiver LLM-Hinweis in Setup für Dashboard-Tipps.";
+                "Set mode to „watch“ + optional proactive LLM hint in Setup for dashboard tips.";
         }
 
         TabDashboard.RefreshSummaries(
-            env: $"Provider: {_settings.Provider}\nModus: {_settings.Mode}\nModell: {_settings.Model}\n.env: {(DotEnvSummary.FileExists ? "ja" : "fehlt")}",
-            know: $"Dateien in knowledge\\: {knowCount}\nIndex: {(File.Exists(AppPaths.KnowledgeIndex) ? "ja" : "nein")}\nChunks: {(File.Exists(AppPaths.KnowledgeChunks) ? "ja" : "nein")}\nEmbeddings: {(File.Exists(AppPaths.KnowledgeEmbeddings) ? "ja" : "nein")}",
+            env: $"Provider: {_settings.Provider}\nMode: {_settings.Mode}\nModel: {_settings.Model}\n.env: {(DotEnvSummary.FileExists ? "yes" : "missing")}",
+            know: $"Files in knowledge\\: {knowCount}\nIndex: {(File.Exists(AppPaths.KnowledgeIndex) ? "yes" : "no")}\nChunks: {(File.Exists(AppPaths.KnowledgeChunks) ? "yes" : "no")}\nEmbeddings: {(File.Exists(AppPaths.KnowledgeEmbeddings) ? "yes" : "no")}",
             live: TileLive.Text ?? "—",
             proactive,
             gov:
-            $"Profil: {_settings.Safety.Profile}\nPanic: {_settings.Safety.PanicStopEnabled}\nneverAutoSend: {_settings.Safety.NeverAutoSend}\n\n— Ritual-Jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}",
+            $"Profile: {_settings.Safety.Profile}\nPanic: {_settings.Safety.PanicStopEnabled}\nneverAutoSend: {_settings.Safety.NeverAutoSend}\n\n— Ritual jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}",
             rituals: FormatRitualsDashboardCard(),
             watch: Cap(File.Exists(AppPaths.WatchSessions) ? File.ReadAllText(AppPaths.WatchSessions) : null)
         );
@@ -369,12 +413,12 @@ public partial class MainWindow : Window
             var list = RitualRecipeStore.LoadAll();
             var pending = RitualJobQueueStore.GetPendingCount();
             var sb = new StringBuilder();
-            sb.AppendLine($"Rezepte in Library: {list.Count} · Jobs wartend: {pending}");
+            sb.AppendLine($"Recipes in library: {list.Count} · jobs pending: {pending}");
             if (list.Count == 0)
-                sb.Append("(noch keine — Tab „Rituals“)");
+                sb.Append("(none yet — Rituals tab)");
             else
             {
-                sb.AppendLine("Auszug:");
+                sb.AppendLine("Excerpt:");
                 foreach (var r in list.Take(6))
                     sb.AppendLine(" · " + r.ListCaption);
             }
@@ -383,7 +427,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            return "(Rituale: " + ex.Message + ")";
+            return "(Rituals: " + ex.Message + ")";
         }
     }
 
@@ -415,8 +459,8 @@ public partial class MainWindow : Window
                 : ("", "");
 
             var prompt =
-                "Watch-Arbeitskontext. Antworte mit genau einem knappen, hilfreichen Satz auf Deutsch (max. 220 Zeichen, keine Begrüßung). " +
-                $"Aktive App: {proc}. Fenster: {title}. Bildschirm-Hash-Präfix: {hash}.";
+                "Watch work context. Reply with exactly one short helpful sentence in English (max. 220 characters, no greeting). " +
+                $"Active app: {proc}. Window: {title}. Screen hash prefix: {hash}.";
 
             var text = await LlmChatService.CompleteAsync(_settings, prompt, false, false, default)
                 .ConfigureAwait(false);
@@ -431,7 +475,7 @@ public partial class MainWindow : Window
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                _proactiveHintCache = "(Proaktiv-LLM Fehler: " + ex.Message + ")";
+                _proactiveHintCache = "(Proactive LLM error: " + ex.Message + ")";
                 _lastProactiveUtc = DateTime.UtcNow;
             });
         }
@@ -449,7 +493,7 @@ public partial class MainWindow : Window
             return;
         if (!OperatingSystem.IsWindows())
         {
-            NexusShell.Log("Local tool host: nur unter Windows.");
+            NexusShell.Log("Local tool host: Windows only.");
             return;
         }
 
@@ -462,7 +506,7 @@ public partial class MainWindow : Window
             h.Start(port, string.IsNullOrEmpty(tok) ? null : tok);
             _toolHost = h;
             if (string.IsNullOrEmpty(tok))
-                NexusShell.Log("Local tool host: ohne LOCAL_TOOL_TOKEN (nur localhost).");
+                NexusShell.Log("Local tool host: no LOCAL_TOOL_TOKEN (localhost only).");
         }
         catch (Exception ex)
         {
@@ -487,11 +531,11 @@ public partial class MainWindow : Window
         {
             var hash = ScreenCaptureWin.PrimaryMonitorSha256Prefix16();
             WatchSessionService.AppendSnapshot($"watch · Dashboard {DateTime.Now:T}", hash);
-            NexusShell.Log("watch · Snapshot (primärer Monitor-Hash) protokolliert.");
+            NexusShell.Log("watch · snapshot (primary monitor hash) logged.");
         }
         catch (Exception ex)
         {
-            NexusShell.Log("watch · Snapshot fehlgeschlagen: " + ex.Message);
+            NexusShell.Log("watch · snapshot failed: " + ex.Message);
         }
     }
 
@@ -502,7 +546,7 @@ public partial class MainWindow : Window
         var md = Path.Combine(AppPaths.RepoRoot, "docs", "Carolus-Nexus-Benutzerhandbuch.md");
         if (!File.Exists(md))
         {
-            NexusShell.Log($"Handbuch nicht gefunden: {md}");
+            NexusShell.Log($"Handbook not found: {md}");
             return;
         }
 
@@ -516,7 +560,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            NexusShell.Log($"Handbuch öffnen fehlgeschlagen: {ex.Message}");
+            NexusShell.Log($"Open handbook failed: {ex.Message}");
         }
     }
 }

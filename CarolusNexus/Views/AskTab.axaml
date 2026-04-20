@@ -1,14 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="CarolusNexus.Views.AskTab">
-  <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,*">
-    <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="8" Margin="0,0,0,8">
+  <Grid x:Name="AskRootGrid" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,*">
+    <StackPanel x:Name="AskToolbarHost" Grid.Row="0" Grid.ColumnSpan="2" Spacing="8" Margin="0,0,0,8">
       <TextBox x:Name="PromptBox" AcceptsReturn="True" MinHeight="72"
-               Watermark="Frage / Vision / RAG — oder CLI: „nimm codex …“, „nimm codex mit screen …“, „nimm claude code …“, „nimm openclaw …“" />
+               Watermark="Question / vision / RAG — or CLI: „use codex …“, „use codex with screen …“, „use claude code …“, „use openclaw …“ (German „nimm …“ still works)" />
       <StackPanel Orientation="Horizontal" Spacing="12">
-        <CheckBox x:Name="IncludeScreenshots" Content="Screenshots einbeziehen" IsChecked="True" />
-        <CheckBox x:Name="UseKnowledgeInAsk" Content="Lokales Wissen im Ask-Flow" IsChecked="True"
-                  ToolTip.Tip="UIA-Kontext kommt aus Setup („Ask: UIA-Snapshot …“)." />
+        <CheckBox x:Name="IncludeScreenshots" Content="Include screenshots" IsChecked="True" />
+        <CheckBox x:Name="UseKnowledgeInAsk" Content="Use local knowledge in Ask" IsChecked="True"
+                  ToolTip.Tip="UIA context is controlled in Setup (Ask: UIA snapshot)." />
       </StackPanel>
       <WrapPanel Orientation="Horizontal">
         <Button x:Name="BtnAskNow" Content="ask now" Margin="0,0,6,6" Padding="10,6" />
@@ -19,50 +19,50 @@
         <Button x:Name="BtnCancelRec" Content="cancel recording" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnClearConv" Content="clear conversation" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnRunPlan" Content="run plan" Margin="0,0,6,6" Padding="10,6"
-                ToolTip.Tip="Führt den erkannten Plan ohne zusätzlichen Bestätigungsdialog aus." />
-        <Button x:Name="BtnApproveRun" Content="freigeben + ausführen" Margin="0,0,6,6" Padding="10,6"
-                ToolTip.Tip="Bestätigungsdialog — explizites Gate vor Ausführung." />
+                ToolTip.Tip="Runs the detected plan without an extra confirmation dialog." />
+        <Button x:Name="BtnApproveRun" Content="approve + run" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Confirmation dialog — explicit gate before execution." />
         <Button x:Name="BtnRunNext" Content="run next step" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnSaveRitual" Content="save plan as ritual" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnClearPlan" Content="clear plan" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnPanic" Content="panic stop" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnSpeak" Content="speak response" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnCopyAnswer" Content="copy answer" Margin="0,0,6,6" Padding="10,6"
-                ToolTip.Tip="Kopiert die Assistant-Antwort in die Zwischenablage." />
+                ToolTip.Tip="Copies the assistant reply to the clipboard." />
       </WrapPanel>
-      <TextBlock Text="KI-Hilfen" FontWeight="SemiBold" FontSize="11" Margin="0,2,0,0" />
+      <TextBlock Text="AI helpers" FontWeight="SemiBold" FontSize="11" Margin="0,2,0,0" />
       <WrapPanel Orientation="Horizontal">
-        <Button x:Name="BtnInsertKnowledge" Content="Wissen einfügen" Margin="0,0,6,6" Padding="10,6"
-                ToolTip.Tip="Hängt einen Auszug aus knowledge\\ an den Prompt (ranking nach aktuellem Text)." />
-        <Button x:Name="BtnPolishPrompt" Content="Prompt schärfen" Margin="0,0,6,6" Padding="10,6"
-                ToolTip.Tip="Kürzt und klärt den Prompt per LLM (ohne neue Fakten)." />
-        <Button x:Name="BtnPolishAnswer" Content="Antwort verbessern" Margin="0,0,6,6" Padding="10,6"
-                ToolTip.Tip="Überarbeitet die letzte Assistant-Antwort: klarer, gleiche Fakten." />
-        <Button x:Name="BtnParseJsonPlan" Content="JSON-Plan aus Antwort" Margin="0,0,6,6" Padding="10,6"
-                ToolTip.Tip="Liest JSON-Fences oder ein steps-Array in der Assistant-Antwort." />
-        <Button x:Name="BtnLlmJsonPlan" Content="KI: strukturierte Schritte" Margin="0,0,6,6" Padding="10,6"
-                ToolTip.Tip="Zweiter LLM-Aufruf: extrahiert Schritte als JSON." />
-        <Button x:Name="BtnExplainPlan" Content="Plan erklären / Risiko" Margin="0,0,6,6" Padding="10,6"
-                ToolTip.Tip="Kurze LLM-Erklärung der aktuellen Plan-Schritte (Dry-Run-Begleittext)." />
+        <Button x:Name="BtnInsertKnowledge" Content="Insert knowledge" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Appends a snippet from knowledge\\ to the prompt (ranked by current text)." />
+        <Button x:Name="BtnPolishPrompt" Content="Polish prompt" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Tightens the prompt via LLM (no new facts)." />
+        <Button x:Name="BtnPolishAnswer" Content="Polish answer" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Rewrites the last assistant reply: clearer, same facts." />
+        <Button x:Name="BtnParseJsonPlan" Content="JSON plan from reply" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Reads JSON fences or a steps array in the assistant reply." />
+        <Button x:Name="BtnLlmJsonPlan" Content="AI: structured steps" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Second LLM call: extract steps as JSON." />
+        <Button x:Name="BtnExplainPlan" Content="Explain plan / risk" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Short LLM explanation of current plan steps (dry-run companion text)." />
       </WrapPanel>
-      <TextBlock Text="Schnell-Prompts" FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}" />
+      <TextBlock Text="Quick prompts" FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}" />
       <WrapPanel Orientation="Horizontal">
-        <Button x:Name="BtnChipSummary" Content="+ Zusammenfassung" Margin="0,0,6,6" Padding="8,5" FontSize="11" />
-        <Button x:Name="BtnChipNext" Content="+ Nächste Schritte" Margin="0,0,6,6" Padding="8,5" FontSize="11" />
-        <Button x:Name="BtnChipRisks" Content="+ Risiken" Margin="0,0,6,6" Padding="8,5" FontSize="11" />
-        <Button x:Name="BtnChipExplain" Content="+ Erklär mir …" Margin="0,0,6,6" Padding="8,5" FontSize="11" />
+        <Button x:Name="BtnChipSummary" Content="+ Summary" Margin="0,0,6,6" Padding="8,5" FontSize="11" />
+        <Button x:Name="BtnChipNext" Content="+ Next steps" Margin="0,0,6,6" Padding="8,5" FontSize="11" />
+        <Button x:Name="BtnChipRisks" Content="+ Risks" Margin="0,0,6,6" Padding="8,5" FontSize="11" />
+        <Button x:Name="BtnChipExplain" Content="+ Explain …" Margin="0,0,6,6" Padding="8,5" FontSize="11" />
       </WrapPanel>
-      <TextBlock Text="AX / Pläne: ax.*-Tokens — echte Win32-Schritte nur mit Safety „power-user“ + PlanGuard. CLI-Handoff startet lokale Agenten aus demselben Prompt." FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}" TextWrapping="Wrap" />
+      <TextBlock Text="AX / plans: ax.* tokens — real Win32 steps only with Safety „power-user“ + PlanGuard. CLI handoff starts local agents from the same prompt." FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}" TextWrapping="Wrap" />
     </StackPanel>
     <ProgressBar x:Name="AskBusyBar" Grid.Row="1" Grid.ColumnSpan="2" Height="4" Margin="0,0,0,8"
                  IsIndeterminate="True" IsVisible="False" />
-    <ScrollViewer Grid.Row="2" Grid.Column="0" Margin="0,0,8,0">
+    <ScrollViewer x:Name="AskLeftScroll" Grid.Row="2" Grid.Column="0" Margin="0,0,8,0">
       <StackPanel Spacing="8">
         <TextBlock Text="Assistant Response" FontWeight="SemiBold" />
         <TextBox x:Name="AssistantOut" IsReadOnly="True" AcceptsReturn="True" MinHeight="120" TextWrapping="Wrap" />
         <TextBlock Text="Retrieval + Context" FontWeight="SemiBold" />
         <TextBox x:Name="RetrievalOut" IsReadOnly="True" AcceptsReturn="True" MinHeight="80" TextWrapping="Wrap" />
-        <TextBlock x:Name="RetrievalSourcesHeader" Text="RAG-Quellen" FontWeight="SemiBold" FontSize="11"
+        <TextBlock x:Name="RetrievalSourcesHeader" Text="RAG sources" FontWeight="SemiBold" FontSize="11"
                    IsVisible="False" />
         <StackPanel x:Name="RetrievalSourcesPanel" Spacing="4" IsVisible="False" />
         <TextBlock Text="Safety / Recovery" FontWeight="SemiBold" />
@@ -71,7 +71,7 @@
         <TextBox x:Name="TranscriptOut" IsReadOnly="True" AcceptsReturn="True" MinHeight="50" TextWrapping="Wrap" />
       </StackPanel>
     </ScrollViewer>
-    <ScrollViewer Grid.Row="2" Grid.Column="1">
+    <ScrollViewer x:Name="AskRightScroll" Grid.Row="2" Grid.Column="1">
       <StackPanel Spacing="8">
         <TextBlock Text="Action Plan Preview" FontWeight="SemiBold" />
         <TextBox x:Name="PlanPreview" IsReadOnly="True" AcceptsReturn="True" MinHeight="100" TextWrapping="Wrap" />

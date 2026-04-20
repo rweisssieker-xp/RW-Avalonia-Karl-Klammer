@@ -18,11 +18,11 @@ public static class Win32AutomationExecutor
     public static string Execute(RecipeStep step, NexusSettings settings)
     {
         if (!OperatingSystem.IsWindows())
-            return "[SKIP] nicht Windows";
+            return "[SKIP] not Windows";
 
         var arg = step.ActionArgument?.Trim() ?? "";
         if (string.IsNullOrEmpty(arg))
-            return "[SKIP] leer";
+            return "[SKIP] empty";
 
         if (!PlanGuard.IsAllowed(settings, arg))
             return "[BLOCKED] Safety-Policy";
@@ -66,7 +66,7 @@ public static class Win32AutomationExecutor
                 return "[OK] URL";
             }
 
-            return "[SKIP] Token nicht ausführbar: " + arg;
+            return "[SKIP] Token not executable: " + arg;
         }
         catch (Exception ex)
         {
@@ -77,7 +77,7 @@ public static class Win32AutomationExecutor
     private static string SendHotkey(string combo)
     {
         if (string.IsNullOrWhiteSpace(combo))
-            return "[SKIP] hotkey leer";
+            return "[SKIP] hotkey empty";
         var sk = ToSendKeys(combo);
         SendKeys.SendWait(sk);
         return "[OK] hotkey " + combo;
@@ -111,7 +111,7 @@ public static class Win32AutomationExecutor
     private static string SendType(string text)
     {
         if (string.IsNullOrEmpty(text))
-            return "[SKIP] type leer";
+            return "[SKIP] type empty";
         Thread.Sleep(30);
         Clipboard.SetText(text);
         Thread.Sleep(30);
@@ -122,7 +122,7 @@ public static class Win32AutomationExecutor
     private static string OpenTarget(string target)
     {
         if (string.IsNullOrWhiteSpace(target))
-            return "[SKIP] open leer";
+            return "[SKIP] open empty";
         Process.Start(new ProcessStartInfo(target.Trim()) { UseShellExecute = true });
         return "[OK] open";
     }
@@ -144,7 +144,7 @@ public static class Win32AutomationExecutor
         if (parts.Length < 2
             || !int.TryParse(parts[0], System.Globalization.NumberStyles.Integer, null, out var x)
             || !int.TryParse(parts[1], System.Globalization.NumberStyles.Integer, null, out var y))
-            return "[SKIP] move: zwei ganze Zahlen erwartet (x,y)";
+            return "[SKIP] move: expected two integers (x,y)";
 
         if (!SetCursorPos(x, y))
             return "[ERR] SetCursorPos";

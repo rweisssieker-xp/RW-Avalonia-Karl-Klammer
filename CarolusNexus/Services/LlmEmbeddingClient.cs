@@ -37,7 +37,7 @@ public static class LlmEmbeddingClient
 
         using var doc = JsonDocument.Parse(json);
         if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
-            throw new InvalidOperationException("Embeddings: kein data-Array.");
+            throw new InvalidOperationException("Embeddings: no data array in response.");
 
         var list = new List<float[]>();
         foreach (var item in data.EnumerateArray())
@@ -52,7 +52,7 @@ public static class LlmEmbeddingClient
         }
 
         if (list.Count != inputs.Count)
-            throw new InvalidOperationException($"Embeddings: erwartet {inputs.Count} Vektoren, erhalten {list.Count}.");
+            throw new InvalidOperationException($"Embeddings: expected {inputs.Count} vectors, got {list.Count}.");
         return list;
     }
 }

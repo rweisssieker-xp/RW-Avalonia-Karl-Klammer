@@ -2,13 +2,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="CarolusNexus.Views.DiagnosticsTab">
   <DockPanel MinHeight="360">
-    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-      <TextBox x:Name="DiagFilter" Width="200" Watermark="Filter…" />
-      <Button x:Name="BtnExport" Content="export" />
-      <Button x:Name="BtnCopy" Content="copy all" />
-      <Button x:Name="BtnClear" Content="clear logs" />
-      <Button x:Name="BtnAudit" Content="ritual audit" ToolTip.Tip="Lädt die letzten Zeilen aus ritual-step-audit.jsonl." />
-    </StackPanel>
+    <WrapPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+      <TextBox x:Name="DiagFilter" MinWidth="160" Width="220" Watermark="Filter…" Margin="0,0,8,8" />
+      <Button x:Name="BtnExport" Content="export" Margin="0,0,8,8" />
+      <Button x:Name="BtnCopy" Content="copy all" Margin="0,0,8,8" />
+      <Button x:Name="BtnClear" Content="clear logs" Margin="0,0,8,8" />
+      <Button x:Name="BtnAudit" Content="ritual audit" Margin="0,0,8,8"
+              ToolTip.Tip="Loads the latest lines from ritual-step-audit.jsonl." />
+    </WrapPanel>
     <TextBox x:Name="DiagLog" AcceptsReturn="True" IsReadOnly="True" FontFamily="Consolas,Courier New,monospace"
              TextWrapping="Wrap" />
   </DockPanel>

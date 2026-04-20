@@ -14,7 +14,7 @@ public partial class DiagnosticsTab : UserControl
         InitializeComponent();
         BtnExport.Click += (_, _) => ExportDiagnostics();
         BtnCopy.Click += async (_, _) => await CopyAllToClipboardAsync();
-        BtnClear.Click += (_, _) => { DiagLog.Text = ""; NexusShell.Log("Logs geleert (lokal)."); };
+        BtnClear.Click += (_, _) => { DiagLog.Text = ""; NexusShell.Log("Logs cleared (local)."); };
         BtnAudit.Click += (_, _) => LoadRitualAuditTail();
     }
 
@@ -22,8 +22,8 @@ public partial class DiagnosticsTab : UserControl
     {
         if (!File.Exists(AppPaths.RitualStepAudit))
         {
-            NexusShell.Log("ritual-step-audit.jsonl existiert noch nicht.");
-            DiagLog.Text = "(kein Audit — zuerst Plan/Ritual mit Schritten ausführen)";
+            NexusShell.Log("ritual-step-audit.jsonl does not exist yet.");
+            DiagLog.Text = "(no audit — run a plan/ritual with steps first)";
             return;
         }
 
@@ -32,11 +32,11 @@ public partial class DiagnosticsTab : UserControl
             var lines = File.ReadAllLines(AppPaths.RitualStepAudit);
             var tail = lines.Length <= 120 ? lines : lines.Skip(lines.Length - 120).ToArray();
             DiagLog.Text = string.Join(Environment.NewLine, tail);
-            NexusShell.Log($"Diagnostics: Ritual-Audit, letzte {tail.Length} Zeilen.");
+            NexusShell.Log($"Diagnostics: ritual audit, last {tail.Length} lines.");
         }
         catch (Exception ex)
         {
-            NexusShell.Log("Ritual-Audit lesen: " + ex.Message);
+            NexusShell.Log("Read ritual audit: " + ex.Message);
         }
     }
 
@@ -58,11 +58,11 @@ public partial class DiagnosticsTab : UserControl
         var top = TopLevel.GetTopLevel(this);
         if (top?.Clipboard == null)
         {
-            NexusShell.Log("Zwischenablage nicht verfügbar.");
+            NexusShell.Log("Clipboard not available.");
             return;
         }
 
         await top.Clipboard.SetTextAsync(DiagLog.Text ?? "").ConfigureAwait(true);
-        NexusShell.Log("Diagnostics: gesamter Log in Zwischenablage.");
+        NexusShell.Log("Diagnostics: full log copied to clipboard.");
     }
 }

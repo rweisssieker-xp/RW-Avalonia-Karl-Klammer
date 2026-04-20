@@ -17,17 +17,17 @@ public sealed class CliAskRoute
 
     public string Payload { get; set; }
 
-    /// <summary>Vor dem CLI-Lauf kurze Vision-Zusammenfassung einfügen (Multimonitor).</summary>
+    /// <summary>Optional multimonitor vision summary before the CLI run.</summary>
     public bool WithScreenSummary { get; }
 }
 
 /// <summary>
-/// Deutsche Trigger aus dem Handbuch: einheitliche Shell Ask + CLI (USP P4 / I3).
+/// Ask + CLI triggers (English + legacy German) for one shell (handbook / USP).
 /// </summary>
 public static class AskPromptRouter
 {
     private static readonly Regex PersonaGreetingRx = new(
-        @"^(hey|hallo|hi|guten\s+tag|servus)\s*,?\s*karl\s+klammer\s*[\!\?\.]*\s*$",
+        @"^(hey|hallo|hi|hello|howdy|guten\s+tag|servus)\s*,?\s*karl\s+klammer\s*[\!\?\.]*\s*$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public static bool TryPersonaGreeting(string? prompt, out string reply)
@@ -37,7 +37,7 @@ public static class AskPromptRouter
             return false;
         if (!PersonaGreetingRx.IsMatch(prompt.Trim()))
             return false;
-        reply = "Hey Meister, stehts zu diensten.";
+        reply = "Hey boss — at your service.";
         return true;
     }
 
@@ -49,6 +49,34 @@ public static class AskPromptRouter
 
         var raw = prompt.Trim();
         var lower = raw.ToLowerInvariant();
+
+        if (lower.StartsWith("use codex with screen", StringComparison.Ordinal))
+        {
+            var rest = TrimTriggerTail(raw, "use codex with screen");
+            route = new CliAskRoute("codex", rest, withScreenSummary: true);
+            return true;
+        }
+
+        if (lower.StartsWith("use codex", StringComparison.Ordinal))
+        {
+            var rest = TrimTriggerTail(raw, "use codex");
+            route = new CliAskRoute("codex", rest, withScreenSummary: false);
+            return true;
+        }
+
+        if (lower.StartsWith("use claude code", StringComparison.Ordinal))
+        {
+            var rest = TrimTriggerTail(raw, "use claude code");
+            route = new CliAskRoute("claude code", rest, withScreenSummary: false);
+            return true;
+        }
+
+        if (lower.StartsWith("use openclaw", StringComparison.Ordinal))
+        {
+            var rest = TrimTriggerTail(raw, "use openclaw");
+            route = new CliAskRoute("openclaw", rest, withScreenSummary: false);
+            return true;
+        }
 
         if (lower.StartsWith("nimm codex mit screen", StringComparison.Ordinal))
         {
@@ -83,7 +111,6 @@ public static class AskPromptRouter
 
     private static string TrimTriggerTail(string raw, string triggerLower)
     {
-        // raw behält Casing; triggerLower ist bereits lower — Länge vom gematchten Prefix
         if (raw.Length < triggerLower.Length)
             return "";
         var tail = raw[triggerLower.Length..].TrimStart(' ', '\t', ':', '–', '-', '—');

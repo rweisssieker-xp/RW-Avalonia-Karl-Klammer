@@ -134,7 +134,7 @@ public static class KnowledgeSnippetService
             }
 
             var s = sb.ToString();
-            var text = s.Length <= maxChars ? s : s[..maxChars] + "\n…(gekürzt)";
+            var text = s.Length <= maxChars ? s : s[..maxChars] + "\n…(truncated)";
             return new KnowledgeContextBundle(text, sources);
         }
         catch
@@ -187,7 +187,7 @@ public static class KnowledgeSnippetService
         }
 
         var s = sb.ToString();
-        var ctx = s.Length <= maxChars ? s : s[..maxChars] + "\n…(gekürzt)";
+        var ctx = s.Length <= maxChars ? s : s[..maxChars] + "\n…(truncated)";
         return new KnowledgeContextBundle(ctx, sources);
     }
 }

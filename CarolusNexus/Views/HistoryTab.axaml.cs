@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using CarolusNexus.Models;
 using CarolusNexus.Services;
 
@@ -12,6 +14,7 @@ namespace CarolusNexus.Views;
 public partial class HistoryTab : UserControl
 {
     private List<ActionHistoryEntry> _entries = new();
+    private bool? _histNarrowLayout;
 
     public HistoryTab()
     {
@@ -31,13 +34,64 @@ public partial class HistoryTab : UserControl
         Loaded += (_, _) => Refresh();
     }
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        LayoutUpdated += HistOnLayoutUpdated;
+        ApplyHistoryResponsiveLayout();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        LayoutUpdated -= HistOnLayoutUpdated;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void HistOnLayoutUpdated(object? sender, EventArgs e) => ApplyHistoryResponsiveLayout();
+
+    private void ApplyHistoryResponsiveLayout()
+    {
+        var w = Bounds.Width;
+        if (w <= 0)
+            return;
+        var narrow = w < ResponsiveLayout.NarrowMax;
+        if (_histNarrowLayout == narrow)
+            return;
+        _histNarrowLayout = narrow;
+
+        HistRootGrid.ColumnDefinitions.Clear();
+        HistRootGrid.RowDefinitions.Clear();
+        if (narrow)
+        {
+            HistRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            HistRootGrid.RowDefinitions.Add(new RowDefinition(new GridLength(200)));
+            HistRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+            Grid.SetColumn(HistLeftPane, 0);
+            Grid.SetRow(HistLeftPane, 0);
+            Grid.SetColumn(HistRightPane, 0);
+            Grid.SetRow(HistRightPane, 1);
+            HistLeftPane.Margin = new Thickness(0, 0, 0, 8);
+        }
+        else
+        {
+            HistRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+            HistRootGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(280)));
+            HistRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            Grid.SetColumn(HistLeftPane, 0);
+            Grid.SetRow(HistLeftPane, 0);
+            Grid.SetColumn(HistRightPane, 1);
+            Grid.SetRow(HistRightPane, 0);
+            HistLeftPane.Margin = new Thickness(0, 0, 12, 0);
+        }
+    }
+
     public void Refresh()
     {
         var doc = ActionHistoryService.Load();
         _entries = doc.Entries.OrderByDescending(e => e.UtcAt).ToList();
         if (_entries.Count == 0)
         {
-            HistList.ItemsSource = new[] { "(noch keine Einträge in action-history.json — Plan/Ritual-Lauf ausführen)" };
+            HistList.ItemsSource = new[] { "(no entries in action-history.json yet — run a plan/ritual)" };
             HistDetail.Text = "";
             return;
         }
@@ -58,27 +112,27 @@ public partial class HistoryTab : UserControl
         }
 
         var list = src.ToList();
-        HistList.ItemsSource = list.Count == 0 ? new[] { "(keine Treffer)" } : list;
+        HistList.ItemsSource = list.Count == 0 ? new[] { "(no matches)" } : list;
     }
 
     private void CreateRitualFromSelection()
     {
         if (HistList.SelectedItem is not ActionHistoryEntry e)
         {
-            NexusShell.Log("History: Eintrag wählen.");
+            NexusShell.Log("History: select an entry.");
             return;
         }
 
         if (e.Steps.Count == 0)
         {
-            NexusShell.Log("History: gewählter Eintrag hat keine Schritte.");
+            NexusShell.Log("History: selected entry has no steps.");
             return;
         }
 
         var recipe = new AutomationRecipe
         {
-            Name = $"Aus History {e.UtcAt.ToLocalTime():yyyy-MM-dd HH:mm}",
-            Description = string.IsNullOrWhiteSpace(e.Summary) ? "Aus action-history" : e.Summary[..Math.Min(200, e.Summary.Length)],
+            Name = $"From history {e.UtcAt.ToLocalTime():yyyy-MM-dd HH:mm}",
+            Description = string.IsNullOrWhiteSpace(e.Summary) ? "From action-history" : e.Summary[..Math.Min(200, e.Summary.Length)],
             Steps = e.Steps.Select(s => new RecipeStep
             {
                 ActionType = s.ActionType,
@@ -87,6 +141,6 @@ public partial class HistoryTab : UserControl
             }).ToList()
         };
         RitualRecipeStore.AppendRecipe(recipe);
-        NexusShell.Log($"Ritual aus History angelegt: {recipe.Name} ({recipe.Steps.Count} Schritte).");
+        NexusShell.Log($"Ritual created from history: {recipe.Name} ({recipe.Steps.Count} steps).");
     }
 }

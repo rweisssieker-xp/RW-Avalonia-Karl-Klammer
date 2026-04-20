@@ -26,7 +26,7 @@ public static class CliAgentRunner
             "codex" => await RunCodexAsync(env, prompt, logPath, ct),
             "claude code" => await RunClaudeAsync(env, prompt, logPath, ct),
             "openclaw" => await RunOpenClawAsync(env, prompt, logPath, ct),
-            _ => (logPath, "Unbekannter Agent: " + agent)
+            _ => (logPath, "Unknown agent: " + agent)
         };
     }
 

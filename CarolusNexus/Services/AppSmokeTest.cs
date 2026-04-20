@@ -56,8 +56,8 @@ public static class AppSmokeTest
             LogOk($"smoke · EmbeddingRAG index ready={embReady}");
 
             var preview = KnowledgeIndexService.ReadDocumentForPreview(Path.Combine(AppPaths.KnowledgeDir, "__nonexistent__"));
-            if (!preview.StartsWith("(Datei fehlt", StringComparison.Ordinal))
-                throw new InvalidOperationException("ReadDocumentForPreview sollte fehlende Datei melden.");
+            if (!preview.StartsWith("(File missing", StringComparison.Ordinal))
+                throw new InvalidOperationException("ReadDocumentForPreview should report a missing file.");
 
             LogOk("smoke · KnowledgeIndexService.ReadDocumentForPreview (edge)");
 
@@ -66,20 +66,20 @@ public static class AppSmokeTest
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
                 var text = LlmChatService.SmokeAsync(settings, cts.Token).GetAwaiter().GetResult();
                 if (string.IsNullOrWhiteSpace(text))
-                    throw new InvalidOperationException("LLM smoke: leere Antwort.");
-                if (text.StartsWith("Fehlt ", StringComparison.Ordinal) ||
-                    text.StartsWith("Unbekannter Provider", StringComparison.Ordinal))
+                    throw new InvalidOperationException("LLM smoke: empty response.");
+                if (text.StartsWith("Missing ", StringComparison.Ordinal) ||
+                    text.StartsWith("Unknown provider", StringComparison.Ordinal))
                     throw new InvalidOperationException("LLM smoke: " + text);
 
-                LogOk($"smoke · LLM provider OK ({text.Trim().Length} Zeichen)");
+                LogOk($"smoke · LLM provider OK ({text.Trim().Length} chars)");
             }
             else
             {
-                LogOk("smoke · LLM übersprungen (kein Provider-Key in .env)");
+                LogOk("smoke · LLM skipped (no provider key in .env)");
             }
 
             Console.WriteLine();
-            Console.WriteLine("SMOKE OK — alle Checks bestanden.");
+            Console.WriteLine("SMOKE OK — all checks passed.");
             return 0;
         }
         catch (Exception ex)

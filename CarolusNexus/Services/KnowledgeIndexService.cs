@@ -78,20 +78,20 @@ public static class KnowledgeIndexService
     public static string ReadDocumentForPreview(string path, int maxChars = 200_000)
     {
         if (!File.Exists(path))
-            return "(Datei fehlt.)";
+            return "(File missing.)";
         var ext = Path.GetExtension(path).ToLowerInvariant();
         if (!IsIndexableExtension(ext))
-            return "(Keine Textvorschau für dieses Format.)";
+            return "(No text preview for this format.)";
         try
         {
             var t = SafeExtractText(path, ext);
             if (t.Length <= maxChars)
                 return t;
-            return t[..maxChars] + "\n\n…(Vorschau gekürzt)";
+            return t[..maxChars] + "\n\n…(preview truncated)";
         }
         catch (Exception ex)
         {
-            return "Lesen fehlgeschlagen: " + ex.Message;
+            return "Read failed: " + ex.Message;
         }
     }
 

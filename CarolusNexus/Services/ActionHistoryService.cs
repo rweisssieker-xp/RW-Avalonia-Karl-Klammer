@@ -27,7 +27,7 @@ public sealed class ActionHistoryEntry
 
     [JsonIgnore]
     public string ListLabel =>
-        $"{UtcAt.ToLocalTime():yyyy-MM-dd HH:mm} · {Kind} · {(DryRun ? "dry" : "run")} · {Steps.Count} Schritte";
+        $"{UtcAt.ToLocalTime():yyyy-MM-dd HH:mm} · {Kind} · {(DryRun ? "dry" : "run")} · {Steps.Count} steps";
 
     public override string ToString() => ListLabel;
 }

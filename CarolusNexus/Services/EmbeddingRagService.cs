@@ -111,7 +111,7 @@ public static class EmbeddingRagService
             if (used == 0)
                 return null;
             var s = sb.ToString();
-            var ctx = s.Length <= maxChars ? s : s[..maxChars] + "\n…(gekürzt)";
+            var ctx = s.Length <= maxChars ? s : s[..maxChars] + "\n…(truncated)";
             return new KnowledgeContextBundle(ctx, sources);
         }
         catch (Exception ex)
@@ -125,7 +125,7 @@ public static class EmbeddingRagService
     {
         if (!await RebuildGate.WaitAsync(0, ct).ConfigureAwait(false))
         {
-            NexusShell.Log("Embedding-Rebuild übersprungen (läuft bereits).");
+            NexusShell.Log("Embedding rebuild skipped (already running).");
             return;
         }
 
@@ -144,7 +144,7 @@ public static class EmbeddingRagService
         var env = DotEnvStore.Load();
         if (!env.TryGetValue("OPENAI_API_KEY", out var key) || string.IsNullOrWhiteSpace(key))
         {
-            NexusShell.Log("Embeddings: kein OPENAI_API_KEY — semantisches RAG deaktiviert.");
+            NexusShell.Log("Embeddings: no OPENAI_API_KEY — semantic RAG disabled.");
             return;
         }
 
@@ -152,13 +152,13 @@ public static class EmbeddingRagService
             (rag.Trim().Equals("0", StringComparison.OrdinalIgnoreCase) ||
              rag.Trim().Equals("false", StringComparison.OrdinalIgnoreCase)))
         {
-            NexusShell.Log("Embeddings: RAG_EMBEDDINGS=0 — übersprungen.");
+            NexusShell.Log("Embeddings: RAG_EMBEDDINGS=0 — skipped.");
             return;
         }
 
         if (!File.Exists(AppPaths.KnowledgeChunks))
         {
-            NexusShell.Log("Embeddings: knowledge-chunks.json fehlt — zuerst reindex.");
+            NexusShell.Log("Embeddings: knowledge-chunks.json missing — reindex first.");
             return;
         }
 
@@ -191,7 +191,7 @@ public static class EmbeddingRagService
             ? bu.TrimEnd('/')
             : "https://api.openai.com/v1";
 
-        NexusShell.Log($"Embeddings: {rows.Count} Chunks · Modell {model} …");
+        NexusShell.Log($"Embeddings: {rows.Count} chunks · model {model} …");
         var items = new List<EmbeddingItemDto>();
         const int batch = 24;
         for (var i = 0; i < rows.Count; i += batch)
@@ -224,7 +224,7 @@ public static class EmbeddingRagService
             AppPaths.KnowledgeEmbeddings,
             JsonSerializer.Serialize(outDoc, JsonOpts()),
             ct).ConfigureAwait(false);
-        NexusShell.Log($"Embeddings: gespeichert → knowledge-embeddings.json ({items.Count} Vektoren).");
+        NexusShell.Log($"Embeddings: saved → knowledge-embeddings.json ({items.Count} vectors).");
     }
 
     private static Dictionary<(string File, int Ordinal), string> LoadChunkLookup(string chunksJson)

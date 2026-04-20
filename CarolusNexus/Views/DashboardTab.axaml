@@ -4,74 +4,81 @@
              x:Class="CarolusNexus.Views.DashboardTab">
   <ScrollViewer>
     <StackPanel Spacing="12">
-      <TextBlock Text="Dashboard (Kacheln laut Handbuch §5.3)" FontWeight="SemiBold" FontSize="14" />
+      <TextBlock Text="Dashboard (tiles per handbook §5.3)" FontWeight="SemiBold" FontSize="14" />
       <Border CornerRadius="8" BorderBrush="{DynamicResource NexusCardBorderBrush}" BorderThickness="1"
               Padding="8" MinHeight="200" Background="{DynamicResource NexusCardBackgroundBrush}">
         <Grid RowDefinitions="Auto,*">
-          <TextBlock Text="3D-Vorschau (OpenGL)" FontWeight="SemiBold" Margin="0,0,0,6" />
+          <TextBlock Text="3D preview (OpenGL)" FontWeight="SemiBold" Margin="0,0,0,6" />
           <Border Grid.Row="1" Height="180" CornerRadius="6" Background="#1a1c20" ClipToBounds="True">
             <local:OfficeScene3D />
           </Border>
         </Grid>
       </Border>
-      <WrapPanel>
-        <Border Width="320" Margin="0,0,12,12" Padding="10" CornerRadius="8"
+      <Grid x:Name="DashCardsGrid">
+        <Border x:Name="DashCard0" MinWidth="220" Margin="0,0,12,12" Padding="10" CornerRadius="8"
                 BorderBrush="{DynamicResource NexusCardBorderBrush}" BorderThickness="1"
+                HorizontalAlignment="Stretch"
                 Background="{DynamicResource NexusTileBackgroundBrush}">
           <StackPanel>
             <TextBlock Text="1 · Environment + Routing" FontWeight="SemiBold" />
             <TextBox x:Name="CardEnv" IsReadOnly="True" AcceptsReturn="True" MinHeight="72" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
-        <Border Width="320" Margin="0,0,12,12" Padding="10" CornerRadius="8"
+        <Border x:Name="DashCard1" MinWidth="220" Margin="0,0,12,12" Padding="10" CornerRadius="8"
                 BorderBrush="{DynamicResource NexusCardBorderBrush}" BorderThickness="1"
+                HorizontalAlignment="Stretch"
                 Background="{DynamicResource NexusTileBackgroundBrush}">
           <StackPanel>
             <TextBlock Text="2 · Knowledge + Memory" FontWeight="SemiBold" />
             <TextBox x:Name="CardKnow" IsReadOnly="True" AcceptsReturn="True" MinHeight="72" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
-        <Border Width="320" Margin="0,0,12,12" Padding="10" CornerRadius="8"
+        <Border x:Name="DashCard2" MinWidth="220" Margin="0,0,12,12" Padding="10" CornerRadius="8"
                 BorderBrush="{DynamicResource NexusCardBorderBrush}" BorderThickness="1"
+                HorizontalAlignment="Stretch"
                 Background="{DynamicResource NexusTileBackgroundBrush}">
           <StackPanel>
             <TextBlock Text="3 · Live Context" FontWeight="SemiBold" />
             <TextBox x:Name="CardLive" IsReadOnly="True" AcceptsReturn="True" MinHeight="72" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
-        <Border Width="320" Margin="0,0,12,12" Padding="10" CornerRadius="8"
+        <Border x:Name="DashCard3" MinWidth="220" Margin="0,0,12,12" Padding="10" CornerRadius="8"
                 BorderBrush="{DynamicResource NexusCardBorderBrush}" BorderThickness="1"
+                HorizontalAlignment="Stretch"
                 Background="{DynamicResource NexusTileBackgroundBrush}">
           <StackPanel>
             <TextBlock Text="4 · Proactive Karl" FontWeight="SemiBold" />
             <TextBox x:Name="CardProactive" IsReadOnly="True" AcceptsReturn="True" MinHeight="72" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
-        <Border Width="320" Margin="0,0,12,12" Padding="10" CornerRadius="8"
+        <Border x:Name="DashCard4" MinWidth="220" Margin="0,0,12,12" Padding="10" CornerRadius="8"
                 BorderBrush="{DynamicResource NexusCardBorderBrush}" BorderThickness="1"
+                HorizontalAlignment="Stretch"
                 Background="{DynamicResource NexusTileBackgroundBrush}">
           <StackPanel>
             <TextBlock Text="5 · Governance + Audit" FontWeight="SemiBold" />
             <TextBox x:Name="CardGov" IsReadOnly="True" AcceptsReturn="True" MinHeight="72" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
-        <Border Width="320" Margin="0,0,12,12" Padding="10" CornerRadius="8"
+        <Border x:Name="DashCard5" MinWidth="220" Margin="0,0,12,12" Padding="10" CornerRadius="8"
                 BorderBrush="{DynamicResource NexusCardBorderBrush}" BorderThickness="1"
+                HorizontalAlignment="Stretch"
                 Background="{DynamicResource NexusTileBackgroundBrush}">
           <StackPanel>
             <TextBlock Text="6 · Recent Rituals" FontWeight="SemiBold" />
             <TextBox x:Name="CardRituals" IsReadOnly="True" AcceptsReturn="True" MinHeight="72" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
-        <Border Width="320" Margin="0,0,12,12" Padding="10" CornerRadius="8"
+        <Border x:Name="DashCard6" MinWidth="220" Margin="0,0,12,12" Padding="10" CornerRadius="8"
                 BorderBrush="{DynamicResource NexusCardBorderBrush}" BorderThickness="1"
+                HorizontalAlignment="Stretch"
                 Background="{DynamicResource NexusTileBackgroundBrush}">
           <StackPanel>
             <TextBlock Text="7 · Recent Watch Sessions" FontWeight="SemiBold" />
             <TextBox x:Name="CardWatch" IsReadOnly="True" AcceptsReturn="True" MinHeight="72" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
-      </WrapPanel>
+      </Grid>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

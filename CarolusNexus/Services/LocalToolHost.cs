@@ -25,7 +25,7 @@ public sealed class LocalToolHost : IDisposable
         _cts = new CancellationTokenSource();
         var token = bearerToken;
         _loop = Task.Run(() => RunLoop(token, _cts.Token));
-        NexusShell.Log($"Local tool host: http://127.0.0.1:{p}/health · POST /v1/invoke (Header X-Carolus-Token wenn .env gesetzt)");
+        NexusShell.Log($"Local tool host: http://127.0.0.1:{p}/health · POST /v1/invoke (header X-Carolus-Token if set in .env)");
     }
 
     public void Stop()

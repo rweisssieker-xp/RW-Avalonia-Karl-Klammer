@@ -2,11 +2,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:CarolusNexus.Models"
              x:Class="CarolusNexus.Views.RitualsTab">
-  <Grid ColumnDefinitions="*,*,*" MinHeight="420">
-    <DockPanel Grid.Column="0" Margin="0,0,8,0">
+  <Grid x:Name="RitualsRootGrid" ColumnDefinitions="*,*,*" MinHeight="420">
+    <DockPanel x:Name="RitualsLibraryPane" Grid.Column="0" Margin="0,0,8,0">
       <TextBlock DockPanel.Dock="Top" Text="Ritual Library" FontWeight="SemiBold" Margin="0,0,0,6" />
-      <TextBox x:Name="LibFilter" DockPanel.Dock="Top" Watermark="Suche…" Margin="0,0,0,6" />
-      <ListBox x:Name="RitualList">
+      <TextBox x:Name="LibFilter" DockPanel.Dock="Top" Watermark="Search…" Margin="0,0,0,6" />
+      <ListBox x:Name="RitualList" MinHeight="140">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="models:AutomationRecipe">
             <TextBlock Text="{Binding ListCaption}" TextWrapping="Wrap" />
@@ -14,35 +14,35 @@
         </ListBox.ItemTemplate>
       </ListBox>
     </DockPanel>
-    <DockPanel Grid.Column="1" Margin="0,0,8,0">
+    <DockPanel x:Name="RitualsBuilderPane" Grid.Column="1" Margin="0,0,8,0">
       <TextBlock DockPanel.Dock="Top" Text="Ritual Builder" FontWeight="SemiBold" Margin="0,0,0,4" />
       <TextBlock x:Name="QueueStatusLine" DockPanel.Dock="Top" FontSize="11"
                  Foreground="{DynamicResource NexusMutedForegroundBrush}" Margin="0,0,0,4"
-                 Text="Job-Warteschlange: —" TextWrapping="Wrap" />
+                 Text="Job queue: —" TextWrapping="Wrap" />
       <TextBox x:Name="JobQueueDetail" DockPanel.Dock="Top" IsReadOnly="True" AcceptsReturn="True"
                MinHeight="100" MaxHeight="200" FontSize="11" FontFamily="Consolas,Courier New,monospace"
                TextWrapping="Wrap" Margin="0,0,0,8"
-               Watermark="ritual-job-queue.json — ausstehend + Verlauf" />
+               Watermark="ritual-job-queue.json — pending + history" />
       <ScrollViewer>
         <StackPanel Spacing="6">
           <TextBox x:Name="RitualName" Watermark="Name" />
           <TextBox x:Name="RitualDesc" Watermark="Description" AcceptsReturn="True" MinHeight="48" />
-          <TextBlock Text="Governance (Handbuch §16.5)" FontWeight="SemiBold" />
+          <TextBlock Text="Governance (handbook §16.5)" FontWeight="SemiBold" />
           <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
-            <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Freigabe" />
+            <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Approval" />
             <ComboBox x:Name="ApprovalModeBox" Grid.Row="0" Grid.Column="1" />
-            <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Risiko" />
+            <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Risk" />
             <ComboBox x:Name="RiskLevelBox" Grid.Row="1" Grid.Column="1" />
             <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Adapter" />
-            <TextBox x:Name="AdapterAffinityBox" Grid.Row="2" Grid.Column="1" Watermark="z. B. explorer, ax2012" />
-            <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Konfidenz" />
+            <TextBox x:Name="AdapterAffinityBox" Grid.Row="2" Grid.Column="1" Watermark="e.g. explorer, ax2012" />
+            <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Confidence" />
             <TextBox x:Name="ConfidenceSourceBox" Grid.Row="3" Grid.Column="1" Watermark="Teach, LLM, SOP …" />
-            <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Max. Autonomie" />
-            <TextBox x:Name="MaxAutonomyStepsBox" Grid.Row="4" Grid.Column="1" Watermark="0 = unbegrenzt (Hinweis)" />
+            <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Max autonomy" />
+            <TextBox x:Name="MaxAutonomyStepsBox" Grid.Row="4" Grid.Column="1" Watermark="0 = unlimited (hint)" />
           </Grid>
           <WrapPanel>
-            <Button x:Name="BtnAiSuggestName" Content="KI: Kurztitel" Margin="0,0,6,6"
-                    ToolTip.Tip="Schlägt einen kurzen Ritual-Namen per LLM vor (Beschreibung und/oder Schritte)." />
+            <Button x:Name="BtnAiSuggestName" Content="AI: short title" Margin="0,0,6,6"
+                    ToolTip.Tip="Suggests a short ritual name via LLM (description and/or steps)." />
             <Button x:Name="BtnSaveRitual" Content="save ritual" Margin="0,0,6,6" />
             <Button x:Name="BtnDeleteRitual" Content="delete" Margin="0,0,6,6" />
             <Button x:Name="BtnClone" Content="clone" Margin="0,0,6,6" />
@@ -66,10 +66,10 @@
         </StackPanel>
       </ScrollViewer>
     </DockPanel>
-    <DockPanel Grid.Column="2">
+    <DockPanel x:Name="RitualsStepsPane" Grid.Column="2">
       <TextBlock DockPanel.Dock="Top" Text="Structured Steps (JSON)" FontWeight="SemiBold" Margin="0,0,0,6" />
       <TextBox x:Name="StepsEditor" AcceptsReturn="True" FontFamily="Consolas,Courier New,monospace"
-               Watermark="JSON / Schritte — Persistenz: automation-recipes.json" />
+               Watermark="JSON / steps — persisted in automation-recipes.json" />
     </DockPanel>
   </Grid>
 </UserControl>

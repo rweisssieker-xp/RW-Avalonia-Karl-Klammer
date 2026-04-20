@@ -5,8 +5,8 @@
         Title="Carolus Nexus"
         Width="1180"
         Height="840"
-        MinWidth="900"
-        MinHeight="640"
+        MinWidth="480"
+        MinHeight="520"
         WindowStartupLocation="CenterScreen">
   <DockPanel>
     <Border DockPanel.Dock="Top" Background="{DynamicResource NexusHeaderBackgroundBrush}"
@@ -15,27 +15,27 @@
         <Grid ColumnDefinitions="*,Auto,Auto,Auto">
           <StackPanel Spacing="2">
             <TextBlock Text="Carolus Nexus" FontSize="22" FontWeight="Bold" />
-            <TextBlock Text="Windows-Operator-Desktop · Persona: Karl Klammer" FontSize="12"
+            <TextBlock Text="Windows operator desktop · persona: Karl Klammer" FontSize="12"
                        Foreground="{DynamicResource NexusMutedForegroundBrush}" />
-            <TextBlock x:Name="StatusLine" Text="Bereit" FontSize="12" />
+            <TextBlock x:Name="StatusLine" Text="Ready" FontSize="12" />
           </StackPanel>
           <CheckBox x:Name="CompanionToggle"
  Grid.Column="1"
                     Margin="12,0,12,0"
                     VerticalAlignment="Center"
-                    Content="Begleiter am Cursor"
+                    Content="Companion at cursor"
                     FontSize="11"
                     IsChecked="True"
-                    ToolTip.Tip="Karl neben der Maus (Windows, klick-durchlässig)." />
+                    ToolTip.Tip="Karl follows the mouse (Windows, click-through)." />
           <Button Grid.Column="2"
                   Padding="10,4"
                   Margin="0,0,8,0"
-                  Content="Handbuch"
+                  Content="Handbook"
                   Click="OnOpenHandbookClick"
-                  ToolTip.Tip="Öffnet docs/Carolus-Nexus-Benutzerhandbuch.md (Repository-Wurzel)." />
+                  ToolTip.Tip="Opens docs/Carolus-Nexus-Benutzerhandbuch.md (repo root)." />
           <Button Grid.Column="3"
                   Padding="10,4"
-                  Content="Schließen"
+                  Content="Close"
                   Click="OnCloseClick" />
         </Grid>
         <WrapPanel>
@@ -57,25 +57,25 @@
           </Border>
           <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4"
                   Background="{DynamicResource NexusBadgeBackgroundBrush}">
-            <TextBlock x:Name="BadgeKnow" Text="Knowledge: lokal" FontSize="11" />
+            <TextBlock x:Name="BadgeKnow" Text="Knowledge: local" FontSize="11" />
           </Border>
         </WrapPanel>
-        <Grid ColumnDefinitions="*,*,*">
-          <Border Padding="8" CornerRadius="6" BorderBrush="{DynamicResource NexusTileBorderBrush}"
+        <Grid x:Name="HeaderTilesGrid" ColumnDefinitions="*,*,*">
+          <Border x:Name="HeaderTileMemory" Padding="8" CornerRadius="6" BorderBrush="{DynamicResource NexusTileBorderBrush}"
                   BorderThickness="1" Background="{DynamicResource NexusTileBackgroundBrush}">
             <StackPanel>
               <TextBlock Text="Operator Memory" FontWeight="SemiBold" FontSize="11" />
               <TextBlock x:Name="TileMemory" TextWrapping="Wrap" FontSize="11" Text="—" />
             </StackPanel>
           </Border>
-          <Border Grid.Column="1" Padding="8" CornerRadius="6" BorderBrush="{DynamicResource NexusTileBorderBrush}"
+          <Border x:Name="HeaderTileLive" Grid.Column="1" Padding="8" CornerRadius="6" BorderBrush="{DynamicResource NexusTileBorderBrush}"
                   BorderThickness="1" Background="{DynamicResource NexusTileBackgroundBrush}">
             <StackPanel>
               <TextBlock Text="Live Context" FontWeight="SemiBold" FontSize="11" />
               <TextBlock x:Name="TileLive" TextWrapping="Wrap" FontSize="11" Text="—" />
             </StackPanel>
           </Border>
-          <Border Grid.Column="2" Padding="8" CornerRadius="6" BorderBrush="{DynamicResource NexusTileBorderBrush}"
+          <Border x:Name="HeaderTileEnv" Grid.Column="2" Padding="8" CornerRadius="6" BorderBrush="{DynamicResource NexusTileBorderBrush}"
                   BorderThickness="1" Background="{DynamicResource NexusTileBackgroundBrush}">
             <StackPanel>
               <TextBlock Text="Environment" FontWeight="SemiBold" FontSize="11" />

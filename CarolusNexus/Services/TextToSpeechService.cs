@@ -17,7 +17,7 @@ public static class TextToSpeechService
     public static async Task<string> SpeakAsync(string text, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(text))
-            return "Kein Text für TTS.";
+            return "No text for TTS.";
 
         var env = DotEnvStore.Load();
         var mode = env.TryGetValue("TTS_PROVIDER", out var tp) ? tp.Trim().ToLowerInvariant() : "auto";
@@ -43,7 +43,7 @@ public static class TextToSpeechService
     private static Task<string> SpeakWindowsAsync(string text, CancellationToken ct)
     {
         if (!OperatingSystem.IsWindows())
-            return Task.FromResult("Windows-TTS nur unter Windows.");
+            return Task.FromResult("Windows TTS is only available on Windows.");
 
         return Task.Run(() =>
         {
@@ -56,7 +56,7 @@ public static class TextToSpeechService
             }
             catch (Exception ex)
             {
-                return "Windows-TTS: " + ex.Message;
+                return "Windows TTS: " + ex.Message;
             }
         }, ct);
     }
@@ -67,9 +67,9 @@ public static class TextToSpeechService
         CancellationToken ct)
     {
         if (!env.TryGetValue("ELEVENLABS_API_KEY", out var key) || string.IsNullOrWhiteSpace(key))
-            return "Fehlt ELEVENLABS_API_KEY in windows\\.env für TTS.";
+            return "Missing ELEVENLABS_API_KEY in windows\\.env for TTS.";
         if (!env.TryGetValue("ELEVENLABS_VOICE_ID", out var voiceId) || string.IsNullOrWhiteSpace(voiceId))
-            return "Fehlt ELEVENLABS_VOICE_ID in windows\\.env für TTS.";
+            return "Missing ELEVENLABS_VOICE_ID in windows\\.env for TTS.";
 
         voiceId = voiceId.Trim();
         var url = $"https://api.elevenlabs.io/v1/text-to-speech/{Uri.EscapeDataString(voiceId)}";

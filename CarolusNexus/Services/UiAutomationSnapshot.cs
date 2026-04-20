@@ -24,13 +24,13 @@ public static class UiAutomationSnapshot
                 return "";
 
             var sb = new StringBuilder();
-            sb.AppendLine("(UIA-Snapshot, gekürzt)");
-            sb.AppendLine($"Fenster: {d.Value.Title} · {d.Value.ProcessName}");
+            sb.AppendLine("(UIA snapshot, truncated)");
+            sb.AppendLine($"Window: {d.Value.Title} · {d.Value.ProcessName}");
             var count = 0;
             Walk(root, sb, 0, maxDepth, maxNodes, ref count);
-            sb.AppendLine($"… Knoten ausgegeben: {count}");
+            sb.AppendLine($"… nodes emitted: {count}");
             var s = sb.ToString();
-            return s.Length <= maxChars ? s : s[..maxChars] + "\n…(gekürzt)";
+            return s.Length <= maxChars ? s : s[..maxChars] + "\n…(truncated)";
         }
         catch (Exception ex)
         {

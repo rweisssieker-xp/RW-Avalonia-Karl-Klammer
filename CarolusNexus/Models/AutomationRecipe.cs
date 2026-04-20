@@ -49,8 +49,8 @@ public sealed class AutomationRecipe
     {
         get
         {
-            var name = string.IsNullOrWhiteSpace(Name) ? "(ohne Name)" : Name;
-            var arch = Archived ? " · archiv" : "";
+            var name = string.IsNullOrWhiteSpace(Name) ? "(unnamed)" : Name;
+            var arch = Archived ? " · archived" : "";
             var state = string.IsNullOrWhiteSpace(PublicationState) ? "draft" : PublicationState;
             var risk = string.IsNullOrWhiteSpace(RiskLevel) ? "" : $" · {RiskLevel}";
             return $"{name}{arch} · {state}{risk}";

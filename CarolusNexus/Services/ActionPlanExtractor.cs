@@ -50,7 +50,7 @@ public static class ActionPlanExtractor
     public static string FormatPreview(IReadOnlyList<string> steps)
     {
         if (steps.Count == 0)
-            return "(keine Action-Tokens in der Antwort — Modell hat keine [ACTION:…] / ax.* genannt.)";
+            return "(no action tokens in the reply — model did not name [ACTION:…] / ax.*).";
 
         var sb = new StringBuilder();
         for (var i = 0; i < steps.Count; i++)

@@ -28,7 +28,7 @@ public static class LlmChatService
         string? knowledgeContextOverride = null)
     {
         if (string.IsNullOrWhiteSpace(userPrompt))
-            return "Bitte einen Prompt eingeben.";
+            return "Please enter a prompt.";
 
         var env = DotEnvStore.Load();
         var system = BuildSystemPrompt(settings);
@@ -37,7 +37,7 @@ public static class LlmChatService
         {
             var k = knowledgeContextOverride ?? KnowledgeSnippetService.BuildContext(userPrompt, 12000);
             if (!string.IsNullOrWhiteSpace(k))
-                augmented = "Kontext aus lokalem Wissen (Auszüge):\n\n" + k + "\n\n---\n\nNutzeranfrage:\n" + userPrompt;
+                augmented = "Context from local knowledge (excerpts):\n\n" + k + "\n\n---\n\nUser request:\n" + userPrompt;
         }
 
         return settings.Provider switch
@@ -45,21 +45,21 @@ public static class LlmChatService
             "anthropic" => await CompleteAnthropicAsync(env, settings.Model, system, augmented, includeScreenshots, ct),
             "openai" => await CompleteOpenAiAsync(env, settings.Model, system, augmented, includeScreenshots, false, ct),
             "openai-compatible" => await CompleteOpenAiAsync(env, settings.Model, system, augmented, includeScreenshots, true, ct),
-            _ => "Unbekannter Provider: " + settings.Provider
+            _ => "Unknown provider: " + settings.Provider
         };
     }
 
     public static async Task<string> SmokeAsync(NexusSettings settings, CancellationToken ct = default)
     {
         var env = DotEnvStore.Load();
-        const string prompt = "Antworte exakt mit einem Wort: bereit";
-        var system = "Du bist ein Healthcheck. Antworte nur mit einem Wort.";
+        const string prompt = "Reply with exactly one word: ready";
+        var system = "You are a health check. Reply with only one word.";
         return settings.Provider switch
         {
             "anthropic" => await CompleteAnthropicAsync(env, settings.Model, system, prompt, false, ct),
             "openai" => await CompleteOpenAiAsync(env, settings.Model, system, prompt, false, false, ct),
             "openai-compatible" => await CompleteOpenAiAsync(env, settings.Model, system, prompt, false, true, ct),
-            _ => "Unbekannter Provider."
+            _ => "Unknown provider."
         };
     }
 
@@ -71,11 +71,11 @@ public static class LlmChatService
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(userPrompt))
-            return "Bitte Inhalt eingeben.";
+            return "Please enter content.";
 
         var env = DotEnvStore.Load();
         var system = string.IsNullOrWhiteSpace(utilitySystemPrompt)
-            ? "Du bist ein präziser Assistent."
+            ? "You are a precise assistant."
             : utilitySystemPrompt.Trim();
         var user = userPrompt.Trim();
 
@@ -84,7 +84,7 @@ public static class LlmChatService
             "anthropic" => await CompleteAnthropicAsync(env, settings.Model, system, user, false, ct),
             "openai" => await CompleteOpenAiAsync(env, settings.Model, system, user, false, false, ct),
             "openai-compatible" => await CompleteOpenAiAsync(env, settings.Model, system, user, false, true, ct),
-            _ => "Unbekannter Provider: " + settings.Provider
+            _ => "Unknown provider: " + settings.Provider
         };
     }
 
@@ -93,10 +93,10 @@ public static class LlmChatService
         var soul = SoulPrompt.LoadOrDefault();
         var mode = s.Mode switch
         {
-            "agent" => "Modus: agent — aktionsorientiert, strukturierte Vorschläge.",
-            "automation" => "Modus: automation — kurz, fokus auf reproduzierbare Schritte.",
-            "watch" => "Modus: watch — protokolliere relevante Beobachtungen knapp.",
-            _ => "Modus: companion — freundlich, klar, hilfreich."
+            "agent" => "Mode: agent — action-oriented, structured suggestions.",
+            "automation" => "Mode: automation — concise, focus on reproducible steps.",
+            "watch" => "Mode: watch — log relevant observations briefly.",
+            _ => "Mode: companion — friendly, clear, helpful."
         };
         return soul + "\n\n" + mode;
     }
@@ -110,7 +110,7 @@ public static class LlmChatService
         CancellationToken ct)
     {
         if (!env.TryGetValue("ANTHROPIC_API_KEY", out var key) || string.IsNullOrWhiteSpace(key))
-            return "Fehlt ANTHROPIC_API_KEY in windows\\.env.";
+            return "Missing ANTHROPIC_API_KEY in windows\\.env.";
 
         var content = new List<object>();
         if (includeScreenshots && OperatingSystem.IsWindows())
@@ -172,7 +172,7 @@ public static class LlmChatService
         CancellationToken ct)
     {
         if (!env.TryGetValue("OPENAI_API_KEY", out var key) || string.IsNullOrWhiteSpace(key))
-            return "Fehlt OPENAI_API_KEY in windows\\.env.";
+            return "Missing OPENAI_API_KEY in windows\\.env.";
 
         var baseUrl = env.TryGetValue("OPENAI_BASE_URL", out var bu) && !string.IsNullOrWhiteSpace(bu)
             ? bu.TrimEnd('/')
@@ -216,7 +216,7 @@ public static class LlmChatService
         using var resp = await Http.SendAsync(req, ct).ConfigureAwait(false);
         var json = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         if (!resp.IsSuccessStatusCode)
-            return $"OpenAI-kompatibel HTTP {(int)resp.StatusCode}: {json}";
+            return $"OpenAI-compatible HTTP {(int)resp.StatusCode}: {json}";
 
         using var doc = JsonDocument.Parse(json);
         if (!doc.RootElement.TryGetProperty("choices", out var ch) || ch.GetArrayLength() == 0)

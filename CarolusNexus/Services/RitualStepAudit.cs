@@ -33,7 +33,7 @@ public static class RitualStepAudit
         }
         catch (Exception ex)
         {
-            NexusShell.Log("Ritual-Audit: " + ex.Message);
+            NexusShell.Log("Ritual audit: " + ex.Message);
         }
     }
 

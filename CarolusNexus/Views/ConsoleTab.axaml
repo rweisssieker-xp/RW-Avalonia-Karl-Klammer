@@ -3,11 +3,11 @@
              x:Class="CarolusNexus.Views.ConsoleTab">
   <DockPanel MinHeight="400">
     <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,8">
-      <StackPanel Orientation="Horizontal" Spacing="12">
-        <TextBlock VerticalAlignment="Center" Text="Agent" />
-        <ComboBox x:Name="AgentBox" Width="200" />
-      </StackPanel>
-      <TextBox x:Name="AgentPrompt" AcceptsReturn="True" MinHeight="64" Watermark="Prompt für Codex / Claude Code / OpenClaw" />
+      <Grid ColumnDefinitions="Auto,*" MaxWidth="900">
+        <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Agent" Margin="0,0,12,0" />
+        <ComboBox x:Name="AgentBox" Grid.Column="1" MinWidth="140" HorizontalAlignment="Stretch" />
+      </Grid>
+      <TextBox x:Name="AgentPrompt" AcceptsReturn="True" MinHeight="64" Watermark="Prompt for Codex / Claude Code / OpenClaw" />
       <Button x:Name="BtnRunAgent" Content="run selected agent" HorizontalAlignment="Left" Padding="12,8" />
       <TextBlock x:Name="OutputPathHint" FontSize="11"
                  Foreground="{DynamicResource NexusMutedForegroundBrush}" />

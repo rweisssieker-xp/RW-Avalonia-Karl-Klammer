@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using CarolusNexus;
 using CarolusNexus.Services;
 
@@ -14,6 +16,7 @@ namespace CarolusNexus.Views;
 public partial class KnowledgeTab : UserControl
 {
     private string[] _allFiles = Array.Empty<string>();
+    private bool? _knowNarrowLayout;
 
     public KnowledgeTab()
     {
@@ -26,11 +29,62 @@ public partial class KnowledgeTab : UserControl
             KnowledgeIndexService.Rebuild();
             RefreshList();
             _ = EmbeddingRagService.RebuildIfConfiguredAsync(default);
-            NexusShell.Log("Knowledge-Reindex → Index + Chunks; Embeddings im Hintergrund (falls konfiguriert).");
+            NexusShell.Log("Knowledge reindex → index + chunks; embeddings in background (if configured).");
         };
         BtnSuggestRitual.Click += async (_, _) => await SuggestRitualAsync();
         DocList.SelectionChanged += OnSel;
         RefreshList();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        LayoutUpdated += KnowOnLayoutUpdated;
+        ApplyKnowledgeResponsiveLayout();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        LayoutUpdated -= KnowOnLayoutUpdated;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void KnowOnLayoutUpdated(object? sender, EventArgs e) => ApplyKnowledgeResponsiveLayout();
+
+    private void ApplyKnowledgeResponsiveLayout()
+    {
+        var w = Bounds.Width;
+        if (w <= 0)
+            return;
+        var narrow = w < ResponsiveLayout.NarrowMax;
+        if (_knowNarrowLayout == narrow)
+            return;
+        _knowNarrowLayout = narrow;
+
+        KnowRootGrid.ColumnDefinitions.Clear();
+        KnowRootGrid.RowDefinitions.Clear();
+        if (narrow)
+        {
+            KnowRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            KnowRootGrid.RowDefinitions.Add(new RowDefinition(new GridLength(220)));
+            KnowRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+            Grid.SetColumn(KnowLeftPane, 0);
+            Grid.SetRow(KnowLeftPane, 0);
+            Grid.SetColumn(KnowRightPane, 0);
+            Grid.SetRow(KnowRightPane, 1);
+            KnowLeftPane.Margin = new Thickness(0, 0, 0, 8);
+        }
+        else
+        {
+            KnowRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+            KnowRootGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(240)));
+            KnowRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            Grid.SetColumn(KnowLeftPane, 0);
+            Grid.SetRow(KnowLeftPane, 0);
+            Grid.SetColumn(KnowRightPane, 1);
+            Grid.SetRow(KnowRightPane, 0);
+            KnowLeftPane.Margin = new Thickness(0, 0, 12, 0);
+        }
     }
 
     public void RefreshList()
@@ -57,7 +111,7 @@ public partial class KnowledgeTab : UserControl
             return;
         var files = await sp.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Dateien nach knowledge importieren",
+            Title = "Import files into knowledge",
             AllowMultiple = true,
         }).ConfigureAwait(true);
         if (files.Count == 0)
@@ -76,12 +130,12 @@ public partial class KnowledgeTab : UserControl
             }
             catch (Exception ex)
             {
-                NexusShell.Log("Import Fehler: " + ex.Message);
+                NexusShell.Log("Import error: " + ex.Message);
             }
         }
 
         RefreshList();
-        NexusShell.Log($"Import fertig ({files.Count} Dateien).");
+        NexusShell.Log($"Import done ({files.Count} files).");
     }
 
     private void RemoveSelected()
@@ -93,11 +147,11 @@ public partial class KnowledgeTab : UserControl
         {
             if (File.Exists(path))
                 File.Delete(path);
-            NexusShell.Log("Entfernt: " + name);
+            NexusShell.Log("Removed: " + name);
         }
         catch (Exception ex)
         {
-            NexusShell.Log("Löschen Fehler: " + ex.Message);
+            NexusShell.Log("Delete error: " + ex.Message);
         }
 
         RefreshList();
@@ -108,34 +162,34 @@ public partial class KnowledgeTab : UserControl
     {
         if (DocList.SelectedItem is not string name)
         {
-            NexusShell.Log("Bitte ein Dokument wählen.");
+            NexusShell.Log("Please select a document.");
             return;
         }
 
         var path = Path.Combine(AppPaths.KnowledgeDir, name);
         var doc = KnowledgeIndexService.ReadDocumentForPreview(path, 14_000);
-        if (string.IsNullOrWhiteSpace(doc) || doc.StartsWith("(Keine Textvorschau", StringComparison.Ordinal) ||
-            doc.StartsWith("(Datei fehlt", StringComparison.Ordinal) ||
-            doc.StartsWith("Lesen fehlgeschlagen", StringComparison.Ordinal))
+        if (string.IsNullOrWhiteSpace(doc) || doc.StartsWith("(No text preview", StringComparison.Ordinal) ||
+            doc.StartsWith("(File missing", StringComparison.Ordinal) ||
+            doc.StartsWith("Read failed", StringComparison.Ordinal))
         {
-            NexusShell.Log("Datei nicht als Text nutzbar (Format oder leer).");
+            NexusShell.Log("File not usable as text (format or empty).");
             return;
         }
 
         var prompt =
-            "Extrahiere aus dem folgenden Dokument eine kurze Ritual-Checkliste als **nur** JSON-Array " +
-            "von Objekten {\"actionType\":\"token\",\"actionArgument\":\"…\",\"waitMs\":0}. " +
-            "actionArgument: konkrete Schritte oder [ACTION:hotkey|Ctrl+S] Stil. Max. 12 Schritte. Kein Markdown.\n\n" +
+            "From the following document, extract a short ritual checklist as **only** a JSON array " +
+            "of objects {\"actionType\":\"token\",\"actionArgument\":\"…\",\"waitMs\":0}. " +
+            "actionArgument: concrete steps or [ACTION:hotkey|Ctrl+S] style. Max. 12 steps. No markdown.\n\n" +
             doc;
 
         try
         {
             var s = NexusContext.GetSettings();
-            NexusShell.Log("LLM: Ritual-Vorschlag …");
+            NexusShell.Log("LLM: ritual suggestion …");
             var json = await LlmChatService.CompleteAsync(s, prompt, false, false).ConfigureAwait(true);
-            NexusShell.Log("Ritual-Vorschlag fertig — in Rituals-Tab einfügen.");
-            // Optional: Zwischenablage wäre möglich; Nutzer kopiert aus Log/Preview
-            Preview.Text = "Vorschlag (JSON):\n\n" + json;
+            NexusShell.Log("Ritual suggestion ready — paste into Rituals tab.");
+            // Optional: clipboard possible; user copies from log/preview
+            Preview.Text = "Suggestion (JSON):\n\n" + json;
         }
         catch (Exception ex)
         {

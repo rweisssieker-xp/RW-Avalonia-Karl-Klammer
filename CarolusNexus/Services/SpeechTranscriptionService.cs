@@ -17,7 +17,7 @@ public static class SpeechTranscriptionService
     public static async Task<string> TranscribeFileAsync(string audioPath, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(audioPath) || !File.Exists(audioPath))
-            return "Keine Audiodatei.";
+            return "No audio file.";
 
         var env = DotEnvStore.Load();
         var provider = env.TryGetValue("STT_PROVIDER", out var p) ? p.Trim().ToLowerInvariant() : "whisper";
@@ -40,7 +40,7 @@ public static class SpeechTranscriptionService
         var model = env.TryGetValue("WHISPER_MODEL", out var m) && !string.IsNullOrWhiteSpace(m)
             ? m.Trim()
             : "base";
-        var lang = env.TryGetValue("WHISPER_LANGUAGE", out var l) ? l.Trim() : "de";
+        var lang = env.TryGetValue("WHISPER_LANGUAGE", out var l) ? l.Trim() : "en";
 
         var outDir = Path.Combine(Path.GetTempPath(), "whisper-out-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(outDir);
@@ -70,17 +70,17 @@ public static class SpeechTranscriptionService
 
         using var proc = Process.Start(psi);
         if (proc == null)
-            return "Whisper: Prozessstart fehlgeschlagen.";
+            return "Whisper: failed to start process.";
 
         await proc.WaitForExitAsync(ct).ConfigureAwait(false);
         var err = await proc.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
         if (proc.ExitCode != 0)
-            return $"Whisper beendet mit {proc.ExitCode}: {err.Trim()}";
+            return $"Whisper exited with {proc.ExitCode}: {err.Trim()}";
 
         var baseName = Path.GetFileNameWithoutExtension(audioPath);
         var txtPath = Path.Combine(outDir, baseName + ".txt");
         if (!File.Exists(txtPath))
-            return $"Whisper: erwartete Ausgabe fehlt ({txtPath}). {err.Trim()}";
+            return $"Whisper: expected output missing ({txtPath}). {err.Trim()}";
 
         var text = await File.ReadAllTextAsync(txtPath, ct).ConfigureAwait(false);
         try
@@ -101,7 +101,7 @@ public static class SpeechTranscriptionService
         CancellationToken ct)
     {
         if (!env.TryGetValue("ELEVENLABS_API_KEY", out var key) || string.IsNullOrWhiteSpace(key))
-            return "Fehlt ELEVENLABS_API_KEY in windows\\.env für STT.";
+            return "Missing ELEVENLABS_API_KEY in windows\\.env for STT.";
 
         var modelId = env.TryGetValue("ELEVENLABS_STT_MODEL", out var mid) && !string.IsNullOrWhiteSpace(mid)
             ? mid.Trim()

@@ -11,5 +11,5 @@ public static class NexusShell
         AppendGlobalLog?.Invoke($"[{DateTime.Now:HH:mm:ss}] {message}");
 
     public static void LogStub(string action) =>
-        Log($"{action} — Stub (kein Provider/Automation-Backend angebunden).");
+        Log($"{action} — stub (no provider/automation backend wired).");
 }

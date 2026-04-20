@@ -18,11 +18,11 @@ public static class LlmStructuredPlanService
             return null;
 
         const string sys =
-            "Du extrahierst aus der folgenden Assistenten-Antwort ausführbare Automations-Schritte. " +
-            "Antworte ausschließlich mit einem JSON-Objekt genau in dieser Form, ohne Markdown: " +
+            "From the following assistant reply, extract executable automation steps. " +
+            "Reply only with a JSON object exactly in this form, no markdown: " +
             "{\"steps\":[{\"actionType\":\"token\",\"actionArgument\":\"…\",\"waitMs\":0}]} . " +
-            "actionArgument: exakt ein Token oder eine Zeile aus der Antwort (z. B. [ACTION:…], browser.*, ax.*). " +
-            "Wenn nichts Passendes: {\"steps\":[]}.";
+            "actionArgument: exactly one token or line from the reply (e.g. [ACTION:…], browser.*, ax.*). " +
+            "If nothing fits: {\"steps\":[]}.";
 
         var clip = assistantMarkdown.Length > 12_000 ? assistantMarkdown[..12_000] + "…" : assistantMarkdown;
         var json = await LlmChatService.CompleteUtilityAsync(settings, sys, clip, ct).ConfigureAwait(false);
@@ -34,8 +34,8 @@ public static class LlmStructuredPlanService
     private static bool LooksLikeError(string text)
     {
         var t = text.TrimStart();
-        return t.StartsWith("Fehlt ", StringComparison.Ordinal)
-               || t.StartsWith("Unbekannter Provider", StringComparison.Ordinal)
+        return t.StartsWith("Missing ", StringComparison.Ordinal)
+               || t.StartsWith("Unknown provider", StringComparison.Ordinal)
                || t.StartsWith("Anthropic HTTP", StringComparison.Ordinal)
                || t.StartsWith("OpenAI", StringComparison.Ordinal);
     }

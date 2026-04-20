@@ -4,8 +4,10 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using CarolusNexus.Models;
 using CarolusNexus.Services;
 using CarolusNexus;
@@ -18,6 +20,7 @@ public partial class RitualsTab : UserControl
     private AutomationRecipe? _selected;
     private int _stepCursor;
     private CancellationTokenSource? _runCts;
+    private ResponsiveBand? _ritualsLayoutBand;
 
     public RitualsTab()
     {
@@ -47,8 +50,90 @@ public partial class RitualsTab : UserControl
 
         RitualRecipeStore.Saved += OnRecipesSaved;
         Unloaded += (_, _) => RitualRecipeStore.Saved -= OnRecipesSaved;
-
         ReloadLibrary();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        LayoutUpdated += RitualsOnLayoutUpdated;
+        ApplyRitualsResponsiveLayout();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        LayoutUpdated -= RitualsOnLayoutUpdated;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void RitualsOnLayoutUpdated(object? sender, EventArgs e) => ApplyRitualsResponsiveLayout();
+
+    private void ApplyRitualsResponsiveLayout()
+    {
+        var w = Bounds.Width;
+        if (w <= 0)
+            return;
+        var band = ResponsiveLayout.GetBand(w);
+        if (band == _ritualsLayoutBand)
+            return;
+        _ritualsLayoutBand = band;
+
+        Grid.SetRowSpan(RitualsLibraryPane, 1);
+        Grid.SetRowSpan(RitualsBuilderPane, 1);
+        Grid.SetRowSpan(RitualsStepsPane, 1);
+
+        RitualsRootGrid.ColumnDefinitions.Clear();
+        RitualsRootGrid.RowDefinitions.Clear();
+
+        switch (band)
+        {
+            case ResponsiveBand.Narrow:
+                RitualsRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+                RitualsRootGrid.RowDefinitions.Add(new RowDefinition(new GridLength(200)));
+                RitualsRootGrid.RowDefinitions.Add(new RowDefinition(2, GridUnitType.Star));
+                RitualsRootGrid.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
+                Grid.SetColumn(RitualsLibraryPane, 0);
+                Grid.SetRow(RitualsLibraryPane, 0);
+                Grid.SetColumn(RitualsBuilderPane, 0);
+                Grid.SetRow(RitualsBuilderPane, 1);
+                Grid.SetColumn(RitualsStepsPane, 0);
+                Grid.SetRow(RitualsStepsPane, 2);
+                RitualsLibraryPane.Margin = new Thickness(0, 0, 0, 8);
+                RitualsBuilderPane.Margin = new Thickness(0, 0, 0, 8);
+                RitualsStepsPane.Margin = new Thickness(0);
+                break;
+            case ResponsiveBand.Medium:
+                RitualsRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+                RitualsRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+                RitualsRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+                RitualsRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+                Grid.SetColumn(RitualsLibraryPane, 0);
+                Grid.SetRow(RitualsLibraryPane, 0);
+                Grid.SetRowSpan(RitualsLibraryPane, 2);
+                Grid.SetColumn(RitualsBuilderPane, 1);
+                Grid.SetRow(RitualsBuilderPane, 0);
+                Grid.SetColumn(RitualsStepsPane, 1);
+                Grid.SetRow(RitualsStepsPane, 1);
+                RitualsLibraryPane.Margin = new Thickness(0, 0, 8, 0);
+                RitualsBuilderPane.Margin = new Thickness(0, 0, 0, 0);
+                RitualsStepsPane.Margin = new Thickness(0, 8, 0, 0);
+                break;
+            default:
+                RitualsRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+                RitualsRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+                RitualsRootGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+                RitualsRootGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+                Grid.SetColumn(RitualsLibraryPane, 0);
+                Grid.SetRow(RitualsLibraryPane, 0);
+                Grid.SetColumn(RitualsBuilderPane, 1);
+                Grid.SetRow(RitualsBuilderPane, 0);
+                Grid.SetColumn(RitualsStepsPane, 2);
+                Grid.SetRow(RitualsStepsPane, 0);
+                RitualsLibraryPane.Margin = new Thickness(0, 0, 8, 0);
+                RitualsBuilderPane.Margin = new Thickness(0, 0, 8, 0);
+                RitualsStepsPane.Margin = new Thickness(0);
+                break;
+        }
     }
 
     private void PromoteFromHistory()
@@ -56,14 +141,14 @@ public partial class RitualsTab : UserControl
         var entry = ActionHistoryService.GetLatestPlanRunWithSteps();
         if (entry == null)
         {
-            NexusShell.Log("promote from history: kein Plan-Lauf mit Schritten — zuerst „run plan“ / Ritual ausführen.");
+            NexusShell.Log("promote from history: no plan run with steps — run „run plan“ / ritual first.");
             return;
         }
 
         var recipe = new AutomationRecipe
         {
             Name = $"Promoted History {entry.UtcAt.ToLocalTime():yyyy-MM-dd HH:mm}",
-            Description = "Aus letztem action-history plan_run",
+            Description = "From last action-history plan_run",
             Steps = entry.Steps.Select(s => new RecipeStep
             {
                 ActionType = s.ActionType,
@@ -72,7 +157,7 @@ public partial class RitualsTab : UserControl
             }).ToList()
         };
         RitualRecipeStore.AppendRecipe(recipe);
-        NexusShell.Log($"promote from history: {recipe.Name} ({recipe.Steps.Count} Schritte).");
+        NexusShell.Log($"promote from history: {recipe.Name} ({recipe.Steps.Count} steps).");
         ReloadLibrary();
     }
 
@@ -81,7 +166,7 @@ public partial class RitualsTab : UserControl
         var doc = WatchSessionService.LoadOrEmpty();
         if (doc.Entries.Count == 0)
         {
-            NexusShell.Log("promote from watch: watch-sessions.json leer (Modus „watch“ nutzen).");
+            NexusShell.Log("promote from watch: watch-sessions.json empty (use „watch“ mode).");
             return;
         }
 
@@ -98,45 +183,45 @@ public partial class RitualsTab : UserControl
         var recipe = new AutomationRecipe
         {
             Name = $"Promoted Watch {DateTime.Now:yyyy-MM-dd HH:mm}",
-            Description = $"Aus {doc.Entries.Count} Watch-Einträgen",
+            Description = $"From {doc.Entries.Count} watch entries",
             Steps = steps
         };
         RitualRecipeStore.AppendRecipe(recipe);
-        NexusShell.Log($"promote from watch: {recipe.Name} ({recipe.Steps.Count} Schritte).");
+        NexusShell.Log($"promote from watch: {recipe.Name} ({recipe.Steps.Count} steps).");
         ReloadLibrary();
     }
 
     private void StartTeach()
     {
         RitualsTeachSession.Start();
-        NexusShell.Log("Teach: gestartet — „capture foreground“, Live-Context „run“ oder Adapter-Klicks erfassen Schritte.");
+        NexusShell.Log("Teach: started — „capture foreground“, Live Context „run“, or adapter clicks record steps.");
     }
 
     private void CaptureForegroundTeachStep()
     {
         if (!RitualsTeachSession.IsActive)
         {
-            NexusShell.Log("Teach: zuerst „start teach“.");
+            NexusShell.Log("Teach: start „start teach“ first.");
             return;
         }
 
         if (!OperatingSystem.IsWindows())
         {
-            NexusShell.Log("Teach: nur unter Windows.");
+            NexusShell.Log("Teach: Windows only.");
             return;
         }
 
         var d = ForegroundWindowInfo.TryReadDetail();
         if (d == null)
         {
-            NexusShell.Log("Teach: kein Vordergrundfenster.");
+            NexusShell.Log("Teach: no foreground window.");
             return;
         }
 
         var fam = OperatorAdapterRegistry.ResolveFamily(d.Value.ProcessName, d.Value.Title);
         var arg = $"context|{fam}|{d.Value.ProcessName}|{d.Value.Title}";
         RitualsTeachSession.Append(new RecipeStep { ActionType = "token", ActionArgument = arg, WaitMs = 200 });
-        NexusShell.Log($"Teach: Schritt {RitualsTeachSession.BufferedCount} — {d.Value.ProcessName} ({fam}).");
+        NexusShell.Log($"Teach: step {RitualsTeachSession.BufferedCount} — {d.Value.ProcessName} ({fam}).");
     }
 
     private void StopTeach()
@@ -144,14 +229,14 @@ public partial class RitualsTab : UserControl
         var steps = RitualsTeachSession.Stop();
         if (steps.Count == 0)
         {
-            NexusShell.Log("Teach: keine Schritte gesammelt.");
+            NexusShell.Log("Teach: no steps collected.");
             return;
         }
 
         var recipe = new AutomationRecipe
         {
             Name = $"Teach {DateTime.Now:yyyy-MM-dd HH:mm}",
-            Description = "Teach-Modus (manuell erfasste Schritte)",
+            Description = "Teach mode (manually captured steps)",
             Steps = steps.ToList()
         };
         RitualRecipeStore.AppendRecipe(recipe);
@@ -159,7 +244,7 @@ public partial class RitualsTab : UserControl
         RitualName.Text = recipe.Name;
         RitualDesc.Text = recipe.Description;
         StepsEditor.Text = JsonSerializer.Serialize(recipe.Steps, new JsonSerializerOptions { WriteIndented = true });
-        NexusShell.Log($"Teach: Ritual gespeichert — {recipe.Name} ({recipe.Steps.Count} Schritte).");
+        NexusShell.Log($"Teach: ritual saved — {recipe.Name} ({recipe.Steps.Count} steps).");
         ReloadLibrary();
     }
 
@@ -185,7 +270,7 @@ public partial class RitualsTab : UserControl
     private void RefreshQueueStatus()
     {
         var n = RitualJobQueueStore.GetPendingCount();
-        QueueStatusLine.Text = $"Job-Warteschlange: {n} ausstehend · {AppPaths.RitualJobQueue}";
+        QueueStatusLine.Text = $"Job queue: {n} pending · {AppPaths.RitualJobQueue}";
         JobQueueDetail.Text = RitualJobQueueStore.FormatDashboardSummary();
     }
 
@@ -233,7 +318,7 @@ public partial class RitualsTab : UserControl
         }
         catch (Exception ex)
         {
-            NexusShell.Log("Steps JSON ungültig: " + ex.Message);
+            NexusShell.Log("Steps JSON invalid: " + ex.Message);
             return new List<RecipeStep>();
         }
     }
@@ -244,7 +329,7 @@ public partial class RitualsTab : UserControl
         var recipe = _selected ?? new AutomationRecipe();
         if (string.IsNullOrEmpty(recipe.Id))
             recipe.Id = Guid.NewGuid().ToString("n");
-        recipe.Name = RitualName.Text?.Trim() ?? "Unbenannt";
+        recipe.Name = RitualName.Text?.Trim() ?? "Untitled";
         recipe.Description = RitualDesc.Text ?? "";
         recipe.ApprovalMode = ApprovalModeBox.SelectedItem?.ToString()?.Trim() ?? "manual";
         recipe.RiskLevel = RiskLevelBox.SelectedItem?.ToString()?.Trim() ?? "medium";
@@ -257,7 +342,7 @@ public partial class RitualsTab : UserControl
         recipe.Steps = steps;
         RitualRecipeStore.Upsert(recipe);
         _selected = recipe;
-        NexusShell.Log($"Ritual gespeichert: {recipe.Name} ({recipe.Steps.Count} Schritte).");
+        NexusShell.Log($"Ritual saved: {recipe.Name} ({recipe.Steps.Count} steps).");
         ReloadLibrary();
     }
 
@@ -275,7 +360,7 @@ public partial class RitualsTab : UserControl
         ConfidenceSourceBox.Text = "";
         MaxAutonomyStepsBox.Text = "";
         StepsEditor.Text = "[]";
-        NexusShell.Log("Ritual gelöscht.");
+        NexusShell.Log("Ritual deleted.");
         ReloadLibrary();
     }
 
@@ -288,9 +373,9 @@ public partial class RitualsTab : UserControl
         if (clone == null)
             return;
         clone.Id = Guid.NewGuid().ToString("n");
-        clone.Name = (clone.Name ?? "") + " (Kopie)";
+        clone.Name = (clone.Name ?? "") + " (copy)";
         RitualRecipeStore.AppendRecipe(clone);
-        NexusShell.Log("Ritual geklont.");
+        NexusShell.Log("Ritual cloned.");
         ReloadLibrary();
     }
 
@@ -298,14 +383,14 @@ public partial class RitualsTab : UserControl
     {
         if (_selected == null)
         {
-            NexusShell.Log("Archiv: kein Ritual gewählt.");
+            NexusShell.Log("Archive: no ritual selected.");
             return;
         }
 
         SaveCurrent();
         _selected.Archived = true;
         RitualRecipeStore.Upsert(_selected);
-        NexusShell.Log($"Ritual archiviert: {_selected.Name}");
+        NexusShell.Log($"Ritual archived: {_selected.Name}");
         ReloadLibrary();
     }
 
@@ -313,14 +398,14 @@ public partial class RitualsTab : UserControl
     {
         if (_selected == null)
         {
-            NexusShell.Log("Publish: kein Ritual gewählt.");
+            NexusShell.Log("Publish: no ritual selected.");
             return;
         }
 
         SaveCurrent();
         _selected.PublicationState = "published";
         RitualRecipeStore.Upsert(_selected);
-        NexusShell.Log($"Flow veröffentlicht (published): {_selected.Name}");
+        NexusShell.Log($"Flow published: {_selected.Name}");
         ReloadLibrary();
     }
 
@@ -328,7 +413,7 @@ public partial class RitualsTab : UserControl
     {
         if (_selected == null)
         {
-            NexusShell.Log("Warteschlange: kein Ritual gewählt — zuerst speichern oder auswählen.");
+            NexusShell.Log("Queue: no ritual selected — save or pick one first.");
             RefreshQueueStatus();
             return;
         }
@@ -336,14 +421,14 @@ public partial class RitualsTab : UserControl
         SaveCurrent();
         if (_selected.Archived)
         {
-            NexusShell.Log("Warteschlange: archivierte Rituale werden nicht eingereiht.");
+            NexusShell.Log("Queue: archived rituals are not enqueued.");
             RefreshQueueStatus();
             return;
         }
 
         RitualJobQueueStore.Enqueue(_selected.Id, _selected.Name);
         var n = RitualJobQueueStore.GetPendingCount();
-        NexusShell.Log($"Eingereiht: {_selected.Name} (ausstehend: {n}).");
+        NexusShell.Log($"Enqueued: {_selected.Name} (pending: {n}).");
         RefreshQueueStatus();
     }
 
@@ -353,7 +438,7 @@ public partial class RitualsTab : UserControl
         {
             if (!RitualJobQueueStore.TryDequeuePending(out var job) || job == null)
             {
-                NexusShell.Log("Job-Warteschlange: keine ausstehenden Jobs.");
+                NexusShell.Log("Job queue: no pending jobs.");
                 return;
             }
 
@@ -361,38 +446,38 @@ public partial class RitualsTab : UserControl
             var recipe = all.FirstOrDefault(r => string.Equals(r.Id, job.RecipeId, StringComparison.Ordinal));
             if (recipe == null)
             {
-                RitualJobQueueStore.RecordHistory(job, "failed", "Rezept nicht gefunden");
-                NexusShell.Log($"Job abgebrochen: Rezept {job.RecipeId} fehlt.");
+                RitualJobQueueStore.RecordHistory(job, "failed", "Recipe not found");
+                NexusShell.Log($"Job cancelled: recipe {job.RecipeId} missing.");
                 return;
             }
 
             if (recipe.Archived)
             {
-                RitualJobQueueStore.RecordHistory(job, "failed", "Rezept archiviert");
-                NexusShell.Log($"Job übersprungen: {recipe.Name} ist archiviert.");
+                RitualJobQueueStore.RecordHistory(job, "failed", "Recipe archived");
+                NexusShell.Log($"Job skipped: {recipe.Name} is archived.");
                 return;
             }
 
             _runCts?.Cancel();
             _runCts = new CancellationTokenSource();
-            NexusShell.Log($"Job genehmigt — Lauf: {recipe.Name} …");
+            NexusShell.Log($"Job approved — run: {recipe.Name} …");
             try
             {
                 await SimplePlanSimulator
                     .RunAsync(recipe.Steps, false, NexusContext.GetSettings(), _runCts.Token)
                     .ConfigureAwait(true);
                 RitualJobQueueStore.RecordHistory(job, "completed", null);
-                NexusShell.Log($"Job abgeschlossen: {recipe.Name}");
+                NexusShell.Log($"Job completed: {recipe.Name}");
             }
             catch (OperationCanceledException)
             {
                 RitualJobQueueStore.RecordHistory(job, "cancelled", null);
-                NexusShell.Log("Job abgebrochen.");
+                NexusShell.Log("Job cancelled.");
             }
             catch (Exception ex)
             {
                 RitualJobQueueStore.RecordHistory(job, "failed", ex.Message);
-                NexusShell.Log("Job fehlgeschlagen: " + ex.Message);
+                NexusShell.Log("Job failed: " + ex.Message);
             }
         }
         finally
@@ -407,14 +492,14 @@ public partial class RitualsTab : UserControl
         var steps = ParseStepsEditor();
         if (string.IsNullOrWhiteSpace(desc) && steps.Count == 0)
         {
-            NexusShell.Log("KI-Kurztitel: Beschreibung oder Schritte eingeben.");
+            NexusShell.Log("AI short title: enter description or steps.");
             return;
         }
 
         var settings = NexusContext.GetSettings();
         if (!DotEnvStore.HasProviderKey(settings.Provider))
         {
-            NexusShell.Log("KI-Kurztitel: API-Key für Provider fehlt (.env).");
+            NexusShell.Log("AI short title: API key missing for provider (.env).");
             return;
         }
 
@@ -427,8 +512,8 @@ public partial class RitualsTab : UserControl
         }));
 
         var userBlob =
-            "Beschreibung:\n" + (string.IsNullOrWhiteSpace(desc) ? "(keine)" : desc) +
-            "\n\nSchritte (Auszug):\n" + (stepSummary.Length > 0 ? stepSummary : "(keine)");
+            "Description:\n" + (string.IsNullOrWhiteSpace(desc) ? "(none)" : desc) +
+            "\n\nSteps (excerpt):\n" + (stepSummary.Length > 0 ? stepSummary : "(none)");
 
         BtnAiSuggestName.IsEnabled = false;
         CompanionHub.Publish(CompanionVisualState.Thinking);
@@ -436,15 +521,17 @@ public partial class RitualsTab : UserControl
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
             const string sys =
-                "Vorschlage genau einen kurzen, sachlichen Ritual-Namen auf Deutsch (maximal 6 Wörter). " +
-                "Nur den Namen ausgeben, keine Anführungszeichen, kein Zusatz.";
+                "Suggest exactly one short factual ritual name in English (at most 6 words). " +
+                "Output only the name, no quotes, no extra text.";
             var name = await LlmChatService.CompleteUtilityAsync(settings, sys, userBlob, cts.Token).ConfigureAwait(true);
-            if (name.StartsWith("Fehlt ", StringComparison.Ordinal) ||
+            if (name.StartsWith("Missing ", StringComparison.Ordinal) ||
+                name.StartsWith("Fehlt ", StringComparison.Ordinal) ||
+                name.StartsWith("Unknown provider", StringComparison.Ordinal) ||
                 name.StartsWith("Unbekannter Provider", StringComparison.Ordinal) ||
                 name.StartsWith("Anthropic HTTP", StringComparison.Ordinal) ||
                 name.StartsWith("OpenAI", StringComparison.Ordinal))
             {
-                NexusShell.Log("KI-Kurztitel: " + name);
+                NexusShell.Log("AI short title: " + name);
                 return;
             }
 
@@ -452,11 +539,11 @@ public partial class RitualsTab : UserControl
             if (oneLine.Length > 120)
                 oneLine = oneLine[..120].TrimEnd();
             RitualName.Text = oneLine;
-            NexusShell.Log("KI-Kurztitel übernommen.");
+            NexusShell.Log("AI short title applied.");
         }
         catch (Exception ex)
         {
-            NexusShell.Log("KI-Kurztitel: " + ex.Message);
+            NexusShell.Log("AI short title: " + ex.Message);
             CompanionHub.Publish(CompanionVisualState.Error);
         }
         finally
@@ -471,7 +558,7 @@ public partial class RitualsTab : UserControl
         var steps = _selected != null ? _selected.Steps : ParseStepsEditor();
         if (steps.Count == 0)
         {
-            NexusShell.Log("Keine Schritte zum Ausführen.");
+            NexusShell.Log("No steps to run.");
             return;
         }
 
@@ -481,16 +568,16 @@ public partial class RitualsTab : UserControl
             && string.Equals(_selected.ApprovalMode, "manual", StringComparison.OrdinalIgnoreCase))
         {
             NexusShell.Log(
-                "Direktausführung blockiert: Ritual ist „published“ mit Freigabe „manual“ — bitte „queue for run“ und „approve next job“ nutzen.");
+                "Direct run blocked: ritual is „published“ with approval „manual“ — use „queue for run“ and „approve next job“.");
             return;
         }
 
         _runCts = new CancellationTokenSource();
         _stepCursor = 0;
-        NexusShell.Log(dryRun ? "Dry-run startet …" : "Plan-Lauf startet (simuliert) …");
+        NexusShell.Log(dryRun ? "Dry-run starting …" : "Plan run starting (simulated) …");
         var log = await SimplePlanSimulator.RunAsync(steps, dryRun, NexusContext.GetSettings(), _runCts.Token)
             .ConfigureAwait(true);
-        NexusShell.Log(dryRun ? "Dry-run fertig." : "Lauf fertig.");
+        NexusShell.Log(dryRun ? "Dry-run done." : "Run done.");
         _ = log;
     }
 
@@ -499,7 +586,7 @@ public partial class RitualsTab : UserControl
         var steps = _selected != null ? _selected.Steps : ParseStepsEditor();
         if (_stepCursor >= steps.Count)
         {
-            NexusShell.Log("Kein weiterer Schritt.");
+            NexusShell.Log("No further step.");
             return;
         }
 
@@ -508,13 +595,13 @@ public partial class RitualsTab : UserControl
             && string.Equals(_selected.ApprovalMode, "manual", StringComparison.OrdinalIgnoreCase))
         {
             NexusShell.Log(
-                "Schritt blockiert: „published“ + „manual“ — Warteschlange + Approve nutzen.");
+                "Step blocked: „published“ + „manual“ — use queue + approve.");
             return;
         }
 
         _runCts ??= new CancellationTokenSource();
         var one = new List<RecipeStep> { steps[_stepCursor] };
-        NexusShell.Log($"Nächster Schritt {_stepCursor + 1}/{steps.Count}");
+        NexusShell.Log($"Next step {_stepCursor + 1}/{steps.Count}");
         await SimplePlanSimulator.RunAsync(one, false, NexusContext.GetSettings(), _runCts.Token)
             .ConfigureAwait(true);
         _stepCursor++;

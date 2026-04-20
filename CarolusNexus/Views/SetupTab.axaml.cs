@@ -75,7 +75,7 @@ public partial class SetupTab : UserControl
         EnvPathHint.Text = AppPaths.EnvFile;
         var keys = DotEnvSummary.ListKeys(AppPaths.EnvFile);
         EnvSummary.Text = keys.Count == 0
-            ? "(keine .env oder leer — Vorlage: windows\\.env.example)"
+            ? "(no .env or empty — template: windows\\.env.example)"
             : string.Join("\r\n", keys.Select(k => k + "=***"));
     }
 }

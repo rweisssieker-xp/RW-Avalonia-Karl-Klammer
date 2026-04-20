@@ -21,23 +21,23 @@ public partial class ConsoleTab : UserControl
         var prompt = AgentPrompt.Text?.Trim();
         if (string.IsNullOrEmpty(prompt))
         {
-            AgentOutput.Text = "Bitte Prompt eingeben.";
+            AgentOutput.Text = "Please enter a prompt.";
             return;
         }
 
         BtnRunAgent.IsEnabled = false;
         try
         {
-            NexusShell.Log($"CLI: starte „{agent}“ …");
+            NexusShell.Log($"CLI: starting “{agent}” …");
             var (logPath, excerpt) = await CliAgentRunner.RunAsync(agent, prompt).ConfigureAwait(true);
             OutputPathHint.Text = logPath;
             AgentOutput.Text = excerpt;
-            NexusShell.Log($"CLI: fertig → {logPath}");
+            NexusShell.Log($"CLI: done → {logPath}");
         }
         catch (Exception ex)
         {
-            AgentOutput.Text = "Fehler: " + ex;
-            NexusShell.Log("CLI Fehler: " + ex.Message);
+            AgentOutput.Text = "Error: " + ex;
+            NexusShell.Log("CLI error: " + ex.Message);
         }
         finally
         {

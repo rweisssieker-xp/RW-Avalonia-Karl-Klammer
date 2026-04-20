@@ -88,7 +88,7 @@ public static class RitualJobQueueStore
     {
         var doc = LoadOrEmpty();
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine($"Ausstehend: {doc.Pending.Count}");
+        sb.AppendLine($"Pending: {doc.Pending.Count}");
         foreach (var p in doc.Pending.Take(maxPendingLines))
         {
             var t = p.UtcQueued.ToLocalTime();
@@ -96,11 +96,11 @@ public static class RitualJobQueueStore
         }
 
         if (doc.Pending.Count > maxPendingLines)
-            sb.AppendLine($" … +{doc.Pending.Count - maxPendingLines} weitere");
+            sb.AppendLine($" … +{doc.Pending.Count - maxPendingLines} more");
 
-        sb.AppendLine("Letzte Jobs:");
+        sb.AppendLine("Recent jobs:");
         if (doc.History.Count == 0)
-            sb.AppendLine(" (noch keine)");
+            sb.AppendLine(" (none yet)");
         else
         {
             foreach (var h in doc.History.Take(maxHistoryLines))
@@ -117,7 +117,7 @@ public static class RitualJobQueueStore
     public static void Enqueue(string recipeId, string recipeName)
     {
         if (string.IsNullOrWhiteSpace(recipeId))
-            throw new ArgumentException("recipeId fehlt.", nameof(recipeId));
+            throw new ArgumentException("recipeId is required.", nameof(recipeId));
 
         var doc = LoadOrEmpty();
         doc.Pending.Add(new RitualJobEntry

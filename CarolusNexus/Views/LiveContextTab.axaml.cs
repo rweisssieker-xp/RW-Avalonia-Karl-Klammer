@@ -33,9 +33,9 @@ public partial class LiveContextTab : UserControl
         Unloaded += (_, _) => _refreshTimer.Stop();
 
         SnapCross.Text =
-            "Adapter-Schaltflächen vergleichen die gewählte Familie mit dem aktiven Fenster.\r\n" +
-            "Custom action + „run“: versucht ausführbare Tokens (power-user + PlanGuard) und zeigt das Ergebnis.\r\n" +
-            "Teach-Modus (Rituals): „run“ und Adapter-Klicks erzeugen Ritual-Schritte.";
+            "Adapter buttons compare the selected family with the active window.\r\n" +
+            "Custom action + “run”: tries executable tokens (power-user + PlanGuard) and shows the result.\r\n" +
+            "Teach mode (Rituals): “run” and adapter clicks create ritual steps.";
 
         RefreshActiveSnapshot();
     }
@@ -50,14 +50,14 @@ public partial class LiveContextTab : UserControl
         var matches = string.Equals(curFam, targetFam, StringComparison.OrdinalIgnoreCase)
                       || (familyKey == "ax2012" && curFam == "ax2012");
         var sb = new StringBuilder();
-        sb.AppendLine($"Adapter-Schaltfläche: „{familyKey}“");
-        sb.AppendLine($"Aktive Familie (Heuristik): {curFam}");
-        sb.AppendLine(matches ? "→ Fenster passt zur gewählten Familie (heuristisch)." : "→ Vordergrundfenster weicht von der Schaltfläche ab — trotzdem Kontext-Hinweis nutzbar.");
+        sb.AppendLine($"Adapter button: “{familyKey}”");
+        sb.AppendLine($"Active family (heuristic): {curFam}");
+        sb.AppendLine(matches ? "→ Window matches the selected family (heuristic)." : "→ Foreground window differs from the button — context hints still usable.");
         if (d != null)
         {
             sb.AppendLine();
-            sb.AppendLine($"Fenster: „{d.Value.Title}“");
-            sb.AppendLine($"Prozess: {d.Value.ProcessName} (PID {d.Value.ProcessId})");
+            sb.AppendLine($"Window: “{d.Value.Title}”");
+            sb.AppendLine($"Process: {d.Value.ProcessName} (PID {d.Value.ProcessId})");
         }
 
         SnapCross.Text = sb.ToString();
@@ -71,7 +71,7 @@ public partial class LiveContextTab : UserControl
                 ActionArgument = $"adapter|{familyKey}",
                 WaitMs = 200
             });
-            NexusShell.Log("Teach: Adapter-Schritt erfasst.");
+            NexusShell.Log("Teach: adapter step captured.");
         }
     }
 
@@ -88,7 +88,7 @@ public partial class LiveContextTab : UserControl
             NexusShell.Log($"inspector custom: {action} → {execNote}");
         }
         else if (string.IsNullOrEmpty(action))
-            NexusShell.Log("inspector custom: (leer)");
+            NexusShell.Log("inspector custom: (empty)");
 
         var d = ForegroundWindowInfo.TryReadDetail();
         var sb = new StringBuilder();
@@ -114,7 +114,7 @@ public partial class LiveContextTab : UserControl
                 ActionArgument = action,
                 WaitMs = 300
             });
-            NexusShell.Log("Teach: Inspector-Schritt erfasst.");
+            NexusShell.Log("Teach: inspector step captured.");
         }
     }
 
@@ -122,7 +122,7 @@ public partial class LiveContextTab : UserControl
     {
         if (!OperatingSystem.IsWindows())
         {
-            SnapActive.Text = "Live Context: nur unter Windows.";
+            SnapActive.Text = "Live Context: Windows only.";
             SnapAx.Text = "—";
             SnapCross.Text = "—";
             return;
@@ -131,33 +131,33 @@ public partial class LiveContextTab : UserControl
         var d = ForegroundWindowInfo.TryReadDetail();
         if (d == null)
         {
-            SnapActive.Text = "(kein Vordergrundfenster)";
+            SnapActive.Text = "(no foreground window)";
             SnapAx.Text = "—";
             return;
         }
 
         var fam = OperatorAdapterRegistry.ResolveFamily(d.Value.ProcessName, d.Value.Title);
         var sb = new StringBuilder();
-        sb.AppendLine($"Titel: {d.Value.Title}");
-        sb.AppendLine($"Prozess: {d.Value.ProcessName} (PID {d.Value.ProcessId})");
-        sb.AppendLine($"Klasse: {d.Value.WindowClass}");
+        sb.AppendLine($"Title: {d.Value.Title}");
+        sb.AppendLine($"Process: {d.Value.ProcessName} (PID {d.Value.ProcessId})");
+        sb.AppendLine($"Class: {d.Value.WindowClass}");
         sb.AppendLine($"Bounds: {d.Value.Left}, {d.Value.Top} · {d.Value.Width}×{d.Value.Height}");
-        sb.AppendLine($"Adapter-Familie (Heuristik): {fam}");
-        sb.AppendLine($"Bekannte Familien: {string.Join(", ", OperatorAdapterRegistry.KnownFamilies)}");
+        sb.AppendLine($"Adapter family (heuristic): {fam}");
+        sb.AppendLine($"Known families: {string.Join(", ", OperatorAdapterRegistry.KnownFamilies)}");
         SnapActive.Text = sb.ToString();
 
         if (fam == "ax2012")
         {
             SnapAx.Text =
-                "AX / Dynamics-Fat-Client erkannt (Titel/Prozess-Heuristik).\r\n" +
-                "Golden Path: Vordergrund-Kontext oben; tiefe Form/Grid-UIAutomation ist roadmap — nutzen Sie Vision+Plan im Ask-Tab.\r\n" +
-                $"Snapshot: „{d.Value.Title}“ · {d.Value.ProcessName}";
+                "AX / Dynamics fat client detected (title/process heuristic).\r\n" +
+                "Golden path: foreground context above; deep form/grid UI automation is roadmap — use Vision+Plan on the Ask tab.\r\n" +
+                $"Snapshot: “{d.Value.Title}” · {d.Value.ProcessName}";
         }
         else
         {
             SnapAx.Text =
-                $"Kein AX-Fenster im Vordergrund (aktuell: {fam}).\r\n" +
-                "Wechseln Sie in den AX-Client oder nutzen Sie die AX-Schaltfläche für Kontext-Hinweise.";
+                $"No AX window in the foreground (current: {fam}).\r\n" +
+                "Switch to the AX client or use the AX button for context hints.";
         }
     }
 }
