@@ -3,8 +3,11 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-# dotenv files
+# dotenv files (secrets — never commit)
 .env
+.env.*
+!.env.example
+!**/.env.example
 windows/.env
 
 # User-specific files
@@ -36,6 +39,10 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
+# Explicit recursive build dirs (belt-and-suspenders; matches nested projects reliably)
+**/bin/
+**/obj/
+
 # Visual Studio 2015/2017 cache/options directory
 .vs/
 # Uncomment if you have tasks that create the project's static files in wwwroot
@@ -65,6 +72,8 @@ BenchmarkDotNet.Artifacts/
 project.lock.json
 project.fragment.lock.json
 artifacts/
+.dotnet/
+TestResults/
 
 # Tye
 .tye/

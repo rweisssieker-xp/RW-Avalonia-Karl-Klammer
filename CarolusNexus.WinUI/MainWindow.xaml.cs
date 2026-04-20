@@ -28,8 +28,6 @@ public sealed partial class MainWindow : Window
         PaneDisplayMode = NavigationViewPaneDisplayMode.Auto,
         OpenPaneLength = 300,
         PaneTitle = "Carolus Nexus",
-        IsPaneOpen = true,
-        AlwaysShowHeader = true,
         Background = new SolidColorBrush(Colors.Transparent)
     };
 
@@ -181,7 +179,7 @@ public sealed partial class MainWindow : Window
 
         stack.Children.Add(badges);
 
-        var tiles = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch, ColumnSpacing = 10 };
+        var tiles = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch };
         tiles.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         tiles.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         tiles.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -236,7 +234,7 @@ public sealed partial class MainWindow : Window
         new()
         {
             Padding = new Thickness(12, 10, 12, 10),
-            Margin = new Thickness(0, 0, 0, 0),
+            Margin = new Thickness(0, 0, 10, 0),
             CornerRadius = new CornerRadius(8),
             BorderThickness = new Thickness(1),
             BorderBrush = WinUiFluentChrome.CardBorderBrush,
