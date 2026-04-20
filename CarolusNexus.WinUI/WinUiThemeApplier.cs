@@ -8,12 +8,18 @@ public static class WinUiThemeApplier
 {
     public static void Apply(string? theme)
     {
-        if (Application.Current is not App app)
-            return;
-        var t = (theme ?? "Dark").Trim();
-        // WinUI ApplicationTheme has Light/Dark only; map Default/System to Light (readable in mixed shell).
-        app.RequestedTheme = t.Equals("Dark", StringComparison.OrdinalIgnoreCase)
-            ? ApplicationTheme.Dark
-            : ApplicationTheme.Light;
+        try
+        {
+            if (Application.Current is not App app)
+                return;
+            var t = (theme ?? "Dark").Trim();
+            app.RequestedTheme = t.Equals("Dark", StringComparison.OrdinalIgnoreCase)
+                ? ApplicationTheme.Dark
+                : ApplicationTheme.Light;
+        }
+        catch
+        {
+            // Startup order / unpackaged: theme can fail before shell is ready; ignore.
+        }
     }
 }

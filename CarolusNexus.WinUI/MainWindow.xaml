@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<Window
-    x:Class="CarolusNexus_WinUI.MainWindow"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Carolus Nexus">
-    <Grid x:Name="RootGrid" />
-</Window>

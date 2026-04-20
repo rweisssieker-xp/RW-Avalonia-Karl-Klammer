@@ -7,7 +7,7 @@ using Microsoft.UI.Xaml;
 
 namespace CarolusNexus_WinUI;
 
-public partial class App : Application
+public partial class App
 {
     private Window? _window;
 

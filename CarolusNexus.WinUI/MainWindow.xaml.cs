@@ -7,6 +7,7 @@ using CarolusNexus;
 using CarolusNexus.Services;
 using CarolusNexus_WinUI.Pages;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -17,14 +18,19 @@ namespace CarolusNexus_WinUI;
 
 public sealed partial class MainWindow : Window
 {
+    private readonly Grid RootGrid = new();
+
     private readonly Frame _frame = new();
     private readonly NavigationView _nav = new()
     {
         IsBackButtonVisible = NavigationViewBackButtonVisible.Collapsed,
         IsSettingsVisible = false,
         PaneDisplayMode = NavigationViewPaneDisplayMode.Auto,
-        OpenPaneLength = 280,
-        PaneTitle = "Carolus Nexus"
+        OpenPaneLength = 300,
+        PaneTitle = "Carolus Nexus",
+        IsPaneOpen = true,
+        AlwaysShowHeader = true,
+        Background = new SolidColorBrush(Colors.Transparent)
     };
 
     private readonly TextBlock _badgeLayout = new() { FontSize = 11 };
@@ -35,10 +41,20 @@ public sealed partial class MainWindow : Window
     private readonly TextBlock _tileMemory = new() { TextWrapping = TextWrapping.Wrap, FontSize = 11 };
     private readonly TextBlock _tileLive = new() { TextWrapping = TextWrapping.Wrap, FontSize = 11 };
     private readonly TextBlock _tileEnv = new() { TextWrapping = TextWrapping.Wrap, FontSize = 11 };
+    private readonly TextBlock _statusLine = new() { FontSize = 12, Text = "Ready" };
+    private readonly CheckBox _companionToggle = new()
+    {
+        Content = "Companion at cursor",
+        IsChecked = true,
+        FontSize = 11
+    };
 
     public MainWindow()
     {
-        InitializeComponent();
+        Title = "Carolus Nexus";
+        WinUiFluentChrome.ApplyMicaBackdrop(this);
+        RootGrid.Background = new SolidColorBrush(Colors.Transparent);
+        Content = RootGrid;
 
         _nav.MenuItems.Add(Mk("Ask", typeof(AskShellPage), Symbol.Message));
         _nav.MenuItems.Add(Mk("Dashboard", typeof(DashboardShellPage), Symbol.Home));
@@ -58,7 +74,7 @@ public sealed partial class MainWindow : Window
         _nav.Loaded += (_, _) =>
         {
             _nav.SelectedItem = _nav.MenuItems.OfType<NavigationViewItem>().FirstOrDefault();
-            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            this.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
             {
                 if (_nav.SelectedItem is NavigationViewItem first && first.Tag is Type t)
                     ShowShellPage(t);
@@ -66,7 +82,7 @@ public sealed partial class MainWindow : Window
         };
 
         var header = BuildHeaderChrome();
-        var root = new Grid();
+        var root = new Grid { Background = new SolidColorBrush(Colors.Transparent) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.Children.Add(header);
@@ -95,47 +111,55 @@ public sealed partial class MainWindow : Window
         };
         paletteAccel.Invoked += OnCommandPaletteAccelerator;
         _nav.KeyboardAccelerators.Add(paletteAccel);
+
+        RootGrid.Loaded += OnMainShellLoaded;
     }
 
     private UIElement BuildHeaderChrome()
     {
         var border = new Border
         {
-            Padding = new Thickness(14, 10, 14, 10),
+            Padding = new Thickness(20, 14, 20, 14),
             BorderThickness = new Thickness(0, 0, 0, 1),
-            BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 72, 72, 78)),
-            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 28, 28, 30))
+            BorderBrush = WinUiFluentChrome.SeparatorBrush,
+            Background = WinUiFluentChrome.LayerChromeBackground
         };
 
-        var stack = new StackPanel { Spacing = 10 };
+        var stack = new StackPanel { Spacing = 14 };
 
         var titleRow = new Grid();
         titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var titleBlock = new StackPanel { Spacing = 2 };
+        var titleBlock = new StackPanel { Spacing = 4 };
         titleBlock.Children.Add(new TextBlock
         {
             Text = "Carolus Nexus",
-            FontSize = 22,
-            FontWeight = Microsoft.UI.Text.FontWeights.Bold
+            FontSize = 26,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
         });
         titleBlock.Children.Add(new TextBlock
         {
-            Text = "Windows operator desktop · persona: Karl Klammer",
+            Text = "Windows operator desktop · Karl Klammer",
+            FontSize = 13,
+            Opacity = 0.85,
+            IsTextSelectionEnabled = false
+        });
+        titleBlock.Children.Add(new TextBlock
+        {
+            Text = "Tray · Companion · PTT · Ask · Dashboard",
             FontSize = 12,
-            Opacity = 0.75
-        });
-        titleBlock.Children.Add(new TextBlock
-        {
-            Text = "WinUI shell — align with Avalonia for ops testing.",
-            FontSize = 11,
             Opacity = 0.65
         });
+        titleBlock.Children.Add(_statusLine);
         Grid.SetColumn(titleBlock, 0);
         titleRow.Children.Add(titleBlock);
 
-        var titleBtns = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        var handbook = new Button { Content = "Handbook", Padding = new Thickness(10, 4, 10, 4) };
+        var titleBtns = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        titleBtns.Children.Add(_companionToggle);
+        var closeBtn = new Button { Content = "Close", Padding = new Thickness(14, 8, 14, 8), CornerRadius = new CornerRadius(4) };
+        closeBtn.Click += OnHeaderCloseClick;
+        titleBtns.Children.Add(closeBtn);
+        var handbook = new Button { Content = "Handbook", Padding = new Thickness(14, 8, 14, 8), CornerRadius = new CornerRadius(4) };
         handbook.Click += OnHandbookClick;
         titleBtns.Children.Add(handbook);
         Grid.SetColumn(titleBtns, 1);
@@ -148,16 +172,16 @@ public sealed partial class MainWindow : Window
             badges.Children.Add(new Border
             {
                 Margin = new Thickness(0, 0, 8, 6),
-                Padding = new Thickness(8, 4, 8, 4),
-                CornerRadius = new CornerRadius(4),
-                Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 48, 48, 52)),
+                Padding = new Thickness(10, 6, 10, 6),
+                CornerRadius = new CornerRadius(8),
+                Background = WinUiFluentChrome.BadgeBackground,
                 Child = tb
             });
         }
 
         stack.Children.Add(badges);
 
-        var tiles = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch };
+        var tiles = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch, ColumnSpacing = 10 };
         tiles.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         tiles.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         tiles.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -173,15 +197,15 @@ public sealed partial class MainWindow : Window
         stack.Children.Add(tiles);
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        var bRefresh = new Button { Content = "refresh all", Margin = new Thickness(0, 0, 8, 6), Padding = new Thickness(12, 6, 12, 6) };
+        var bRefresh = MkHeaderActionButton("Refresh all");
         bRefresh.Click += (_, _) => OnRefreshAll();
-        var bSave = new Button { Content = "save settings", Margin = new Thickness(0, 0, 8, 6), Padding = new Thickness(12, 6, 12, 6) };
+        var bSave = MkHeaderActionButton("Save settings", accent: true);
         bSave.Click += (_, _) => OnSaveSettings();
-        var bReindex = new Button { Content = "reindex knowledge", Margin = new Thickness(0, 0, 8, 6), Padding = new Thickness(12, 6, 12, 6) };
+        var bReindex = MkHeaderActionButton("Reindex knowledge");
         bReindex.Click += (_, _) => OnReindex();
-        var bApp = new Button { Content = "refresh active app", Margin = new Thickness(0, 0, 8, 6), Padding = new Thickness(12, 6, 12, 6) };
+        var bApp = MkHeaderActionButton("Refresh active app");
         bApp.Click += (_, _) => OnRefreshActiveApp();
-        var bExport = new Button { Content = "export diagnostics", Margin = new Thickness(0, 0, 8, 6), Padding = new Thickness(12, 6, 12, 6) };
+        var bExport = MkHeaderActionButton("Export diagnostics");
         bExport.Click += (_, _) => OnExportDiagnostics();
         actions.Children.Add(bRefresh);
         actions.Children.Add(bSave);
@@ -194,21 +218,35 @@ public sealed partial class MainWindow : Window
         return border;
     }
 
+    private static Button MkHeaderActionButton(string label, bool accent = false)
+    {
+        var b = new Button
+        {
+            Content = label,
+            Margin = new Thickness(0, 0, 8, 6),
+            Padding = new Thickness(16, 8, 16, 8),
+            CornerRadius = new CornerRadius(4)
+        };
+        if (accent && Application.Current.Resources.TryGetValue("AccentButtonStyle", out var st) && st is Style accentStyle)
+            b.Style = accentStyle;
+        return b;
+    }
+
     private static Border MkTile(string title, TextBlock body) =>
         new()
         {
-            Padding = new Thickness(8),
-            Margin = new Thickness(0, 0, 6, 0),
-            CornerRadius = new CornerRadius(6),
-            BorderThickness = new Thickness(1, 1, 1, 1),
-            BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 72, 72, 78)),
-            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 36, 36, 40)),
+            Padding = new Thickness(12, 10, 12, 10),
+            Margin = new Thickness(0, 0, 0, 0),
+            CornerRadius = new CornerRadius(8),
+            BorderThickness = new Thickness(1),
+            BorderBrush = WinUiFluentChrome.CardBorderBrush,
+            Background = WinUiFluentChrome.CardSurfaceBackground,
             Child = new StackPanel
             {
-                Spacing = 4,
+                Spacing = 6,
                 Children =
                 {
-                    new TextBlock { Text = title, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 11 },
+                    new TextBlock { Text = title, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
                     body
                 }
             }
@@ -241,8 +279,13 @@ public sealed partial class MainWindow : Window
         _tileMemory.Text =
             $"Index: {(idx ? "yes" : "no")}, Chunks: {(ch ? "yes" : "no")}, FTS5: {(fts ? "yes" : "no")}, Embeddings: {(emb ? "yes" : "no")}\n{AppPaths.DataDir}";
         if (!string.IsNullOrWhiteSpace(_tileLive.Text))
+        {
+            WinUiShellState.LiveContextLine = _tileLive.Text;
             return;
+        }
+
         _tileLive.Text = "Click „refresh active app“ for foreground window + adapter.";
+        WinUiShellState.LiveContextLine = _tileLive.Text;
     }
 
     private void OnRefreshAll()
@@ -253,6 +296,8 @@ public sealed partial class MainWindow : Window
         WinUiShellState.TryRefreshSetupEnvSummary?.Invoke();
         WinUiThemeApplier.Apply(WinUiShellState.Settings.UiTheme);
         RefreshHeaderBadges();
+        RefreshPushToTalkKey();
+        SetupPushToTalk();
         NexusShell.Log("refresh all — .env reloaded, settings applied to Setup if open.");
     }
 
@@ -285,6 +330,7 @@ public sealed partial class MainWindow : Window
         var (title, proc) = ForegroundWindowInfo.TryRead();
         var fam = OperatorAdapterRegistry.ResolveFamily(proc, title);
         _tileLive.Text = $"Active: {proc} · „{title}“ → adapter family: {fam} @ {DateTime.Now:T}";
+        WinUiShellState.LiveContextLine = _tileLive.Text;
         NexusShell.Log("Live Context: " + _tileLive.Text);
     }
 
@@ -364,9 +410,23 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            if (Activator.CreateInstance(pageType) is not Page page)
-                return;
+            if (!_pageCache.TryGetValue(pageType, out var page))
+            {
+                page = Activator.CreateInstance(pageType) as Page;
+                if (page == null)
+                    return;
+                _pageCache[pageType] = page;
+            }
+
             _frame.Content = page;
+            if (pageType == typeof(DashboardShellPage) && page is DashboardShellPage dash)
+                dash.RefreshFull();
+            if (pageType == typeof(KnowledgeShellPage) && page is KnowledgeShellPage know)
+                know.RefreshList();
+            if (pageType == typeof(RitualsShellPage) && page is RitualsShellPage rit)
+                rit.ReloadLibrary();
+            if (pageType == typeof(HistoryShellPage) && page is HistoryShellPage hist)
+                hist.Refresh();
         }
         catch (Exception ex)
         {
