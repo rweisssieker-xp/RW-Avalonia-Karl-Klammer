@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -124,6 +125,7 @@ public partial class AskTab : Avalonia.Controls.UserControl
     {
         if (!OperatingSystem.IsWindows())
             return;
+        TextToSpeechService.RequestBargeIn();
         StartMicRecording("(Hotkey)", awaitGlobalHotkeyRelease: true);
     }
 
@@ -187,6 +189,24 @@ public partial class AskTab : Avalonia.Controls.UserControl
         BtnChipRisks.Click += (_, _) =>
             AppendPromptLine("What risks do you see — and how can we mitigate them?");
         BtnChipExplain.Click += (_, _) => AppendPromptLine("Explain this in plain language for someone without domain jargon.");
+    }
+
+    /// <summary>Enter (und Ctrl+Enter) sendet wie „ask now“; nur Shift+Enter fügt eine neue Zeile ein.</summary>
+    private async void OnPromptBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+            return;
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            return;
+
+        if (_operationBusy)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        e.Handled = true;
+        await RunAskAsync().ConfigureAwait(true);
     }
 
     private void AppendPromptLine(string line)
@@ -443,8 +463,10 @@ public partial class AskTab : Avalonia.Controls.UserControl
 
         if (OperatingSystem.IsWindows())
         {
+            var s = _getSettings();
+            var risk = RiskScoreService.ClassifyPlan(steps, s);
             var r = System.Windows.Forms.MessageBox.Show(
-                "Run the detected plan? (Depending on safety profile: simulation or real Win32 steps.)",
+                $"Run the detected plan? Risk heuristic: {risk}. (Depending on safety profile: simulation or real Win32 steps.)",
                 "Carolus Nexus — approve plan",
                 System.Windows.Forms.MessageBoxButtons.OKCancel,
                 System.Windows.Forms.MessageBoxIcon.Warning);
@@ -452,6 +474,20 @@ public partial class AskTab : Avalonia.Controls.UserControl
             {
                 NexusShell.Log("Execution cancelled (not approved).");
                 return;
+            }
+
+            if (string.Equals(risk, "high", StringComparison.OrdinalIgnoreCase) && s.HighRiskSecondConfirm)
+            {
+                var r2 = System.Windows.Forms.MessageBox.Show(
+                    "High-risk plan — confirm a second time to execute or simulate.",
+                    "Carolus Nexus — high risk gate",
+                    System.Windows.Forms.MessageBoxButtons.OKCancel,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+                if (r2 != System.Windows.Forms.DialogResult.OK)
+                {
+                    NexusShell.Log("Execution cancelled (high-risk second gate).");
+                    return;
+                }
             }
         }
         else
@@ -889,16 +925,15 @@ public partial class AskTab : Avalonia.Controls.UserControl
                 ClearRetrievalSources();
             }
 
-            var effectivePrompt = prompt;
-            if (s.IncludeUiaContextInAsk && OperatingSystem.IsWindows())
-            {
-                var uia = UiAutomationSnapshot.TryBuildForForeground();
-                if (!string.IsNullOrWhiteSpace(uia))
-                    effectivePrompt =
-                        "[Foreground UI structure (UIA, truncated)]\n" + uia.TrimEnd() + "\n\n---\n" + prompt;
-            }
+            var fusion = UiAutomationVisionFusion.BuildAskAugmentation(s, shots);
+            var adapt = OperatorAdapterRegistry.TryEnrichForegroundContext();
+            if (!string.IsNullOrWhiteSpace(adapt))
+                fusion = string.IsNullOrWhiteSpace(fusion) ? adapt : fusion + "\n\n" + adapt;
+            var effectivePrompt = string.IsNullOrWhiteSpace(fusion)
+                ? prompt
+                : fusion + "\n\n---\n" + prompt;
 
-            NexusShell.Log($"ask now · screenshots={shots}, knowledge={know}, uia={s.IncludeUiaContextInAsk}");
+            NexusShell.Log($"ask now · screenshots={shots}, knowledge={know}, uia+fusion={s.IncludeUiaContextInAsk || shots}");
             var text = await LlmChatService
                 .CompleteAsync(s, effectivePrompt, shots, know, ct, knowledgeContextOverride: know ? knowledgeOverride : null)
                 .ConfigureAwait(true);

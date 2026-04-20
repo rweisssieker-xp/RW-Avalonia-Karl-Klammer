@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private bool _pollFallbackDown;
     private int _pttVk = PushToTalkKey.DefaultVirtualKey;
     private DateTime _lastWatchUtc = DateTime.MinValue;
+    private string? _lastWatchThumbHash;
     private LocalToolHost? _toolHost;
     private DateTime _lastProactiveUtc = DateTime.MinValue;
     private string _proactiveHintCache = "";
@@ -36,7 +37,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        LayoutUpdated += (_, _) => ApplyHeaderTilesResponsive();
+        LayoutUpdated += (_, _) =>
+        {
+            ApplyHeaderTilesResponsive();
+            RefreshLayoutBadge();
+        };
         AppPaths.DiscoverRepoRoot();
         AppPaths.EnsureDataTree();
 
@@ -141,11 +146,14 @@ public partial class MainWindow : Window
         TabSetup.RefreshEnvSummary();
         TabAsk.SetSettingsProvider(() => _settings);
         NexusContext.GetSettings = () => _settings;
+        NexusContext.RunWin32StepOnUiThreadAsync = async work =>
+            await Dispatcher.UIThread.InvokeAsync(work);
         ThemeApplier.ApplyUiTheme(_settings.UiTheme);
         DotEnvStore.Invalidate();
         SetupPushToTalk();
         RefreshDashboard();
         RefreshHeaderBadges();
+        RefreshLayoutBadge();
         ApplyKarlCursor();
 
         if (!OperatingSystem.IsWindows())
@@ -332,6 +340,14 @@ public partial class MainWindow : Window
         NexusShell.Log("Live Context: " + TileLive.Text);
     }
 
+    private void RefreshLayoutBadge()
+    {
+        var w = Bounds.Width;
+        if (w <= 0)
+            return;
+        BadgeLayout.Text = $"Layout: {ResponsiveLayout.GetBand(w)}";
+    }
+
     private void RefreshHeaderBadges()
     {
         BadgeEnv.Text = $"Environment: {_settings.Provider} / {_settings.Mode}";
@@ -356,11 +372,6 @@ public partial class MainWindow : Window
         var knowCount = Directory.Exists(AppPaths.KnowledgeDir)
             ? Directory.GetFiles(AppPaths.KnowledgeDir).Length
             : 0;
-        static string Cap(string? s, int max = 3500)
-        {
-            if (string.IsNullOrEmpty(s)) return "(empty)";
-            return s.Length <= max ? s : s[..max] + "\n…";
-        }
 
         MaybeAppendWatchSnapshot();
 
@@ -390,9 +401,27 @@ public partial class MainWindow : Window
         }
         else
         {
+            var keyOk = DotEnvStore.HasProviderKey(_settings.Provider);
+            var pending = RitualJobQueueStore.GetPendingCount();
+            var ritualCount = 0;
+            try
+            {
+                ritualCount = RitualRecipeStore.LoadAll().Count;
+            }
+            catch
+            {
+                // ignore
+            }
+
             proactive =
-                "Set mode to „watch“ + optional proactive LLM hint in Setup for dashboard tips.";
+                "Not in watch mode — live snapshot.\n" +
+                $"Knowledge files: {knowCount} · Ritual recipes: {ritualCount} · Jobs pending: {pending}\n" +
+                $"LLM .env: {(keyOk ? "key OK" : "key missing")} ({_settings.Provider})";
         }
+
+        var logExcerpt = NexusShell.FormatRecentLogForDashboard();
+        if (!string.IsNullOrEmpty(logExcerpt))
+            proactive += "\n\n— App log (recent) —\n" + logExcerpt;
 
         TabDashboard.RefreshSummaries(
             env: $"Provider: {_settings.Provider}\nMode: {_settings.Mode}\nModel: {_settings.Model}\n.env: {(DotEnvSummary.FileExists ? "yes" : "missing")}",
@@ -402,7 +431,7 @@ public partial class MainWindow : Window
             gov:
             $"Profile: {_settings.Safety.Profile}\nPanic: {_settings.Safety.PanicStopEnabled}\nneverAutoSend: {_settings.Safety.NeverAutoSend}\n\n— Ritual jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}",
             rituals: FormatRitualsDashboardCard(),
-            watch: Cap(File.Exists(AppPaths.WatchSessions) ? File.ReadAllText(AppPaths.WatchSessions) : null)
+            watch: WatchSessionService.FormatDashboardSummary()
         );
     }
 
@@ -458,9 +487,12 @@ public partial class MainWindow : Window
                 ? ForegroundWindowInfo.TryRead()
                 : ("", "");
 
+            var logCtx = NexusShell.FormatRecentLogForPrompt(6, 88);
             var prompt =
                 "Watch work context. Reply with exactly one short helpful sentence in English (max. 220 characters, no greeting). " +
                 $"Active app: {proc}. Window: {title}. Screen hash prefix: {hash}.";
+            if (!string.IsNullOrEmpty(logCtx))
+                prompt += "\nRecent app log: " + logCtx;
 
             var text = await LlmChatService.CompleteAsync(_settings, prompt, false, false, default)
                 .ConfigureAwait(false);
@@ -530,8 +562,43 @@ public partial class MainWindow : Window
         try
         {
             var hash = ScreenCaptureWin.PrimaryMonitorSha256Prefix16();
-            WatchSessionService.AppendSnapshot($"watch · Dashboard {DateTime.Now:T}", hash);
-            NexusShell.Log("watch · snapshot (primary monitor hash) logged.");
+            var (title, proc) = ForegroundWindowInfo.TryRead();
+            var fam = OperatorAdapterRegistry.ResolveFamily(proc, title);
+            string? thumbRel = null;
+            if (!string.IsNullOrEmpty(hash) && !string.Equals(hash, _lastWatchThumbHash, StringComparison.Ordinal))
+            {
+                try
+                {
+                    Directory.CreateDirectory(AppPaths.WatchThumbnailsDir);
+                    var fn = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_{hash}.jpg";
+                    var full = Path.Combine(AppPaths.WatchThumbnailsDir, fn);
+                    ScreenCaptureWin.SaveWatchThumbnailJpeg(full, maxEdge: 480);
+                    thumbRel = Path.Combine("watch-thumbnails", fn);
+                    WatchSessionService.PruneThumbnails(200);
+                    _lastWatchThumbHash = hash;
+                }
+                catch (Exception ex)
+                {
+                    NexusShell.Log("watch · thumbnail: " + ex.Message);
+                }
+            }
+
+            var note = title.Trim();
+            if (note.Length > 160)
+                note = note[..160] + "…";
+            if (string.IsNullOrEmpty(note))
+                note = $"snapshot {DateTime.Now:T}";
+
+            WatchSessionService.AppendSnapshot(
+                note,
+                hash,
+                string.IsNullOrWhiteSpace(proc) ? null : proc.Trim(),
+                string.IsNullOrWhiteSpace(title) ? null : title.Trim(),
+                fam,
+                thumbRel,
+                "dashboard");
+
+            NexusShell.Log($"watch · snapshot logged ({proc} · hash {hash ?? "?"})");
         }
         catch (Exception ex)
         {

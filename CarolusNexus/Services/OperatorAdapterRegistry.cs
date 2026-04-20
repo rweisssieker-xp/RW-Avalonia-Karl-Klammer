@@ -9,6 +9,13 @@ namespace CarolusNexus.Services;
 /// </summary>
 public static class OperatorAdapterRegistry
 {
+    /// <summary>Registrierte Pilot-Adapter (Explorer/Browser); AX nur gestaffelt / ohne harte Automation hier.</summary>
+    public static IReadOnlyList<IOperatorAdapter> Adapters { get; } =
+    [
+        new ExplorerPilotAdapter(),
+        new BrowserPilotAdapter(),
+    ];
+
     public static IReadOnlyList<string> KnownFamilies { get; } =
     [
         "explorer", "browser", "mail", "outlook", "teams", "word", "excel", "powerpoint",
@@ -38,5 +45,33 @@ public static class OperatorAdapterRegistry
         if (p is "chrome" or "msedge" or "firefox")
             return "browser";
         return "generic";
+    }
+
+    public static string? TryEnrichForegroundContext()
+    {
+        if (!OperatingSystem.IsWindows())
+            return null;
+        var d = ForegroundWindowInfo.TryReadDetail();
+        if (d == null)
+            return null;
+        var fam = ResolveFamily(d.Value.ProcessName, d.Value.Title);
+        foreach (var a in Adapters)
+        {
+            if (a.CanHandle(fam))
+                return a.EnrichContext(d.Value.Title ?? "", d.Value.ProcessName ?? "");
+        }
+
+        return null;
+    }
+
+    public static string FormatPilotSnippetsForFamily(string family)
+    {
+        foreach (var a in Adapters)
+        {
+            if (a.CanHandle(family))
+                return a.SuggestStepSnippets();
+        }
+
+        return "";
     }
 }

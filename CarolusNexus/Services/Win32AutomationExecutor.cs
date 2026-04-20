@@ -29,6 +29,9 @@ public static class Win32AutomationExecutor
 
         try
         {
+            if (UiAutomationActions.TryParseAndExecute(arg, settings, out var uiaMsg))
+                return uiaMsg;
+
             var m = ActionRx.Match(arg);
             if (m.Success)
             {

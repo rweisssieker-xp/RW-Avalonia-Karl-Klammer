@@ -42,7 +42,7 @@ public partial class RitualsTab : UserControl
         BtnRunNextStep.Click += async (_, _) => await RunNextStepAsync();
         BtnResume.Click += async (_, _) => await RunSelectedAsync(false);
         BtnPromoteHist.Click += (_, _) => PromoteFromHistory();
-        BtnPromoteWatch.Click += (_, _) => PromoteFromWatch();
+        BtnPromoteWatch.Click += async (_, _) => await PromoteFromWatchAsync().ConfigureAwait(true);
         BtnTeachStart.Click += (_, _) => StartTeach();
         BtnTeachCapture.Click += (_, _) => CaptureForegroundTeachStep();
         BtnTeachStop.Click += (_, _) => StopTeach();
@@ -161,7 +161,7 @@ public partial class RitualsTab : UserControl
         ReloadLibrary();
     }
 
-    private void PromoteFromWatch()
+    private async Task PromoteFromWatchAsync()
     {
         var doc = WatchSessionService.LoadOrEmpty();
         if (doc.Entries.Count == 0)
@@ -170,25 +170,38 @@ public partial class RitualsTab : UserControl
             return;
         }
 
-        var steps = doc.Entries
-            .Select(e => new RecipeStep
-            {
-                ActionType = "token",
-                ActionArgument = string.IsNullOrWhiteSpace(e.ScreenHash)
-                    ? $"watch|{e.Note}"
-                    : $"watch|{e.Note} [screen:{e.ScreenHash}]",
-                WaitMs = 0
-            })
-            .ToList();
-        var recipe = new AutomationRecipe
+        BtnPromoteWatch.IsEnabled = false;
+        try
         {
-            Name = $"Promoted Watch {DateTime.Now:yyyy-MM-dd HH:mm}",
-            Description = $"From {doc.Entries.Count} watch entries",
-            Steps = steps
-        };
-        RitualRecipeStore.AppendRecipe(recipe);
-        NexusShell.Log($"promote from watch: {recipe.Name} ({recipe.Steps.Count} steps).");
-        ReloadLibrary();
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            var settings = NexusContext.GetSettings();
+            var steps = await WatchPromoteService
+                .BuildPromotedStepsAsync(settings, doc, cts.Token)
+                .ConfigureAwait(true);
+            if (steps.Count == 0)
+            {
+                NexusShell.Log("promote from watch: no steps produced.");
+                return;
+            }
+
+            var recipe = new AutomationRecipe
+            {
+                Name = $"Promoted Watch {DateTime.Now:yyyy-MM-dd HH:mm}",
+                Description = $"From {doc.Entries.Count} watch entries (LLM or token fallback)",
+                Steps = steps
+            };
+            RitualRecipeStore.AppendRecipe(recipe);
+            NexusShell.Log($"promote from watch: {recipe.Name} ({recipe.Steps.Count} steps).");
+            ReloadLibrary();
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("promote from watch: " + ex.Message);
+        }
+        finally
+        {
+            BtnPromoteWatch.IsEnabled = true;
+        }
     }
 
     private void StartTeach()
@@ -340,6 +353,23 @@ public partial class RitualsTab : UserControl
         else
             recipe.MaxAutonomySteps = 0;
         recipe.Steps = steps;
+        var qa = RitualQualityGate.Validate(recipe, NexusContext.GetSettings());
+        if (!qa.Ok)
+        {
+            var msg = string.Join("\n", qa.Issues);
+            NexusShell.Log("Ritual QA blocked save: " + msg);
+            if (OperatingSystem.IsWindows())
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    msg,
+                    "Carolus Nexus — ritual QA",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+            }
+
+            return;
+        }
+
         RitualRecipeStore.Upsert(recipe);
         _selected = recipe;
         NexusShell.Log($"Ritual saved: {recipe.Name} ({recipe.Steps.Count} steps).");

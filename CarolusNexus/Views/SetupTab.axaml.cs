@@ -27,6 +27,9 @@ public partial class SetupTab : UserControl
         UseLocalKnowledge.IsChecked = s.UseLocalKnowledge;
         SuggestAutomations.IsChecked = s.SuggestAutomations;
         IncludeUiaInAsk.IsChecked = s.IncludeUiaContextInAsk;
+        ConversationMemory.IsChecked = s.ConversationMemoryEnabled;
+        MemoryMaxCharsBox.Text = s.ConversationMemoryMaxChars.ToString();
+        HighRiskSecondConfirm.IsChecked = s.HighRiskSecondConfirm;
         SafetyProfile.SelectedItem = s.Safety.Profile;
         NeverAutoSend.IsChecked = s.Safety.NeverAutoSend;
         NeverAutoPost.IsChecked = s.Safety.NeverAutoPostBook;
@@ -54,6 +57,9 @@ public partial class SetupTab : UserControl
             UseLocalKnowledge = UseLocalKnowledge.IsChecked == true,
             SuggestAutomations = SuggestAutomations.IsChecked == true,
             IncludeUiaContextInAsk = IncludeUiaInAsk.IsChecked == true,
+            ConversationMemoryEnabled = ConversationMemory.IsChecked == true,
+            ConversationMemoryMaxChars = ParseInt(MemoryMaxCharsBox.Text, 8000, 2000, 32000),
+            HighRiskSecondConfirm = HighRiskSecondConfirm.IsChecked != false,
             WatchSnapshotIntervalSeconds = ParseInt(WatchIntervalBox.Text, 45, 15, 600),
             ProactiveDashboardLlm = ProactiveLlm.IsChecked == true,
             ProactiveLlmMinIntervalSeconds = ParseInt(ProactiveIntervalBox.Text, 180, 60, 3600),

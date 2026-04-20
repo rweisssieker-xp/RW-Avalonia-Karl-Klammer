@@ -20,6 +20,17 @@ public partial class KarlCompanionWindow : Window
         _followTimer.Tick += (_, _) => FollowCursor();
 
         Opened += OnOpened;
+        CompanionHub.JumpToTargetScreenRect += OnJumpToTargetScreenRect;
+    }
+
+    private void OnJumpToTargetScreenRect(int left, int top, int width, int height)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var cx = left + Math.Max(8, width / 2);
+            var cy = top + Math.Max(8, height / 2);
+            Position = new PixelPoint(cx + OffsetX, cy + OffsetY);
+        });
     }
 
     /// <summary>KI-/Operator-Zustand am Cursor (USP: Sichtbarkeit des Systemzustands).</summary>
@@ -61,6 +72,7 @@ public partial class KarlCompanionWindow : Window
 
     protected override void OnClosing(WindowClosingEventArgs e)
     {
+        CompanionHub.JumpToTargetScreenRect -= OnJumpToTargetScreenRect;
         _followTimer.Stop();
         base.OnClosing(e);
     }

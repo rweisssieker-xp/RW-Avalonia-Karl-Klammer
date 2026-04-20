@@ -4,7 +4,7 @@
   <Grid x:Name="AskRootGrid" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,*">
     <StackPanel x:Name="AskToolbarHost" Grid.Row="0" Grid.ColumnSpan="2" Spacing="8" Margin="0,0,0,8">
       <TextBox x:Name="PromptBox" AcceptsReturn="True" MinHeight="72"
-               Watermark="Question / vision / RAG — or CLI: „use codex …“, „use codex with screen …“, „use claude code …“, „use openclaw …“ (German „nimm …“ still works)" />
+               Watermark="Question / vision / RAG — Enter sendet · Shift+Enter neue Zeile — CLI: „use codex …“, „use codex with screen …“, …" />
       <StackPanel Orientation="Horizontal" Spacing="12">
         <CheckBox x:Name="IncludeScreenshots" Content="Include screenshots" IsChecked="True" />
         <CheckBox x:Name="UseKnowledgeInAsk" Content="Use local knowledge in Ask" IsChecked="True"

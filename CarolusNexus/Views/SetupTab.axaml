@@ -4,7 +4,7 @@
   <ScrollViewer>
     <StackPanel Spacing="10" HorizontalAlignment="Stretch">
       <TextBlock Text="Setup · provider, mode, safety (§5.4)" FontWeight="SemiBold" FontSize="14" />
-      <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+      <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
         <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Provider" />
         <ComboBox x:Name="ProviderBox" Grid.Row="0" Grid.Column="1" />
         <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Mode" />
@@ -20,9 +20,15 @@
         <CheckBox x:Name="SuggestAutomations" Grid.Row="7" Grid.ColumnSpan="2" Content="suggest automations" />
         <CheckBox x:Name="IncludeUiaInAsk" Grid.Row="8" Grid.ColumnSpan="2"
                   Content="Ask: attach UIA snapshot of foreground window (Windows)" />
-        <TextBlock Grid.Row="9" Grid.ColumnSpan="2" Text="Safety Center" FontWeight="SemiBold" Margin="0,8,0,0" />
-        <TextBlock Grid.Row="10" VerticalAlignment="Center" Text="Profile" />
-        <ComboBox x:Name="SafetyProfile" Grid.Row="10" Grid.Column="1" />
+        <CheckBox x:Name="ConversationMemory" Grid.Row="9" Grid.ColumnSpan="2"
+                  Content="Conversation memory (opt-in, file-backed, token-trimmed)" />
+        <TextBlock Grid.Row="10" VerticalAlignment="Center" Text="Memory max chars" />
+        <TextBox x:Name="MemoryMaxCharsBox" Grid.Row="10" Grid.Column="1" Watermark="2000–32000, default 8000" />
+        <CheckBox x:Name="HighRiskSecondConfirm" Grid.Row="11" Grid.ColumnSpan="2"
+                  Content="High-risk plans: require second confirmation before run" />
+        <TextBlock Grid.Row="12" Grid.ColumnSpan="2" Text="Safety Center" FontWeight="SemiBold" Margin="0,8,0,0" />
+        <TextBlock Grid.Row="13" VerticalAlignment="Center" Text="Profile" />
+        <ComboBox x:Name="SafetyProfile" Grid.Row="13" Grid.Column="1" />
       </Grid>
       <CheckBox x:Name="NeverAutoSend" Content="never auto-send" />
       <CheckBox x:Name="NeverAutoPost" Content="never auto-post / book" />

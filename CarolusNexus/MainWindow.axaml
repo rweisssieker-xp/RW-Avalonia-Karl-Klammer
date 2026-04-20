@@ -41,7 +41,7 @@
         <WrapPanel>
           <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4"
                   Background="{DynamicResource NexusBadgeBackgroundBrush}">
-            <TextBlock x:Name="BadgeLayout" Text="Layout: Shell" FontSize="11" />
+            <TextBlock x:Name="BadgeLayout" Text="Layout: —" FontSize="11" />
           </Border>
           <Border Margin="0,0,8,6" Padding="8,4" CornerRadius="4"
                   Background="{DynamicResource NexusBadgeBackgroundBrush}">

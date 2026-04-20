@@ -13,6 +13,20 @@ namespace CarolusNexus.Services;
 public static class TextToSpeechService
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(2) };
+    private static SpeechSynthesizer? _windowsSynth;
+
+    /// <summary>PTT / Operator: Windows-SAPI-Ausgabe abbrechen (Tier B #8).</summary>
+    public static void RequestBargeIn()
+    {
+        try
+        {
+            _windowsSynth?.SpeakAsyncCancelAll();
+        }
+        catch
+        {
+            // ignore
+        }
+    }
 
     public static async Task<string> SpeakAsync(string text, CancellationToken ct = default)
     {
@@ -47,16 +61,47 @@ public static class TextToSpeechService
 
         return Task.Run(() =>
         {
+            SpeechSynthesizer? synth = null;
             try
             {
-                using var synth = new SpeechSynthesizer();
+                synth = new SpeechSynthesizer();
                 synth.SetOutputToDefaultAudioDevice();
-                synth.Speak(text);
+                _windowsSynth = synth;
+                var done = new ManualResetEventSlim(false);
+                void OnEnd(object? _, SpeakCompletedEventArgs __) => done.Set();
+                synth.SpeakCompleted += OnEnd;
+                synth.SpeakAsync(text);
+                while (!done.IsSet)
+                {
+                    if (ct.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            synth.SpeakAsyncCancelAll();
+                        }
+                        catch
+                        {
+                            // ignore
+                        }
+
+                        break;
+                    }
+
+                    done.Wait(100);
+                }
+
+                synth.SpeakCompleted -= OnEnd;
                 return "";
             }
             catch (Exception ex)
             {
                 return "Windows TTS: " + ex.Message;
+            }
+            finally
+            {
+                if (ReferenceEquals(_windowsSynth, synth))
+                    _windowsSynth = null;
+                synth?.Dispose();
             }
         }, ct);
     }

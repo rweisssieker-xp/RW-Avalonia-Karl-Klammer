@@ -47,8 +47,8 @@
                 HorizontalAlignment="Stretch"
                 Background="{DynamicResource NexusTileBackgroundBrush}">
           <StackPanel>
-            <TextBlock Text="4 · Proactive Karl" FontWeight="SemiBold" />
-            <TextBox x:Name="CardProactive" IsReadOnly="True" AcceptsReturn="True" MinHeight="72" TextWrapping="Wrap" />
+            <TextBlock Text="4 · Proactive Karl + shell log" FontWeight="SemiBold" />
+            <TextBox x:Name="CardProactive" IsReadOnly="True" AcceptsReturn="True" MinHeight="120" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
         <Border x:Name="DashCard4" MinWidth="220" Margin="0,0,12,12" Padding="10" CornerRadius="8"

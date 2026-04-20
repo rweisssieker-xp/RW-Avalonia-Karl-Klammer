@@ -40,13 +40,26 @@ public static class LlmChatService
                 augmented = "Context from local knowledge (excerpts):\n\n" + k + "\n\n---\n\nUser request:\n" + userPrompt;
         }
 
-        return settings.Provider switch
+        if (settings.ConversationMemoryEnabled)
+        {
+            var mem = ConversationMemoryStore.BuildPromptBlock(settings.ConversationMemoryMaxChars);
+            if (!string.IsNullOrWhiteSpace(mem))
+                augmented = mem + "\n\n---\n\n" + augmented;
+            ConversationMemoryStore.Append("user", userPrompt.Trim());
+        }
+
+        var result = settings.Provider switch
         {
             "anthropic" => await CompleteAnthropicAsync(env, settings.Model, system, augmented, includeScreenshots, ct),
             "openai" => await CompleteOpenAiAsync(env, settings.Model, system, augmented, includeScreenshots, false, ct),
             "openai-compatible" => await CompleteOpenAiAsync(env, settings.Model, system, augmented, includeScreenshots, true, ct),
             _ => "Unknown provider: " + settings.Provider
         };
+
+        if (settings.ConversationMemoryEnabled && !string.IsNullOrWhiteSpace(result))
+            ConversationMemoryStore.Append("assistant", result);
+
+        return result;
     }
 
     public static async Task<string> SmokeAsync(NexusSettings settings, CancellationToken ct = default)

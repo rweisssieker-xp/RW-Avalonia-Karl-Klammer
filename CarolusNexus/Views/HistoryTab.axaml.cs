@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using CarolusNexus;
 using CarolusNexus.Models;
 using CarolusNexus.Services;
 
@@ -19,6 +20,13 @@ public partial class HistoryTab : UserControl
     public HistoryTab()
     {
         InitializeComponent();
+        BtnSelfHealHint.Click += (_, _) =>
+        {
+            var hint = SelfHealSuggestionService.TrySuggestFromLastAuditFailure();
+            HistDetail.Text = hint ?? "(no recent audit failure found)";
+            if (hint != null)
+                NexusShell.Log("Self-heal: " + hint);
+        };
         BtnCreateRitual.Click += (_, _) => CreateRitualFromSelection();
         HistFilter.TextChanged += (_, _) => ApplyFilter();
         HistList.SelectionChanged += (_, _) =>

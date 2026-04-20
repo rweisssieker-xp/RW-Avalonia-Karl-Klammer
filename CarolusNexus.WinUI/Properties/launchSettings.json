@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "CarolusNexus.WinUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "CarolusNexus.WinUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

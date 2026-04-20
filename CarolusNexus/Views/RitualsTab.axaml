@@ -1,6 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:models="clr-namespace:CarolusNexus.Models"
+             xmlns:models="clr-namespace:CarolusNexus.Models;assembly=CarolusNexus.Core"
              x:Class="CarolusNexus.Views.RitualsTab">
   <Grid x:Name="RitualsRootGrid" ColumnDefinitions="*,*,*" MinHeight="420">
     <DockPanel x:Name="RitualsLibraryPane" Grid.Column="0" Margin="0,0,8,0">

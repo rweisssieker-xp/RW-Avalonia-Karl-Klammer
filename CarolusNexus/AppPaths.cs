@@ -22,7 +22,10 @@ public static class AppPaths
     public static string RitualJobQueue => Path.Combine(DataDir, "ritual-job-queue.json");
     public static string ActionHistory => Path.Combine(DataDir, "action-history.json");
     public static string WatchSessions => Path.Combine(DataDir, "watch-sessions.json");
+    /// <summary>JPEG thumbnails for watch entries (under <see cref="DataDir"/>).</summary>
+    public static string WatchThumbnailsDir => Path.Combine(DataDir, "watch-thumbnails");
     public static string RitualStepAudit => Path.Combine(DataDir, "ritual-step-audit.jsonl");
+    public static string ConversationMemory => Path.Combine(DataDir, "conversation-memory.jsonl");
     public static string PlaygroundDir => Path.Combine(RepoRoot, "playground");
     public static string CodexOutputDir => Path.Combine(RepoRoot, "codex output");
 
@@ -30,6 +33,7 @@ public static class AppPaths
     {
         Directory.CreateDirectory(DataDir);
         Directory.CreateDirectory(KnowledgeDir);
+        Directory.CreateDirectory(WatchThumbnailsDir);
         Directory.CreateDirectory(PlaygroundDir);
         Directory.CreateDirectory(CodexOutputDir);
     }
@@ -45,7 +49,8 @@ public static class AppPaths
         while (d != null)
         {
             if (IsRepoWindowsDir(d.FullName, out var winPath)
-                && File.Exists(Path.Combine(d.FullName, "CarolusNexus", "CarolusNexus.csproj")))
+                && (File.Exists(Path.Combine(d.FullName, "CarolusNexus", "CarolusNexus.csproj"))
+                    || File.Exists(Path.Combine(d.FullName, "CarolusNexus.WinUI", "CarolusNexus.WinUI.csproj"))))
             {
                 RepoRoot = d.FullName;
                 return;

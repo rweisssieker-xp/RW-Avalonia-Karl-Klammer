@@ -49,6 +49,17 @@ public sealed class NexusSettings
     [JsonPropertyName("includeUiaContextInAsk")]
     public bool IncludeUiaContextInAsk { get; set; }
 
+    /// <summary>Letzte Turns in <see cref="AppPaths.ConversationMemory"/> mitschicken (Token-/Kostenbewusst kürzen).</summary>
+    [JsonPropertyName("conversationMemoryEnabled")]
+    public bool ConversationMemoryEnabled { get; set; }
+
+    [JsonPropertyName("conversationMemoryMaxChars")]
+    public int ConversationMemoryMaxChars { get; set; } = 8000;
+
+    /// <summary>Bei Plan mit Risiko „high“: zweite Bestätigung vor Ausführung.</summary>
+    [JsonPropertyName("highRiskSecondConfirm")]
+    public bool HighRiskSecondConfirm { get; set; } = true;
+
     [JsonPropertyName("safety")]
     public SafetySettings Safety { get; set; } = new();
 }

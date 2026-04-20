@@ -14,6 +14,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CarolusNexus.Core\CarolusNexus.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Models\**\*.cs" />
+    <Compile Remove="Services\**\*.cs" />
+    <Compile Remove="AppPaths.cs" />
+    <Compile Remove="AppLifecycle.cs" />
+    <Compile Remove="AppBuildInfo.cs" />
+    <Compile Remove="NexusContext.cs" />
+    <Compile Remove="NexusShell.cs" />
+    <Compile Remove="ResponsiveLayout.cs" />
+    <Compile Remove="CompanionHub.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
     <PackageReference Include="Avalonia" Version="11.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="11.1.0" />

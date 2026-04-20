@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- WinUI 3 XamlCompiler.exe currently fails on net10 SDK in this environment; WinUI app targets net9. -->
+    <TargetFrameworks>net9.0-windows;net10.0-windows</TargetFrameworks>
+    <RootNamespace>CarolusNexus</RootNamespace>
+    <AssemblyName>CarolusNexus.Core</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.2.0" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="System.Speech" Version="9.0.0" />
+    <PackageReference Include="UglyToad.PdfPig" Version="0.1.9-alpha001-patch1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\CarolusNexus\Models\**\*.cs" Link="Models\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\CarolusNexus\Services\**\*.cs" Link="Services\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\CarolusNexus\AppPaths.cs" Link="AppPaths.cs" />
+    <Compile Include="..\CarolusNexus\AppLifecycle.cs" Link="AppLifecycle.cs" />
+    <Compile Include="..\CarolusNexus\AppBuildInfo.cs" Link="AppBuildInfo.cs" />
+    <Compile Include="..\CarolusNexus\NexusContext.cs" Link="NexusContext.cs" />
+    <Compile Include="..\CarolusNexus\NexusShell.cs" Link="NexusShell.cs" />
+    <Compile Include="..\CarolusNexus\ResponsiveLayout.cs" Link="ResponsiveLayout.cs" />
+    <Compile Include="..\CarolusNexus\CompanionHub.cs" Link="CompanionHub.cs" />
+  </ItemGroup>
+</Project>

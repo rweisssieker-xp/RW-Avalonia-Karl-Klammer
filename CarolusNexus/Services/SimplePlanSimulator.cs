@@ -3,7 +3,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia.Threading;
 using CarolusNexus.Models;
 
 namespace CarolusNexus.Services;
@@ -48,8 +47,16 @@ public static class SimplePlanSimulator
                 }
                 else
                 {
-                    var msg = await Dispatcher.UIThread.InvokeAsync(() =>
-                        Win32AutomationExecutor.Execute(s, safety));
+                    string msg;
+                    if (NexusContext.RunWin32StepOnUiThreadAsync != null)
+                    {
+                        msg = await NexusContext.RunWin32StepOnUiThreadAsync(() =>
+                                Win32AutomationExecutor.Execute(s, safety))
+                            .ConfigureAwait(false);
+                    }
+                    else
+                        msg = Win32AutomationExecutor.Execute(s, safety);
+
                     sb.AppendLine("  → " + msg);
                     NexusShell.Log("  → " + msg);
                     stepResult = msg;
