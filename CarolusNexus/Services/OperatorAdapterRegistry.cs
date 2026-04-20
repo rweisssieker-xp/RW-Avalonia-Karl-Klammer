@@ -9,12 +9,20 @@ namespace CarolusNexus.Services;
 /// </summary>
 public static class OperatorAdapterRegistry
 {
-    /// <summary>Registrierte Pilot-Adapter (Explorer/Browser); AX nur gestaffelt / ohne harte Automation hier.</summary>
-    public static IReadOnlyList<IOperatorAdapter> Adapters { get; } =
-    [
-        new ExplorerPilotAdapter(),
-        new BrowserPilotAdapter(),
-    ];
+    private static IReadOnlyList<IOperatorAdapter>? _merged;
+
+    /// <summary>Pilot-Adapter plus optionale DLLs aus <c>windows/plugins/*.dll</c>.</summary>
+    public static IReadOnlyList<IOperatorAdapter> Adapters =>
+        _merged ??= BuildAdapters();
+
+    public static void ReloadAdapters() => _merged = null;
+
+    private static IReadOnlyList<IOperatorAdapter> BuildAdapters()
+    {
+        var list = new List<IOperatorAdapter> { new ExplorerPilotAdapter(), new BrowserPilotAdapter() };
+        list.AddRange(PluginAdapterLoader.LoadAdapters());
+        return list;
+    }
 
     public static IReadOnlyList<string> KnownFamilies { get; } =
     [

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -101,6 +102,26 @@ public static class LlmChatService
         };
     }
 
+    /// <summary>
+    /// Sichtbaren Text aus Multi-Monitor-Screenshots per Vision-LLM — kein Windows.Media.Ocr.
+    /// </summary>
+    public static async Task<string> ExtractVisibleScreenTextAsync(
+        NexusSettings settings,
+        CancellationToken ct = default)
+    {
+        var env = DotEnvStore.Load();
+        const string system =
+            "You read desktop screenshots for UI automation. Output only visible text: labels, titles, body text, field values, buttons, errors. Plain text, reading order. No commentary.";
+        const string user = "Transcribe all readable text from the attached screen images.";
+        return settings.Provider switch
+        {
+            "anthropic" => await CompleteAnthropicAsync(env, settings.Model, system, user, true, ct),
+            "openai" => await CompleteOpenAiAsync(env, settings.Model, system, user, true, false, ct),
+            "openai-compatible" => await CompleteOpenAiAsync(env, settings.Model, system, user, true, true, ct),
+            _ => "Unknown provider: " + settings.Provider
+        };
+    }
+
     private static string BuildSystemPrompt(NexusSettings s)
     {
         var soul = SoulPrompt.LoadOrDefault();
@@ -114,6 +135,26 @@ public static class LlmChatService
         return soul + "\n\n" + mode;
     }
 
+    private static string MissingAnthropicKeyHint(IReadOnlyDictionary<string, string> env)
+    {
+        var path = AppPaths.EnvFile;
+        var exists = File.Exists(path);
+        var hasOpenAi = env.TryGetValue("OPENAI_API_KEY", out var o) && !string.IsNullOrWhiteSpace(o);
+        if (hasOpenAi)
+            return "Missing ANTHROPIC_API_KEY in windows\\.env (resolved: " + path + "). OPENAI_API_KEY is set — in Setup choose provider OpenAI, or add ANTHROPIC_API_KEY.";
+        return "Missing ANTHROPIC_API_KEY in windows\\.env (resolved: " + path + ", file exists: " + exists + "). Save the key next to the repo’s windows folder, then „refresh all“.";
+    }
+
+    private static string MissingOpenAiKeyHint(IReadOnlyDictionary<string, string> env)
+    {
+        var path = AppPaths.EnvFile;
+        var exists = File.Exists(path);
+        var hasAnthropic = env.TryGetValue("ANTHROPIC_API_KEY", out var a) && !string.IsNullOrWhiteSpace(a);
+        if (hasAnthropic)
+            return "Missing OPENAI_API_KEY in windows\\.env (resolved: " + path + "). ANTHROPIC_API_KEY is set — in Setup choose provider Anthropic, or add OPENAI_API_KEY.";
+        return "Missing OPENAI_API_KEY in windows\\.env (resolved: " + path + ", file exists: " + exists + "). Save the key next to the repo’s windows folder, then „refresh all“.";
+    }
+
     private static async Task<string> CompleteAnthropicAsync(
         IReadOnlyDictionary<string, string> env,
         string model,
@@ -123,7 +164,7 @@ public static class LlmChatService
         CancellationToken ct)
     {
         if (!env.TryGetValue("ANTHROPIC_API_KEY", out var key) || string.IsNullOrWhiteSpace(key))
-            return "Missing ANTHROPIC_API_KEY in windows\\.env.";
+            return MissingAnthropicKeyHint(env);
 
         var content = new List<object>();
         if (includeScreenshots && OperatingSystem.IsWindows())
@@ -185,7 +226,7 @@ public static class LlmChatService
         CancellationToken ct)
     {
         if (!env.TryGetValue("OPENAI_API_KEY", out var key) || string.IsNullOrWhiteSpace(key))
-            return "Missing OPENAI_API_KEY in windows\\.env.";
+            return MissingOpenAiKeyHint(env);
 
         var baseUrl = env.TryGetValue("OPENAI_BASE_URL", out var bu) && !string.IsNullOrWhiteSpace(bu)
             ? bu.TrimEnd('/')

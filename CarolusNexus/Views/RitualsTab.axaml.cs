@@ -494,7 +494,7 @@ public partial class RitualsTab : UserControl
             try
             {
                 await SimplePlanSimulator
-                    .RunAsync(recipe.Steps, false, NexusContext.GetSettings(), _runCts.Token)
+                    .RunAsync(recipe.Steps, false, NexusContext.GetSettings(), recipe, _runCts.Token)
                     .ConfigureAwait(true);
                 RitualJobQueueStore.RecordHistory(job, "completed", null);
                 NexusShell.Log($"Job completed: {recipe.Name}");
@@ -605,7 +605,7 @@ public partial class RitualsTab : UserControl
         _runCts = new CancellationTokenSource();
         _stepCursor = 0;
         NexusShell.Log(dryRun ? "Dry-run starting …" : "Plan run starting (simulated) …");
-        var log = await SimplePlanSimulator.RunAsync(steps, dryRun, NexusContext.GetSettings(), _runCts.Token)
+        var log = await SimplePlanSimulator.RunAsync(steps, dryRun, NexusContext.GetSettings(), _selected, _runCts.Token)
             .ConfigureAwait(true);
         NexusShell.Log(dryRun ? "Dry-run done." : "Run done.");
         _ = log;
@@ -632,7 +632,7 @@ public partial class RitualsTab : UserControl
         _runCts ??= new CancellationTokenSource();
         var one = new List<RecipeStep> { steps[_stepCursor] };
         NexusShell.Log($"Next step {_stepCursor + 1}/{steps.Count}");
-        await SimplePlanSimulator.RunAsync(one, false, NexusContext.GetSettings(), _runCts.Token)
+        await SimplePlanSimulator.RunAsync(one, false, NexusContext.GetSettings(), _selected, _runCts.Token)
             .ConfigureAwait(true);
         _stepCursor++;
     }

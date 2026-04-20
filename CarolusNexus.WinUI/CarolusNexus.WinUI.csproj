@@ -13,6 +13,9 @@
     <!-- MSIX packaging requires a non-neutral RID/Platform; keep off for normal `dotnet build`. -->
     <EnableMsixTooling>false</EnableMsixTooling>
     <Nullable>enable</Nullable>
+    <!-- Unpackaged: avoid REGDB_E_CLASSNOTREG when Windows App Runtime isn’t installed system-wide. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
   </PropertyGroup>
 
   <ItemGroup>

@@ -13,6 +13,15 @@ public static class WinUiShellState
 
     public static NexusSettings Settings { get; set; } = new();
 
+    /// <summary>Registered by <c>SetupShellPage</c> while visible — used by header „save settings“.</summary>
+    public static Func<NexusSettings>? TryGatherSettingsFromSetup { get; set; }
+
+    /// <summary>Registered by <c>SetupShellPage</c> while visible — used by „refresh all“.</summary>
+    public static Action<NexusSettings>? TryApplySettingsToSetup { get; set; }
+
+    /// <summary>Registered by <c>SetupShellPage</c> — refresh .env key list after <c>DotEnvStore.Invalidate</c>.</summary>
+    public static Action? TryRefreshSetupEnvSummary { get; set; }
+
     public static event Action<string>? GlobalLogLine;
 
     public static void RaiseLog(string line) => GlobalLogLine?.Invoke(line);

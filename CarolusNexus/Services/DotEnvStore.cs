@@ -23,12 +23,16 @@ public static class DotEnvStore
             foreach (var line in File.ReadAllLines(path))
             {
                 var t = line.Trim();
+                if (t.Length > 0 && t[0] == '\uFEFF')
+                    t = t[1..].Trim();
                 if (t.Length == 0 || t.StartsWith('#'))
                     continue;
                 var eq = t.IndexOf('=');
                 if (eq <= 0)
                     continue;
                 var key = t[..eq].Trim();
+                if (key.StartsWith("export ", StringComparison.OrdinalIgnoreCase))
+                    key = key[7..].Trim();
                 var val = t[(eq + 1)..].Trim();
                 if (val.StartsWith('"') && val.EndsWith('"') && val.Length >= 2)
                     val = val[1..^1].Replace("\\\"", "\"");

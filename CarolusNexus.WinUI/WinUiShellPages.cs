@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using CarolusNexus;
+using CarolusNexus.Experiments;
 using CarolusNexus.Models;
 using CarolusNexus.Services;
 using Microsoft.UI.Xaml;
@@ -154,113 +156,319 @@ public sealed class AskShellPage : Page
 
 public sealed class DashboardShellPage : Page
 {
+    private readonly Grid _grid = new() { Margin = new Thickness(12) };
+    private readonly TextBlock _summary = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) };
+    private ResponsiveBand? _dashBand;
+
     public DashboardShellPage()
     {
-        var sp = new StackPanel { Spacing = 12, Margin = new Thickness(12) };
-        sp.Children.Add(new TextBlock { Text = "Dashboard", FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-        var btn = new Button { Content = "Refresh" };
-        var tb = new TextBlock { TextWrapping = TextWrapping.Wrap };
-        void Refresh()
+        var header = new StackPanel { Spacing = 8, Margin = new Thickness(0, 0, 0, 8) };
+        header.Children.Add(new TextBlock { Text = "Dashboard", FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        var btn = new Button { Content = "Refresh", HorizontalAlignment = HorizontalAlignment.Left };
+        btn.Click += (_, _) => RefreshSummary();
+        header.Children.Add(btn);
+        header.Children.Add(_summary);
+
+        _grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        _grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        Grid.SetRow(header, 0);
+        _grid.Children.Add(header);
+
+        Content = _grid;
+        SizeChanged += (_, e) => ApplyDashboardTiles(e.NewSize.Width);
+        Loaded += (_, _) =>
         {
-            tb.Text = "Recent log:\n" + NexusShell.FormatRecentLogForDashboard(8)
-                      + "\n\nBand: " + ResponsiveLayout.GetBand(ActualWidth)
-                      + "\nRepo: " + AppPaths.RepoRoot;
+            RefreshSummary();
+            ApplyDashboardTiles(ActualWidth);
+        };
+    }
+
+    private void RefreshSummary()
+    {
+        var knowCount = Directory.Exists(AppPaths.KnowledgeDir)
+            ? Directory.GetFiles(AppPaths.KnowledgeDir).Length
+            : 0;
+        var idx = File.Exists(AppPaths.KnowledgeIndex);
+        var ch = File.Exists(AppPaths.KnowledgeChunks);
+        var fts = File.Exists(AppPaths.KnowledgeFtsDb);
+        var emb = File.Exists(AppPaths.KnowledgeEmbeddings);
+        _summary.Text =
+            $"Knowledge files: {knowCount} · Index: {(idx ? "yes" : "no")} · Chunks: {(ch ? "yes" : "no")} · FTS5: {(fts ? "yes" : "no")} · Embeddings: {(emb ? "yes" : "no")}\n" +
+            "Recent log:\n" + NexusShell.FormatRecentLogForDashboard(10)
+            + "\n\nRepo: " + AppPaths.RepoRoot;
+    }
+
+    private void ApplyDashboardTiles(double w)
+    {
+        if (w <= 0)
+            return;
+        var band = ResponsiveLayout.GetBand(w);
+        var cols = band == ResponsiveBand.Narrow ? 1 : band == ResponsiveBand.Medium ? 2 : 3;
+        if (_dashBand == band && _grid.Children.Count > 1)
+            return;
+        _dashBand = band;
+
+        while (_grid.Children.Count > 1)
+            _grid.Children.RemoveAt(_grid.Children.Count - 1);
+        _grid.ColumnDefinitions.Clear();
+
+        var tiles = new Grid { Margin = new Thickness(0, 8, 0, 0) };
+        for (var c = 0; c < cols; c++)
+            tiles.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var t1 = MkTile("Operator", "Memory & recent activity");
+        var t2 = MkTile("Layout", $"Current band: {band} (Narrow < {ResponsiveLayout.NarrowMax}px, Medium < {ResponsiveLayout.MediumMax}px).");
+        var t3 = MkTile("Environment", AppPaths.RepoRoot);
+        Grid.SetColumn(t1, 0);
+        tiles.Children.Add(t1);
+        if (cols >= 2)
+        {
+            Grid.SetColumn(t2, 1);
+            tiles.Children.Add(t2);
         }
 
-        btn.Click += (_, _) => Refresh();
-        sp.Children.Add(btn);
-        sp.Children.Add(tb);
-        Content = new ScrollViewer { Content = sp };
-        Loaded += (_, _) => Refresh();
+        if (cols >= 3)
+        {
+            Grid.SetColumn(t3, 2);
+            tiles.Children.Add(t3);
+        }
+        else if (cols == 2)
+        {
+            Grid.SetRow(t3, 1);
+            Grid.SetColumnSpan(t3, 2);
+            tiles.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            tiles.Children.Add(t3);
+        }
+        else
+        {
+            tiles.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            tiles.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Grid.SetRow(t2, 1);
+            Grid.SetRow(t3, 2);
+            tiles.Children.Add(t2);
+            tiles.Children.Add(t3);
+        }
+
+        Grid.SetRow(tiles, 1);
+        _grid.Children.Add(tiles);
     }
+
+    private static Border MkTile(string title, string body) =>
+        new()
+        {
+            Padding = new Thickness(12),
+            Margin = new Thickness(4),
+            CornerRadius = new CornerRadius(6),
+            BorderThickness = new Thickness(1),
+            Child = new StackPanel
+            {
+                Spacing = 4,
+                Children =
+                {
+                    new TextBlock { Text = title, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                    new TextBlock { Text = body, TextWrapping = TextWrapping.Wrap, Opacity = 0.9 }
+                }
+            }
+        };
 }
 
 public sealed class SetupShellPage : Page
 {
+    private readonly ComboBox _provider = new() { Header = "Provider" };
+    private readonly ComboBox _mode = new() { Header = "Mode" };
+    private readonly TextBox _model = new() { Header = "Model" };
+    private readonly ComboBox _uiTheme = new() { Header = "UI theme (WinUI)" };
+    private readonly CheckBox _speak = new() { Content = "speak responses" };
+    private readonly CheckBox _useKnow = new() { Content = "use local knowledge", IsChecked = true };
+    private readonly CheckBox _suggestAuto = new() { Content = "suggest automations" };
+    private readonly CheckBox _uia = new() { Content = "Ask: UIA snapshot of foreground window (Windows)" };
+    private readonly CheckBox _mem = new() { Content = "Conversation memory" };
+    private readonly TextBox _memChars = new() { Header = "Memory max chars" };
+    private readonly CheckBox _hi = new() { Content = "High-risk plans: second confirmation", IsChecked = true };
+    private readonly ComboBox _safety = new() { Header = "Safety profile" };
+    private readonly CheckBox _neverSend = new() { Content = "never auto-send" };
+    private readonly CheckBox _neverPost = new() { Content = "never auto-post / book" };
+    private readonly CheckBox _panic = new() { Content = "panic stop enabled" };
+    private readonly TextBox _denylist = new() { Header = "Denylist (comma-separated)" };
+    private readonly TextBox _watchIv = new() { Header = "Watch interval (s)" };
+    private readonly CheckBox _proactive = new() { Content = "Proactive LLM hint (Dashboard, watch mode)" };
+    private readonly TextBox _proactiveIv = new() { Header = "LLM min interval (s)" };
+    private readonly CheckBox _toolHost = new() { Content = "Start local tool host (127.0.0.1)" };
+    private readonly TextBox _toolPort = new() { Header = "Tool host port" };
+    private readonly TextBox _envSummary = new()
+    {
+        IsReadOnly = true,
+        AcceptsReturn = true,
+        MinHeight = 100,
+        FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+        TextWrapping = TextWrapping.Wrap
+    };
+    private readonly TextBlock _envPath = new() { FontSize = 11, Opacity = 0.85, TextWrapping = TextWrapping.Wrap };
+    private readonly InfoBar _bar = new() { IsOpen = false };
+
     public SetupShellPage()
     {
-        var sp = new StackPanel { Spacing = 10, Margin = new Thickness(12), MaxWidth = 720 };
-        var provider = new ComboBox { Header = "Provider" };
         foreach (var p in new[] { "anthropic", "openai", "openai-compatible" })
-            provider.Items.Add(p);
-        var mode = new ComboBox { Header = "Mode" };
+            _provider.Items.Add(p);
         foreach (var m in new[] { "companion", "agent", "automation", "watch" })
-            mode.Items.Add(m);
-        var model = new TextBox { Header = "Model" };
-        var safety = new ComboBox { Header = "Safety" };
+            _mode.Items.Add(m);
+        foreach (var t in new[] { "Dark", "Light", "Default" })
+            _uiTheme.Items.Add(t);
         foreach (var x in new[] { "strict", "balanced", "power-user" })
-            safety.Items.Add(x);
-        var uia = new CheckBox { Content = "UIA in Ask" };
-        var mem = new CheckBox { Content = "Conversation memory" };
-        var memChars = new TextBox { Header = "Memory max chars" };
-        var hi = new CheckBox { Content = "High-risk second confirm", IsChecked = true };
-        var bar = new InfoBar { IsOpen = false };
+            _safety.Items.Add(x);
 
-        void Bind()
-        {
-            var s = WinUiShellState.Settings;
-            provider.SelectedItem = s.Provider;
-            mode.SelectedItem = s.Mode;
-            model.Text = s.Model;
-            safety.SelectedItem = s.Safety.Profile;
-            uia.IsChecked = s.IncludeUiaContextInAsk;
-            mem.IsChecked = s.ConversationMemoryEnabled;
-            memChars.Text = s.ConversationMemoryMaxChars.ToString();
-            hi.IsChecked = s.HighRiskSecondConfirm;
-        }
+        var sp = new StackPanel { Spacing = 10, Margin = new Thickness(12), MaxWidth = 820 };
+        sp.Children.Add(new TextBlock { Text = "Setup (aligned with Avalonia §5.4)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 14 });
+        sp.Children.Add(_bar);
+        sp.Children.Add(_provider);
+        sp.Children.Add(_mode);
+        sp.Children.Add(_model);
+        sp.Children.Add(_uiTheme);
+        sp.Children.Add(_speak);
+        sp.Children.Add(_useKnow);
+        sp.Children.Add(_suggestAuto);
+        sp.Children.Add(_uia);
+        sp.Children.Add(_mem);
+        sp.Children.Add(_memChars);
+        sp.Children.Add(_hi);
+        sp.Children.Add(_safety);
+        sp.Children.Add(_neverSend);
+        sp.Children.Add(_neverPost);
+        sp.Children.Add(_panic);
+        sp.Children.Add(_denylist);
+        sp.Children.Add(new TextBlock { Text = "Watch & tool host", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 0) });
+        sp.Children.Add(_watchIv);
+        sp.Children.Add(_proactive);
+        sp.Children.Add(_proactiveIv);
+        sp.Children.Add(_toolHost);
+        sp.Children.Add(_toolPort);
+        sp.Children.Add(new TextBlock { Text = ".env overview (keys only)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 0) });
+        sp.Children.Add(_envSummary);
+        sp.Children.Add(_envPath);
 
         var save = new Button { Content = "Save settings" };
         save.Click += (_, _) =>
         {
-            static int Pi(string? t, int d, int lo, int hi) =>
-                int.TryParse(t?.Trim(), out var v) ? Math.Clamp(v, lo, hi) : d;
-            var s = WinUiShellState.Settings;
-            s.Provider = provider.SelectedItem?.ToString() ?? s.Provider;
-            s.Mode = mode.SelectedItem?.ToString() ?? s.Mode;
-            s.Model = model.Text?.Trim() ?? s.Model;
-            s.Safety.Profile = safety.SelectedItem?.ToString() ?? s.Safety.Profile;
-            s.IncludeUiaContextInAsk = uia.IsChecked == true;
-            s.ConversationMemoryEnabled = mem.IsChecked == true;
-            s.ConversationMemoryMaxChars = Pi(memChars.Text, 8000, 2000, 32000);
-            s.HighRiskSecondConfirm = hi.IsChecked != false;
+            var s = Gather();
             WinUiShellState.SettingsStore.Save(s);
             WinUiShellState.Settings = s;
-            bar.Message = "Saved.";
-            bar.IsOpen = true;
+            WinUiThemeApplier.Apply(s.UiTheme);
+            _bar.Severity = InfoBarSeverity.Success;
+            _bar.Message = "Saved.";
+            _bar.IsOpen = true;
+            NexusShell.Log("settings.json saved (Setup page).");
         };
         var smoke = new Button { Content = "Smoke LLM" };
         smoke.Click += async (_, _) =>
         {
             try
             {
-                bar.Severity = InfoBarSeverity.Success;
-                bar.Message = await LlmChatService.SmokeAsync(WinUiShellState.Settings);
-                bar.IsOpen = true;
+                _bar.Severity = InfoBarSeverity.Success;
+                _bar.Message = await LlmChatService.SmokeAsync(WinUiShellState.Settings);
+                _bar.IsOpen = true;
             }
             catch (Exception ex)
             {
-                bar.Severity = InfoBarSeverity.Error;
-                bar.Message = ex.Message;
-                bar.IsOpen = true;
+                _bar.Severity = InfoBarSeverity.Error;
+                _bar.Message = ex.Message;
+                _bar.IsOpen = true;
             }
         };
         var clearMem = new Button { Content = "Clear conversation memory" };
         clearMem.Click += (_, _) => ConversationMemoryStore.Clear();
 
-        sp.Children.Add(bar);
-        sp.Children.Add(provider);
-        sp.Children.Add(mode);
-        sp.Children.Add(model);
-        sp.Children.Add(safety);
-        sp.Children.Add(uia);
-        sp.Children.Add(mem);
-        sp.Children.Add(memChars);
-        sp.Children.Add(hi);
         sp.Children.Add(save);
         sp.Children.Add(smoke);
         sp.Children.Add(clearMem);
         Content = new ScrollViewer { Content = sp };
-        Loaded += (_, _) => Bind();
+
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        Apply(WinUiShellState.Settings);
+        RefreshEnvSummary();
+        WinUiShellState.TryGatherSettingsFromSetup = Gather;
+        WinUiShellState.TryApplySettingsToSetup = Apply;
+        WinUiShellState.TryRefreshSetupEnvSummary = RefreshEnvSummary;
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        WinUiShellState.TryGatherSettingsFromSetup = null;
+        WinUiShellState.TryApplySettingsToSetup = null;
+        WinUiShellState.TryRefreshSetupEnvSummary = null;
+    }
+
+    private void RefreshEnvSummary()
+    {
+        _envPath.Text = AppPaths.EnvFile;
+        var keys = DotEnvSummary.ListKeys(AppPaths.EnvFile);
+        _envSummary.Text = keys.Count == 0
+            ? "(no .env or empty — template: windows\\.env.example)"
+            : string.Join("\r\n", keys.Select(k => k + "=***"));
+    }
+
+    private void Apply(NexusSettings s)
+    {
+        _provider.SelectedItem = s.Provider;
+        _mode.SelectedItem = s.Mode;
+        _model.Text = s.Model;
+        _uiTheme.SelectedItem = string.IsNullOrWhiteSpace(s.UiTheme) ? "Dark" : s.UiTheme;
+        _speak.IsChecked = s.SpeakResponses;
+        _useKnow.IsChecked = s.UseLocalKnowledge;
+        _suggestAuto.IsChecked = s.SuggestAutomations;
+        _uia.IsChecked = s.IncludeUiaContextInAsk;
+        _mem.IsChecked = s.ConversationMemoryEnabled;
+        _memChars.Text = s.ConversationMemoryMaxChars.ToString();
+        _hi.IsChecked = s.HighRiskSecondConfirm;
+        _safety.SelectedItem = s.Safety.Profile;
+        _neverSend.IsChecked = s.Safety.NeverAutoSend;
+        _neverPost.IsChecked = s.Safety.NeverAutoPostBook;
+        _panic.IsChecked = s.Safety.PanicStopEnabled;
+        _denylist.Text = s.Safety.Denylist;
+        _watchIv.Text = s.WatchSnapshotIntervalSeconds.ToString();
+        _proactive.IsChecked = s.ProactiveDashboardLlm;
+        _proactiveIv.Text = s.ProactiveLlmMinIntervalSeconds.ToString();
+        _toolHost.IsChecked = s.EnableLocalToolHost;
+        _toolPort.Text = s.LocalToolHostPort.ToString();
+        RefreshEnvSummary();
+    }
+
+    private NexusSettings Gather()
+    {
+        static int Pi(string? t, int d, int lo, int hi) =>
+            int.TryParse(t?.Trim(), out var v) ? Math.Clamp(v, lo, hi) : d;
+
+        return new NexusSettings
+        {
+            Provider = _provider.SelectedItem?.ToString() ?? "anthropic",
+            Mode = _mode.SelectedItem?.ToString() ?? "companion",
+            Model = _model.Text?.Trim() ?? "",
+            UiTheme = _uiTheme.SelectedItem?.ToString() ?? "Dark",
+            SpeakResponses = _speak.IsChecked == true,
+            UseLocalKnowledge = _useKnow.IsChecked == true,
+            SuggestAutomations = _suggestAuto.IsChecked == true,
+            IncludeUiaContextInAsk = _uia.IsChecked == true,
+            ConversationMemoryEnabled = _mem.IsChecked == true,
+            ConversationMemoryMaxChars = Pi(_memChars.Text, 8000, 2000, 32000),
+            HighRiskSecondConfirm = _hi.IsChecked != false,
+            WatchSnapshotIntervalSeconds = Pi(_watchIv.Text, 45, 15, 600),
+            ProactiveDashboardLlm = _proactive.IsChecked == true,
+            ProactiveLlmMinIntervalSeconds = Pi(_proactiveIv.Text, 180, 60, 3600),
+            EnableLocalToolHost = _toolHost.IsChecked == true,
+            LocalToolHostPort = Pi(_toolPort.Text, 17888, 1024, 65535),
+            Safety = new SafetySettings
+            {
+                Profile = _safety.SelectedItem?.ToString() ?? "balanced",
+                NeverAutoSend = _neverSend.IsChecked == true,
+                NeverAutoPostBook = _neverPost.IsChecked == true,
+                PanicStopEnabled = _panic.IsChecked == true,
+                Denylist = _denylist.Text ?? "",
+            },
+        };
     }
 }
 
@@ -278,7 +486,7 @@ public sealed class KnowledgeShellPage : Page
             {
                 KnowledgeIndexService.Rebuild();
                 _ = EmbeddingRagService.RebuildIfConfiguredAsync(default);
-                t.Text = "Reindex OK; embeddings in background if configured.";
+                t.Text = "Reindex OK — chunks + local FTS5 (knowledge-fts.db); embeddings in background if configured.";
             }
             catch (Exception ex)
             {
@@ -301,21 +509,16 @@ public sealed class RitualsShellPage : Page
     private readonly StackPanel _recipeList = new() { Spacing = 4 };
     private readonly TextBox _name = new() { Header = "Name" };
     private readonly TextBox _steps = new() { AcceptsReturn = true, Header = "Steps JSON", MinHeight = 160 };
+    private readonly Button _save = new() { Content = "Save (QA)" };
     private AutomationRecipe? _sel;
     private readonly Grid _grid = new() { Margin = new Thickness(12) };
     private readonly ScrollViewer _left;
-    private readonly StackPanel _right;
     private ResponsiveBand? _ritBand;
 
     public RitualsShellPage()
     {
         _left = new ScrollViewer { Content = _recipeList };
-        _right = new StackPanel { Spacing = 8 };
-        _right.Children.Add(_name);
-        _right.Children.Add(_steps);
-        var save = new Button { Content = "Save (QA)" };
-        save.Click += async (_, _) => await SaveAsync();
-        _right.Children.Add(save);
+        _save.Click += async (_, _) => await SaveAsync();
         Content = _grid;
         Loaded += (_, _) =>
         {
@@ -339,19 +542,43 @@ public sealed class RitualsShellPage : Page
         if (band == ResponsiveBand.Narrow)
         {
             _grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            _grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             _grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            _grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             _grid.Children.Add(_left);
-            _grid.Children.Add(_right);
+            _grid.Children.Add(_name);
+            _grid.Children.Add(_steps);
+            _grid.Children.Add(_save);
             Grid.SetRow(_left, 0);
-            Grid.SetRow(_right, 1);
+            Grid.SetRow(_name, 1);
+            Grid.SetRow(_steps, 2);
+            Grid.SetRow(_save, 3);
+        }
+        else if (band == ResponsiveBand.Medium)
+        {
+            _grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            _grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var right = new StackPanel { Spacing = 8 };
+            right.Children.Add(_name);
+            right.Children.Add(_steps);
+            right.Children.Add(_save);
+            _grid.Children.Add(_left);
+            _grid.Children.Add(right);
+            Grid.SetColumn(right, 1);
         }
         else
         {
             _grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             _grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            _grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var mid = new StackPanel { Spacing = 8 };
+            mid.Children.Add(_name);
+            mid.Children.Add(_save);
             _grid.Children.Add(_left);
-            _grid.Children.Add(_right);
-            Grid.SetColumn(_right, 1);
+            _grid.Children.Add(mid);
+            _grid.Children.Add(_steps);
+            Grid.SetColumn(mid, 1);
+            Grid.SetColumn(_steps, 2);
         }
     }
 
@@ -407,35 +634,85 @@ public sealed class RitualsShellPage : Page
 
 public sealed class HistoryShellPage : Page
 {
+    private readonly Grid _grid = new() { Margin = new Thickness(12) };
+    private readonly ListView _lv = new();
+    private readonly TextBox _detail = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap };
+    private readonly ScrollViewer _listScroll;
+    private readonly ScrollViewer _detailScroll;
+    private ResponsiveBand? _histBand;
+
     public HistoryShellPage()
     {
-        var grid = new Grid { Margin = new Thickness(12) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var lv = new ListView();
-        var detail = new TextBox { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap };
-        lv.SelectionChanged += (_, _) =>
+        _lv.SelectionChanged += (_, _) =>
         {
-            if (lv.SelectedItem is ActionHistoryEntry e)
-                detail.Text = JsonSerializer.Serialize(e, new JsonSerializerOptions { WriteIndented = true });
+            if (_lv.SelectedItem is ActionHistoryEntry e)
+                _detail.Text = JsonSerializer.Serialize(e, new JsonSerializerOptions { WriteIndented = true });
         };
         var heal = new Button { Content = "Self-heal hint" };
         heal.Click += (_, _) =>
         {
-            detail.Text = SelfHealSuggestionService.TrySuggestFromLastAuditFailure() ?? "(none)";
+            _detail.Text = SelfHealSuggestionService.TrySuggestFromLastAuditFailure() ?? "(none)";
         };
-        var sp = new StackPanel();
+        var sp = new StackPanel { Spacing = 8 };
         sp.Children.Add(heal);
-        sp.Children.Add(lv);
-        grid.Children.Add(new ScrollViewer { Content = sp });
-        grid.Children.Add(new ScrollViewer { Content = detail });
-        Grid.SetColumn(detail, 1);
-        Content = grid;
+        sp.Children.Add(_lv);
+        _listScroll = new ScrollViewer { Content = sp };
+        _detailScroll = new ScrollViewer { Content = _detail };
+        Content = _grid;
         Loaded += (_, _) =>
         {
             var doc = ActionHistoryService.Load();
-            lv.ItemsSource = doc.Entries.OrderByDescending(x => x.UtcAt).ToList();
+            _lv.ItemsSource = doc.Entries.OrderByDescending(x => x.UtcAt).ToList();
+            ApplyHistoryLayout(ActualWidth);
         };
+        SizeChanged += (_, e) => ApplyHistoryLayout(e.NewSize.Width);
+    }
+
+    private void ApplyHistoryLayout(double w)
+    {
+        if (w <= 0)
+            return;
+        var band = ResponsiveLayout.GetBand(w);
+        if (_histBand == band && _grid.Children.Count > 0)
+            return;
+        _histBand = band;
+        _grid.Children.Clear();
+        _grid.RowDefinitions.Clear();
+        _grid.ColumnDefinitions.Clear();
+        if (band == ResponsiveBand.Narrow)
+        {
+            _grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            _grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            _grid.Children.Add(_listScroll);
+            _grid.Children.Add(_detailScroll);
+            Grid.SetRow(_detailScroll, 1);
+        }
+        else
+        {
+            _grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
+            _grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            _grid.Children.Add(_listScroll);
+            _grid.Children.Add(_detailScroll);
+            Grid.SetColumn(_detailScroll, 1);
+        }
+    }
+}
+
+public sealed class ExperimentsShellPage : Page
+{
+    public ExperimentsShellPage()
+    {
+        var sp = new StackPanel { Spacing = 12, Margin = new Thickness(12) };
+        sp.Children.Add(new TextBlock { Text = "Tier C experiments", FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        sp.Children.Add(new InfoBar
+        {
+            IsOpen = true,
+            Severity = InfoBarSeverity.Warning,
+            Title = "Not product claims",
+            Message = "This area is for optional research builds only. Tag: " + TierCExperiments.Tag
+        });
+        sp.Children.Add(new TextBlock { TextWrapping = TextWrapping.Wrap, Text = "Keep Tier C work isolated from default operator flows and messaging (see USP strategy)." });
+        Content = new ScrollViewer { Content = sp };
     }
 }
 
@@ -447,13 +724,32 @@ public sealed class DiagnosticsShellPage : Page
     public DiagnosticsShellPage()
     {
         var sp = new StackPanel { Margin = new Thickness(12) };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         var clear = new Button { Content = "Clear" };
         clear.Click += (_, _) =>
         {
             _sb.Clear();
             _log.Text = "";
         };
-        sp.Children.Add(clear);
+        var export = new Button { Content = "Export to file" };
+        export.Click += (_, _) =>
+        {
+            try
+            {
+                Directory.CreateDirectory(AppPaths.DataDir);
+                var name = Path.Combine(AppPaths.DataDir, $"diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+                var header = AppBuildInfo.Summary + Environment.NewLine + new string('=', 60) + Environment.NewLine;
+                File.WriteAllText(name, header + (_log.Text ?? ""));
+                NexusShell.Log($"export diagnostics → {name}");
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("export diagnostics failed: " + ex.Message);
+            }
+        };
+        row.Children.Add(clear);
+        row.Children.Add(export);
+        sp.Children.Add(row);
         sp.Children.Add(_log);
         Content = sp;
         Loaded += OnLoaded;

@@ -79,7 +79,7 @@ public static class AppSmokeTest
             }
 
             Console.WriteLine();
-            Console.WriteLine("SMOKE OK — all checks passed.");
+            Console.WriteLine("SMOKE OK — alle Checks bestanden.");
             return 0;
         }
         catch (Exception ex)

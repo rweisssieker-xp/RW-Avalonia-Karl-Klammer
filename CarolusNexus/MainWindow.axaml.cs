@@ -170,6 +170,8 @@ public partial class MainWindow : Window
         }
 
         NexusShell.Log("Carolus Nexus — tray icon; Close minimizes to tray. „power-user“: real plan steps.");
+        _ = OperatorAdapterRegistry.Adapters;
+        NexusShell.Log(OfflineEdgeCapabilities.Describe());
         ApplyLocalToolHost();
         ApplyHeaderTilesResponsive();
     }
@@ -323,7 +325,7 @@ public partial class MainWindow : Window
         TabRituals.ReloadLibrary();
         RefreshHeaderBadges();
         _ = EmbeddingRagService.RebuildIfConfiguredAsync(default);
-        NexusShell.Log("reindex knowledge → index + chunks; embeddings build in background (OPENAI_API_KEY + RAG).");
+        NexusShell.Log("reindex knowledge → index + chunks + local FTS5 (knowledge-fts.db); embeddings in background if OPENAI_API_KEY + RAG.");
     }
 
     private void OnRefreshApp(object? sender, RoutedEventArgs e)
@@ -362,9 +364,10 @@ public partial class MainWindow : Window
         TileEnv.Text = $"Provider {_settings.Provider}, model „{_settings.Model}“, safety {_settings.Safety.Profile}";
         var idx = File.Exists(AppPaths.KnowledgeIndex);
         var ch = File.Exists(AppPaths.KnowledgeChunks);
+        var fts = File.Exists(AppPaths.KnowledgeFtsDb);
         var emb = File.Exists(AppPaths.KnowledgeEmbeddings);
         TileMemory.Text =
-            $"Index: {(idx ? "yes" : "no")}, Chunks: {(ch ? "yes" : "no")}, Embeddings: {(emb ? "yes" : "no")} — {AppPaths.DataDir}";
+            $"Index: {(idx ? "yes" : "no")}, Chunks: {(ch ? "yes" : "no")}, FTS5: {(fts ? "yes" : "no")}, Embeddings: {(emb ? "yes" : "no")} — {AppPaths.DataDir}";
     }
 
     private void RefreshDashboard()

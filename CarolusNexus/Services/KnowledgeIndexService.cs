@@ -69,6 +69,8 @@ public static class KnowledgeIndexService
         var chunkDoc = new ChunkDocument { Version = 1, GeneratedAt = DateTime.UtcNow, Chunks = chunks };
         File.WriteAllText(AppPaths.KnowledgeChunks,
             JsonSerializer.Serialize(chunkDoc, new JsonSerializerOptions { WriteIndented = true }));
+
+        KnowledgeFtsStore.RebuildFromChunksFile();
     }
 
     public static bool IsIndexableExtension(string ext) =>

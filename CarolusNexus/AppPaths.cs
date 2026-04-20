@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 
 namespace CarolusNexus;
 
@@ -17,6 +18,8 @@ public static class AppPaths
     public static string KnowledgeDir => Path.Combine(DataDir, "knowledge");
     public static string KnowledgeIndex => Path.Combine(DataDir, "knowledge-index.json");
     public static string KnowledgeChunks => Path.Combine(DataDir, "knowledge-chunks.json");
+    /// <summary>SQLite FTS5 Volltextindex (lokal, nach Reindex aus <see cref="KnowledgeChunks"/>).</summary>
+    public static string KnowledgeFtsDb => Path.Combine(DataDir, "knowledge-fts.db");
     public static string KnowledgeEmbeddings => Path.Combine(DataDir, "knowledge-embeddings.json");
     public static string AutomationRecipes => Path.Combine(DataDir, "automation-recipes.json");
     public static string RitualJobQueue => Path.Combine(DataDir, "ritual-job-queue.json");
@@ -29,6 +32,9 @@ public static class AppPaths
     public static string PlaygroundDir => Path.Combine(RepoRoot, "playground");
     public static string CodexOutputDir => Path.Combine(RepoRoot, "codex output");
 
+    /// <summary>Optional: Plugin-DLLs (IOperatorAdapter).</summary>
+    public static string PluginsDir => Path.Combine(WindowsDir, "plugins");
+
     public static void EnsureDataTree()
     {
         Directory.CreateDirectory(DataDir);
@@ -36,52 +42,64 @@ public static class AppPaths
         Directory.CreateDirectory(WatchThumbnailsDir);
         Directory.CreateDirectory(PlaygroundDir);
         Directory.CreateDirectory(CodexOutputDir);
+        Directory.CreateDirectory(PluginsDir);
     }
 
     /// <summary>
-    /// Findet die Repo-Wurzel mit <c>windows/</c>: nicht <c>C:\Windows</c>, nicht nur <c>bin/.../windows</c>.
-    /// Priorität: Vorfahr mit <c>CarolusNexus/CarolusNexus.csproj</c> → Vorfahr mit <c>windows/.env.example</c>
-    /// (äußerster Treffer) → äußerster <c>windows</c>-Ordner.
+    /// Findet die Repo-Wurzel mit <c>windows/</c>: nicht <c>C:\Windows</c>, nicht <c>bin/obj/.../windows</c> vom Build.
+    /// Bewertung: CarolusNexus.csproj, <c>windows/.env.example</c>, <c>windows/.env</c>; starke Abwertung unter <c>bin</c>/<c>obj</c>.
     /// </summary>
     public static void DiscoverRepoRoot()
     {
-        var d = new DirectoryInfo(AppContext.BaseDirectory);
-        while (d != null)
+        var bestPath = "";
+        var bestScore = int.MinValue;
+        for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
         {
-            if (IsRepoWindowsDir(d.FullName, out var winPath)
-                && (File.Exists(Path.Combine(d.FullName, "CarolusNexus", "CarolusNexus.csproj"))
-                    || File.Exists(Path.Combine(d.FullName, "CarolusNexus.WinUI", "CarolusNexus.WinUI.csproj"))))
+            if (!IsRepoWindowsDir(d.FullName, out _))
+                continue;
+
+            var score = ScoreRepoCandidate(d.FullName);
+            if (score > bestScore)
             {
-                RepoRoot = d.FullName;
-                return;
+                bestScore = score;
+                bestPath = d.FullName;
             }
-
-            d = d.Parent;
         }
 
-        DirectoryInfo? withEnvExample = null;
-        DirectoryInfo? anyWindows = null;
-        d = new DirectoryInfo(AppContext.BaseDirectory);
-        while (d != null)
+        if (bestScore > int.MinValue && !string.IsNullOrEmpty(bestPath))
+            RepoRoot = bestPath;
+    }
+
+    private static int ScoreRepoCandidate(string ancestor)
+    {
+        var win = Path.Combine(ancestor, "windows");
+        var score = 0;
+        if (PathContainsBuildSegment(ancestor))
+            score -= 10_000;
+        if (File.Exists(Path.Combine(ancestor, "CarolusNexus", "CarolusNexus.csproj")))
+            score += 1_000;
+        if (File.Exists(Path.Combine(ancestor, "CarolusNexus.WinUI", "CarolusNexus.WinUI.csproj")))
+            score += 1_000;
+        if (File.Exists(Path.Combine(win, ".env.example")))
+            score += 100;
+        if (File.Exists(Path.Combine(win, ".env")))
+            score += 50;
+        return score;
+    }
+
+    private static bool PathContainsBuildSegment(string fullPath)
+    {
+        try
         {
-            if (IsRepoWindowsDir(d.FullName, out _))
-            {
-                anyWindows = d;
-                if (File.Exists(Path.Combine(d.FullName, "windows", ".env.example")))
-                    withEnvExample = d;
-            }
-
-            d = d.Parent;
+            var parts = fullPath.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                StringSplitOptions.RemoveEmptyEntries);
+            return parts.Contains("bin", StringComparer.OrdinalIgnoreCase)
+                   || parts.Contains("obj", StringComparer.OrdinalIgnoreCase);
         }
-
-        if (withEnvExample != null)
+        catch
         {
-            RepoRoot = withEnvExample.FullName;
-            return;
+            return false;
         }
-
-        if (anyWindows != null)
-            RepoRoot = anyWindows.FullName;
     }
 
     private static bool IsRepoWindowsDir(string ancestor, out string winPath)

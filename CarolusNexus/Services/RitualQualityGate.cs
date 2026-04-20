@@ -22,6 +22,10 @@ public static class RitualQualityGate
                 issues.Add($"Step {i + 1}: empty actionArgument.");
             else if (!PlanGuard.IsAllowed(settings, s.ActionArgument))
                 issues.Add($"Step {i + 1}: blocked by safety denylist — {s.ActionArgument}");
+
+            var ch = (s.Channel ?? "ui").Trim().ToLowerInvariant();
+            if (ch == "script" && !settings.Safety.AllowScriptHooks)
+                issues.Add($"Step {i + 1}: channel script requires allowScriptHooks in settings.");
         }
 
         if (string.Equals(recipe.RiskLevel, "high", StringComparison.OrdinalIgnoreCase) &&

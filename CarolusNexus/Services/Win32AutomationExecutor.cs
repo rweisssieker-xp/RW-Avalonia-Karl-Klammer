@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -15,6 +16,36 @@ public static class Win32AutomationExecutor
     private static readonly Regex BrowserOpen = new(@"browser\.open\s*:\s*(.+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex ExplorerPath = new(@"explorer\.open_path\s*:\s*(.+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    /// <summary>UI-Automation mit optionalem CV-Fallback <see cref="RecipeStep.FallbackCvTemplatePath"/>.</summary>
+    public static string ExecuteWithCvFallback(RecipeStep step, NexusSettings settings)
+    {
+        var msg = Execute(step, settings);
+        if (!ShouldTryCvFallback(msg, step))
+            return msg;
+        return TryCvSelfHeal(step, msg);
+    }
+
+    private static bool ShouldTryCvFallback(string msg, RecipeStep step)
+    {
+        if (!msg.StartsWith("[ERR]", StringComparison.Ordinal))
+            return false;
+        var p = (step.FallbackCvTemplatePath ?? "").Trim();
+        return p.Length > 0 && File.Exists(p);
+    }
+
+    private static string TryCvSelfHeal(RecipeStep step, string primaryMsg)
+    {
+        try
+        {
+            var cv = CvTemplateMatchService.TryClickTemplate(step.FallbackCvTemplatePath!.Trim());
+            return "[SELF-HEAL] " + primaryMsg + " → " + cv;
+        }
+        catch (Exception ex)
+        {
+            return primaryMsg + " (self-heal failed: " + ex.Message + ")";
+        }
+    }
+
     public static string Execute(RecipeStep step, NexusSettings settings)
     {
         if (!OperatingSystem.IsWindows())
@@ -29,6 +60,9 @@ public static class Win32AutomationExecutor
 
         try
         {
+            if (CvTemplateMatchService.TryParseAndExecute(arg, out var cvMsg))
+                return cvMsg;
+
             if (UiAutomationActions.TryParseAndExecute(arg, settings, out var uiaMsg))
                 return uiaMsg;
 
@@ -116,6 +150,17 @@ public static class Win32AutomationExecutor
         if (string.IsNullOrEmpty(text))
             return "[SKIP] type empty";
         Thread.Sleep(30);
+        string? prev = null;
+        try
+        {
+            prev = Clipboard.ContainsText() ? Clipboard.GetText() : null;
+        }
+        catch
+        {
+            /* ignore */
+        }
+
+        UndoStackService.PushClipboardText(prev);
         Clipboard.SetText(text);
         Thread.Sleep(30);
         SendKeys.SendWait("^v");

@@ -66,6 +66,10 @@ public static class KnowledgeSnippetService
             if (semantic != null && !string.IsNullOrWhiteSpace(semantic.ContextText))
                 return semantic;
 
+            var fts = KnowledgeFtsStore.TrySearchBundle(q, maxChars);
+            if (fts != null && !string.IsNullOrWhiteSpace(fts.ContextText))
+                return fts;
+
             var ranked = BuildFromChunksBundle(q, maxChars);
             if (!string.IsNullOrWhiteSpace(ranked.ContextText))
                 return ranked;

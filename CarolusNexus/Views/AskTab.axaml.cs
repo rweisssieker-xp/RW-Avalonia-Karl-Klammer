@@ -710,7 +710,22 @@ public partial class AskTab : Avalonia.Controls.UserControl
                 .ConfigureAwait(true);
             TranscriptOut.Text = transcript;
             if (!string.IsNullOrWhiteSpace(transcript))
-                PromptBox.Text = transcript;
+            {
+                if (VoiceIntentService.TryResolve(transcript, out var vir))
+                {
+                    if (vir.SkipLlm)
+                    {
+                        NexusShell.Log("Voice intent: " + vir.Kind + " — skip LLM.");
+                        CompanionHub.Publish(CompanionVisualState.Ready);
+                        return;
+                    }
+
+                    PromptBox.Text = string.IsNullOrEmpty(vir.PrefillPrompt) ? transcript : vir.PrefillPrompt;
+                }
+                else
+                    PromptBox.Text = transcript;
+            }
+
             NexusShell.Log("Transcript ready (" + transcript.Length + " chars).");
         }
         catch (Exception ex)
@@ -1036,7 +1051,7 @@ public partial class AskTab : Avalonia.Controls.UserControl
         }
 
         _cts = new CancellationTokenSource();
-        PlanExec.Text = await SimplePlanSimulator.RunAsync(steps, dryRun, _getSettings(), _cts.Token).ConfigureAwait(true);
+        PlanExec.Text = await SimplePlanSimulator.RunAsync(steps, dryRun, _getSettings(), null, _cts.Token).ConfigureAwait(true);
         _planStepIndex = 0;
     }
 
@@ -1053,7 +1068,7 @@ public partial class AskTab : Avalonia.Controls.UserControl
 
         _cts ??= new CancellationTokenSource();
         var slice = new List<RecipeStep> { steps[_planStepIndex] };
-        var line = await SimplePlanSimulator.RunAsync(slice, false, _getSettings(), _cts.Token).ConfigureAwait(true);
+        var line = await SimplePlanSimulator.RunAsync(slice, false, _getSettings(), null, _cts.Token).ConfigureAwait(true);
         PlanExec.Text += "\n" + line;
         _planStepIndex++;
     }

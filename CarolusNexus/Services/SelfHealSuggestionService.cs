@@ -37,8 +37,9 @@ public static class SelfHealSuggestionService
                         root.TryGetProperty("actionArgument", out var argEl);
                         var arg = argEl.ValueKind == JsonValueKind.String ? argEl.GetString() : "";
                         return
-                            "Last failing step suggests: re-run as dry-run first; verify safety profile and denylist; " +
-                            $"inspect argument: {arg}. If UIA: confirm automationId/name still matches the live UI.";
+                            "Last failing step suggests: re-run as dry-run first; verify safety profile, allowedAppFamilies, and denylist; " +
+                            $"inspect argument: {arg}. If UIA: confirm automationId/name still matches the live UI. " +
+                            "Consider cv.click:file=… or fallbackCvTemplatePath on the step for hybrid CV.";
                     }
                 }
                 catch

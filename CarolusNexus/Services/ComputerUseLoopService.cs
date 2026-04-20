@@ -31,7 +31,7 @@ public static class ComputerUseLoopService
             NexusShell.Log($"computer-use demo step {i + 1}: {act}");
         }
 
-        sb.AppendLine("done (demo — replace perStep with real watch/audit/plan pipeline).");
+        sb.AppendLine("done (demo — wire perStep to SimplePlanSimulator / AutomationToolRouter / audit).");
         return sb.ToString().Trim();
     }
 }

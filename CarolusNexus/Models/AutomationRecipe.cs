@@ -68,4 +68,48 @@ public sealed class RecipeStep
 
     [JsonPropertyName("waitMs")]
     public int WaitMs { get; set; }
+
+    /// <summary>Zusätzliche Versuche bei Fehler (0 = ein Versuch; 2 = bis zu drei Versuche insgesamt).</summary>
+    [JsonPropertyName("retryCount")]
+    public int RetryCount { get; set; }
+
+    /// <summary>Wartezeit zwischen Wiederholungen (ms).</summary>
+    [JsonPropertyName("retryDelayMs")]
+    public int RetryDelayMs { get; set; } = 400;
+
+    /// <summary>Schutz: Vordergrundprozessname muss diesen Teilstring enthalten (leer = kein Check).</summary>
+    [JsonPropertyName("guardProcessContains")]
+    public string? GuardProcessContains { get; set; }
+
+    /// <summary>Schutz: Fenstertitel muss diesen Teilstring enthalten (leer = kein Check).</summary>
+    [JsonPropertyName("guardWindowTitleContains")]
+    public string? GuardWindowTitleContains { get; set; }
+
+    /// <summary>Wenn true und Guard schlägt fehl: gesamten Lauf abbrechen. Wenn false: Schritt überspringen.</summary>
+    [JsonPropertyName("guardStopRunOnMismatch")]
+    public bool GuardStopRunOnMismatch { get; set; } = true;
+
+    /// <summary>Bei Fehlschlag: <c>stop</c>, <c>skip</c> (nächster Schritt), <c>continue</c> (wie skip).</summary>
+    [JsonPropertyName("onFailure")]
+    public string OnFailure { get; set; } = "stop";
+
+    /// <summary>Setzt den Autonomie-Zähler zurück (Human-in-the-Loop-Grenze).</summary>
+    [JsonPropertyName("checkpoint")]
+    public bool Checkpoint { get; set; }
+
+    /// <summary><c>ui</c> (Standard), <c>script</c>, <c>api</c> — siehe AutomationToolRouter.</summary>
+    [JsonPropertyName("channel")]
+    public string Channel { get; set; } = "ui";
+
+    /// <summary>Nach Erfolg zu diesem 0-basierten Schrittindex springen (null = sequenziell).</summary>
+    [JsonPropertyName("jumpToStepIndexOnSuccess")]
+    public int? JumpToStepIndexOnSuccess { get; set; }
+
+    /// <summary>Nach Fehlschlag zu diesem 0-basierten Schrittindex springen (null = sequenziell).</summary>
+    [JsonPropertyName("jumpToStepIndexOnFailure")]
+    public int? JumpToStepIndexOnFailure { get; set; }
+
+    /// <summary>Optional: PNG-Template für CV-Klick, wenn die primäre Aktion fehlschlägt (Hybrid-Self-Heal).</summary>
+    [JsonPropertyName("fallbackCvTemplatePath")]
+    public string? FallbackCvTemplatePath { get; set; }
 }

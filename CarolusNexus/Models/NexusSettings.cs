@@ -62,6 +62,10 @@ public sealed class NexusSettings
 
     [JsonPropertyName("safety")]
     public SafetySettings Safety { get; set; } = new();
+
+    /// <summary>Hinweis für UI: gebündelte Edge-Modelle sind optional — siehe OfflineEdgeCapabilities.</summary>
+    [JsonPropertyName("showOfflineCapabilityBanner")]
+    public bool ShowOfflineCapabilityBanner { get; set; } = true;
 }
 
 public sealed class SafetySettings
@@ -80,4 +84,16 @@ public sealed class SafetySettings
 
     [JsonPropertyName("denylist")]
     public string Denylist { get; set; } = "mail, outlook, teams";
+
+    /// <summary>Kommagetrennte App-Familien (siehe OperatorAdapterRegistry), z. B. <c>explorer,browser</c>. Leer = alle erlaubt.</summary>
+    [JsonPropertyName("allowedAppFamilies")]
+    public string AllowedAppFamilies { get; set; } = "";
+
+    /// <summary>Erlaubt Ritual-Schritte mit Kanal <c>script</c> (PowerShell/cmd — nur mit power-user).</summary>
+    [JsonPropertyName("allowScriptHooks")]
+    public bool AllowScriptHooks { get; set; }
+
+    /// <summary>Wenn true: Script-Kanal nur simulieren / loggen, keine echte Prozessausführung.</summary>
+    [JsonPropertyName("sandboxScriptHooks")]
+    public bool SandboxScriptHooks { get; set; } = true;
 }
