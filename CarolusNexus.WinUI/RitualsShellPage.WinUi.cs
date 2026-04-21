@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using CarolusNexus;
 using CarolusNexus.Models;
 using CarolusNexus.Services;
+using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -21,7 +22,7 @@ public sealed class RitualsShellPage : Page
     private CancellationTokenSource? _runCts;
     private ResponsiveBand? _ritualsLayoutBand;
 
-    private readonly Grid _root = new() { Margin = new Thickness(12) };
+    private readonly Grid _root = new() { Margin = new Thickness(20, 16, 20, 16) };
     private readonly StackPanel _libraryPane = new() { Spacing = 8 };
     private readonly StackPanel _builderPane = new() { Spacing = 8 };
     private readonly StackPanel _stepsPane = new() { Spacing = 8 };
@@ -60,6 +61,8 @@ public sealed class RitualsShellPage : Page
 
     public RitualsShellPage()
     {
+        WinUiFluentChrome.StyleActionButton(_btnAiSuggest, compact: true);
+        WinUiFluentChrome.StyleActionButton(_btnPromoteWatch);
         foreach (var x in new[] { "manual", "auto" })
             _approvalMode.Items.Add(x);
         foreach (var x in new[] { "low", "medium", "high" })
@@ -69,12 +72,16 @@ public sealed class RitualsShellPage : Page
 
         _libFilter.TextChanged += (_, _) => FilterList();
 
-        _libraryPane.Children.Add(new TextBlock
+        _libraryPane.Children.Add(WinUiFluentChrome.PageTitle("Operator flows"));
+        var flowHint = new TextBlock
         {
-            Text = "Flow library",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            FontSize = 14
-        });
+            Text = "Library, governance, queue, teach mode — parity with Avalonia Rituals.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        };
+        WinUiFluentChrome.ApplyCaptionTextStyle(flowHint);
+        _libraryPane.Children.Add(flowHint);
+        _libraryPane.Children.Add(WinUiFluentChrome.ColumnCaption("Flow library"));
         _libraryPane.Children.Add(_libFilter);
         _libraryPane.Children.Add(new ScrollViewer { Content = _recipeButtons, MaxHeight = 420 });
 
@@ -108,7 +115,7 @@ public sealed class RitualsShellPage : Page
             MkBtn("Approve next job", async (_, _) => await ApproveNextJobAsync())));
         _builderPane.Children.Add(MkRow(
             MkBtn("Dry run", async (_, _) => await RunSelectedAsync(true)),
-            MkBtn("Run", async (_, _) => await RunSelectedAsync(false)),
+            MkBtn("Run", async (_, _) => await RunSelectedAsync(false), accent: true),
             MkBtn("Next step", async (_, _) => await RunNextStepAsync()),
             MkBtn("Resume", async (_, _) => await RunSelectedAsync(false))));
         _builderPane.Children.Add(MkRow(
@@ -120,10 +127,12 @@ public sealed class RitualsShellPage : Page
             MkBtn("Teach: capture FG", (_, _) => CaptureForegroundTeachStep()),
             MkBtn("Teach: stop", (_, _) => StopTeach())));
 
+        _queueStatusLine.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        WinUiFluentChrome.ApplyCaptionTextStyle(_queueStatusLine);
         _builderPane.Children.Add(_queueStatusLine);
         _builderPane.Children.Add(_jobQueueDetail);
 
-        _stepsPane.Children.Add(new TextBlock { Text = "Steps editor", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        _stepsPane.Children.Add(WinUiFluentChrome.ColumnCaption("Steps editor"));
         _stepsPane.Children.Add(_stepsEditor);
 
         Content = _root;
@@ -151,9 +160,10 @@ public sealed class RitualsShellPage : Page
         return sp;
     }
 
-    private static Button MkBtn(string content, RoutedEventHandler click)
+    private static Button MkBtn(string content, RoutedEventHandler click, bool accent = false)
     {
-        var b = new Button { Content = content, Padding = new Thickness(10, 6, 10, 6) };
+        var b = new Button { Content = content };
+        WinUiFluentChrome.StyleActionButton(b, accent);
         b.Click += click;
         return b;
     }

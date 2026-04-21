@@ -6,7 +6,7 @@
     Title="">
     <!-- Layout parity with Avalonia KarlCompanionWindow: Viewbox + Canvas, Karl path + aura + state tag. -->
     <Grid Background="Transparent">
-        <Viewbox Width="56" Height="84" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Viewbox Width="44" Height="74" HorizontalAlignment="Center" VerticalAlignment="Center">
             <Canvas Width="120" Height="200" IsHitTestVisible="False">
                 <Ellipse
                     x:Name="AuraEllipse"

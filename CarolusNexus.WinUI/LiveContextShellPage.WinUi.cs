@@ -3,9 +3,11 @@ using System.Text;
 using CarolusNexus;
 using CarolusNexus.Models;
 using CarolusNexus.Services;
+using CarolusNexus_WinUI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+
 namespace CarolusNexus_WinUI.Pages;
 
 /// <summary>Parity with Avalonia <c>LiveContextTab</c> (adapter buttons, inspector, three panes).</summary>
@@ -19,13 +21,17 @@ public sealed class LiveContextShellPage : Page
 
     public LiveContextShellPage()
     {
-        var root = new StackPanel { Spacing = 10, Margin = new Thickness(12) };
-        root.Children.Add(new TextBlock
+        var root = new StackPanel { Spacing = 14, Margin = new Thickness(20, 16, 20, 16) };
+        root.Children.Add(WinUiFluentChrome.PageTitle("Live Context"));
+        var liveHint = new TextBlock
         {
-            Text = "Desktop inspector · foreground window + adapter heuristics (§5.10)",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            TextWrapping = TextWrapping.Wrap
-        });
+            Text = "Desktop inspector · foreground window + adapter heuristics (Handbuch §5.10).",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        };
+        WinUiFluentChrome.ApplyCaptionTextStyle(liveHint);
+        root.Children.Add(liveHint);
+        root.Children.Add(WinUiFluentChrome.ColumnCaption("Adapter families"));
 
         var adapters = new GridView { SelectionMode = ListViewSelectionMode.None };
         foreach (var (key, label) in new (string key, string label)[]
@@ -43,29 +49,33 @@ public sealed class LiveContextShellPage : Page
                      ("ax2012", "AX")
                  })
         {
-            var b = new Button { Content = label, Margin = new Thickness(0, 0, 6, 6), Padding = new Thickness(8, 4, 8, 4) };
+            var b = new Button { Content = label, Margin = new Thickness(0, 0, 6, 6) };
+            WinUiFluentChrome.StyleActionButton(b, compact: true);
             var k = key;
             b.Click += (_, _) => OnAdapterClick(k);
             adapters.Items.Add(b);
         }
 
-        root.Children.Add(new ScrollViewer { MaxHeight = 200, Content = adapters });
+        root.Children.Add(new ScrollViewer { MaxHeight = 220, Content = adapters });
 
+        root.Children.Add(WinUiFluentChrome.ColumnCaption("Inspector action"));
         var inspectorRow = new Grid();
         inspectorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         inspectorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         inspectorRow.Children.Add(_inspectorAction);
-        var run = new Button { Content = "run", Margin = new Thickness(8, 0, 0, 0), Padding = new Thickness(12, 6, 12, 6) };
+        var run = new Button { Content = "Run", Margin = new Thickness(8, 0, 0, 0) };
+        WinUiFluentChrome.StyleActionButton(run, accent: true);
         run.Click += (_, _) => RunInspectorCustom();
         Grid.SetColumn(run, 1);
         inspectorRow.Children.Add(run);
         root.Children.Add(inspectorRow);
 
+        root.Children.Add(WinUiFluentChrome.ColumnCaption("Snapshots"));
         var pivot = new Pivot();
         pivot.Items.Add(new PivotItem { Header = "Active Window", Content = _snapActive });
         pivot.Items.Add(new PivotItem { Header = "AX Context", Content = _snapAx });
         pivot.Items.Add(new PivotItem { Header = "Cross-App", Content = _snapCross });
-        root.Children.Add(pivot);
+        root.Children.Add(WinUiFluentChrome.WrapCard(pivot, new Thickness(8, 8, 8, 8)));
 
         Content = new ScrollViewer { Content = root };
 

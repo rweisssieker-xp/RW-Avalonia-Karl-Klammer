@@ -110,7 +110,8 @@ public sealed class AskShellPage : Page
         top.Children.Add(WinUiFluentChrome.PageTitle("Ask"));
         var sub = new TextBlock
         {
-            Text = "Prompt, retrieval, action plans, push-to-talk — parity with the Avalonia Ask tab.",
+            Text =
+                "Prompt, retrieval (tier shown at top: semantic / FTS / keyword / sequential), plans, push-to-talk. RAG env: docs/Ki-und-RAG-Umgebung.md.",
             TextWrapping = TextWrapping.Wrap,
             Foreground = WinUiFluentChrome.SecondaryTextBrush
         };
@@ -389,9 +390,9 @@ public sealed class AskShellPage : Page
             string? knowOverride = null;
             if (know)
             {
-                var bundle = KnowledgeSnippetService.BuildContextBundle(prompt, 6000);
-                knowOverride = bundle.ContextText;
-                _retrieval.Text = bundle.ContextText ?? "(no match)";
+                var aug = KnowledgeSnippetService.BuildAugmentationResult(prompt, 6000);
+                knowOverride = aug.Bundle.ContextText;
+                _retrieval.Text = KnowledgeSnippetService.FormatAugmentationForAskPanel(aug);
             }
 
             var fusion = UiAutomationVisionFusion.BuildAskAugmentation(s, shots);

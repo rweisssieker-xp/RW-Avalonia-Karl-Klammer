@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using CarolusNexus;
 using CarolusNexus.Experiments;
 using CarolusNexus.Models;
 using CarolusNexus.Services;
@@ -29,6 +30,8 @@ public partial class ExperimentsTab : UserControl
         _cuCts?.Dispose();
         _cuCts = new CancellationTokenSource();
         CuLogOut.Text = dryRun ? "Running dry-run…" : "Running (may simulate if not power-user)…";
+        CompanionHub.Publish(CompanionVisualState.Thinking);
+        ActivityStatusHub.RefreshFromStores();
         try
         {
             var log = await ComputerUseLoopService.RunThroughSimulatorAsync(
@@ -46,6 +49,11 @@ public partial class ExperimentsTab : UserControl
         catch (Exception ex)
         {
             CuLogOut.Text = "[ERR] " + ex.Message;
+        }
+        finally
+        {
+            CompanionHub.Publish(CompanionVisualState.Ready);
+            ActivityStatusHub.RefreshFromStores();
         }
     }
 }

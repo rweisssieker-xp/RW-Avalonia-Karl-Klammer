@@ -26,6 +26,7 @@ public static class WinUiDashboardData
         Action<string> setGov,
         Action<string> setRituals,
         Action<string> setWatch,
+        Action<string> setUsp,
         string tileLiveText,
         NexusSettings settings)
     {
@@ -93,6 +94,7 @@ public static class WinUiDashboardData
             $"Profile: {settings.Safety.Profile}\nPanic: {settings.Safety.PanicStopEnabled}\nneverAutoSend: {settings.Safety.NeverAutoSend}\n\n— Flow jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}");
         setRituals(FormatRitualsDashboardCard());
         setWatch(WatchSessionService.FormatDashboardSummary());
+        setUsp(FormatAiGuiUspRadar(settings, knowCount));
     }
 
     private static void MaybeAppendWatchSnapshot(NexusSettings settings)
@@ -258,5 +260,38 @@ public static class WinUiDashboardData
         {
             return "(Operator flows: " + ex.Message + ")";
         }
+    }
+
+    private static string FormatAiGuiUspRadar(NexusSettings settings, int knowCount)
+    {
+        var keyOk = DotEnvStore.HasProviderKey(settings.Provider);
+        var hasKnowledge = knowCount > 0 || File.Exists(AppPaths.KnowledgeIndex) || File.Exists(AppPaths.KnowledgeChunks);
+        var hasLiveContext = OperatingSystem.IsWindows();
+        var automationArmed = string.Equals(settings.Safety.Profile, "power-user", StringComparison.OrdinalIgnoreCase);
+        var watchArmed = string.Equals(settings.Mode, "watch", StringComparison.OrdinalIgnoreCase);
+        var webUiReady = settings.EnableLocalToolHost;
+
+        var ready = 0;
+        ready += keyOk ? 1 : 0;
+        ready += hasKnowledge ? 1 : 0;
+        ready += hasLiveContext ? 1 : 0;
+        ready += automationArmed ? 1 : 0;
+        ready += watchArmed ? 1 : 0;
+        ready += webUiReady ? 1 : 0;
+
+        var usp = ready >= 5
+            ? "USP candidate: governed AI operator cockpit with live Windows context, local knowledge, watch mode, and WebUI/tool-host bridge."
+            : "USP candidate: privacy-aware AI desktop assistant that turns local knowledge and foreground context into governed operator flows.";
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Readiness: {ready}/6");
+        sb.AppendLine($"AI provider key: {(keyOk ? "ready" : "missing")} ({settings.Provider})");
+        sb.AppendLine($"Local knowledge: {(hasKnowledge ? "ready" : "empty")}");
+        sb.AppendLine($"GUI live context: {(hasLiveContext ? "Windows available" : "not available")}");
+        sb.AppendLine($"Automation safety: {(automationArmed ? "power-user armed" : "simulation / guarded")}");
+        sb.AppendLine($"Watch mode: {(watchArmed ? "active" : "off")}");
+        sb.AppendLine($"WebUI bridge: {(webUiReady ? "local tool host enabled" : "disabled")}");
+        sb.Append(usp);
+        return sb.ToString();
     }
 }

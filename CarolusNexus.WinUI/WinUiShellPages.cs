@@ -10,8 +10,10 @@ using CarolusNexus;
 using CarolusNexus.Experiments;
 using CarolusNexus.Models;
 using CarolusNexus.Services;
+using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+
 namespace CarolusNexus_WinUI.Pages;
 
 public sealed class SetupShellPage : Page
@@ -56,7 +58,7 @@ public sealed class SetupShellPage : Page
         FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
         TextWrapping = TextWrapping.Wrap
     };
-    private readonly TextBlock _envPath = new() { FontSize = 11, Opacity = 0.85, TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _envPath = new() { TextWrapping = TextWrapping.Wrap };
     private readonly InfoBar _bar = new() { IsOpen = false };
 
     public SetupShellPage()
@@ -73,53 +75,36 @@ public sealed class SetupShellPage : Page
             _axBackend.Items.Add(b);
         _axBackend.SelectedIndex = 0;
 
-        var sp = new StackPanel { Spacing = 10, Margin = new Thickness(12), MaxWidth = 820 };
-        sp.Children.Add(new TextBlock { Text = "Setup (aligned with Avalonia §5.4)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 14 });
-        sp.Children.Add(_bar);
-        sp.Children.Add(_provider);
-        sp.Children.Add(_mode);
-        sp.Children.Add(_model);
-        sp.Children.Add(_uiTheme);
-        sp.Children.Add(_speak);
-        sp.Children.Add(_useKnow);
-        sp.Children.Add(_suggestAuto);
-        sp.Children.Add(_uia);
-        sp.Children.Add(_mem);
-        sp.Children.Add(_memChars);
-        sp.Children.Add(_hi);
-        sp.Children.Add(_safety);
-        sp.Children.Add(_neverSend);
-        sp.Children.Add(_neverPost);
-        sp.Children.Add(_panic);
-        sp.Children.Add(_denylist);
-        sp.Children.Add(new TextBlock { Text = "Watch & tool host", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 0) });
-        sp.Children.Add(_watchIv);
-        sp.Children.Add(_proactive);
-        sp.Children.Add(_proactiveIv);
-        sp.Children.Add(_toolHost);
-        sp.Children.Add(_toolPort);
-        sp.Children.Add(new TextBlock
+        static Expander MkExp(string header, bool expanded, params UIElement[] children)
         {
-            Text = "Dynamics AX 2012 — AIF / OData / COM (optional, test tenant)",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Margin = new Thickness(0, 8, 0, 0)
-        });
-        sp.Children.Add(_axEnabled);
-        sp.Children.Add(_axTenant);
-        sp.Children.Add(_axBackend);
-        sp.Children.Add(_axODataUrl);
-        sp.Children.Add(_axODataWin);
-        sp.Children.Add(_axAifUrl);
-        sp.Children.Add(_axDataArea);
-        sp.Children.Add(_axBcDll);
-        sp.Children.Add(_axAos);
-        sp.Children.Add(_axDb);
-        sp.Children.Add(_axLang);
-        sp.Children.Add(new TextBlock { Text = ".env overview (keys only)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 0) });
-        sp.Children.Add(_envSummary);
-        sp.Children.Add(_envPath);
+            var inner = new StackPanel { Spacing = 12 };
+            foreach (var c in children)
+                inner.Children.Add(c);
+            return new Expander
+            {
+                Header = header,
+                Content = inner,
+                IsExpanded = expanded,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch
+            };
+        }
 
+        var sp = new StackPanel { Spacing = 14, Margin = new Thickness(20, 16, 20, 20), MaxWidth = 920 };
+        sp.Children.Add(WinUiFluentChrome.PageTitle("Setup"));
+        var setupHint = new TextBlock
+        {
+            Text = "Environment, safety, watch mode, tool host, and AX test tenant — aligned with Avalonia §5.4.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        };
+        WinUiFluentChrome.ApplyCaptionTextStyle(setupHint);
+        sp.Children.Add(setupHint);
+        sp.Children.Add(_bar);
+
+        var actionRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
         var save = new Button { Content = "Save settings" };
+        WinUiFluentChrome.StyleActionButton(save, accent: true);
         save.Click += (_, _) =>
         {
             var s = Gather();
@@ -132,6 +117,7 @@ public sealed class SetupShellPage : Page
             NexusShell.Log("settings.json saved (Setup page).");
         };
         var smoke = new Button { Content = "Smoke LLM" };
+        WinUiFluentChrome.StyleActionButton(smoke);
         smoke.Click += async (_, _) =>
         {
             try
@@ -148,11 +134,28 @@ public sealed class SetupShellPage : Page
             }
         };
         var clearMem = new Button { Content = "Clear conversation memory" };
+        WinUiFluentChrome.StyleActionButton(clearMem);
         clearMem.Click += (_, _) => ConversationMemoryStore.Clear();
 
-        sp.Children.Add(save);
-        sp.Children.Add(smoke);
-        sp.Children.Add(clearMem);
+        actionRow.Children.Add(save);
+        actionRow.Children.Add(smoke);
+        actionRow.Children.Add(clearMem);
+        sp.Children.Add(WinUiFluentChrome.WrapCard(actionRow, new Thickness(16, 12, 16, 12)));
+
+        sp.Children.Add(MkExp("Routing & appearance", true,
+            _provider, _mode, _model, _uiTheme));
+        sp.Children.Add(MkExp("Behavior", true,
+            _speak, _useKnow, _suggestAuto, _uia, _mem, _memChars));
+        sp.Children.Add(MkExp("Safety & governance", true,
+            _hi, _safety, _neverSend, _neverPost, _panic, _denylist));
+        sp.Children.Add(MkExp("Watch & tool host", true,
+            _watchIv, _proactive, _proactiveIv, _toolHost, _toolPort));
+        sp.Children.Add(MkExp("Dynamics AX 2012 — AIF / OData / COM (optional, test tenant)", false,
+            _axEnabled, _axTenant, _axBackend, _axODataUrl, _axODataWin, _axAifUrl, _axDataArea, _axBcDll, _axAos, _axDb, _axLang));
+        _envPath.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        WinUiFluentChrome.ApplyCaptionTextStyle(_envPath);
+        sp.Children.Add(MkExp(".env overview (keys only)", false, _envSummary, _envPath));
+
         Content = new ScrollViewer { Content = sp };
 
         Loaded += OnLoaded;
@@ -271,8 +274,8 @@ public sealed class ExperimentsShellPage : Page
 {
     public ExperimentsShellPage()
     {
-        var sp = new StackPanel { Spacing = 12, Margin = new Thickness(12) };
-        sp.Children.Add(new TextBlock { Text = "Tier C experiments", FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        var sp = new StackPanel { Spacing = 16, Margin = new Thickness(20, 16, 20, 20) };
+        sp.Children.Add(WinUiFluentChrome.PageTitle("Tier C experiments"));
         sp.Children.Add(new InfoBar
         {
             IsOpen = true,
@@ -280,27 +283,53 @@ public sealed class ExperimentsShellPage : Page
             Title = "Not product claims",
             Message = "This area is for optional research builds only. Tag: " + TierCExperiments.Tag
         });
-        sp.Children.Add(new TextBlock { TextWrapping = TextWrapping.Wrap, Text = "Keep Tier C work isolated from default operator flows and messaging (see USP strategy)." });
+        var body = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            Text = "Keep Tier C work isolated from default operator flows and messaging (see USP strategy).",
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        };
+        WinUiFluentChrome.ApplyBodyTextStyle(body);
+        sp.Children.Add(WinUiFluentChrome.WrapCard(body));
         Content = new ScrollViewer { Content = sp };
     }
 }
 
 public sealed class DiagnosticsShellPage : Page
 {
-    private readonly TextBox _log = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap };
+    private readonly TextBox _log = new()
+    {
+        IsReadOnly = true,
+        AcceptsReturn = true,
+        TextWrapping = TextWrapping.Wrap,
+        MinHeight = 320,
+        FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+        FontSize = 12
+    };
     private readonly StringBuilder _sb = new();
 
     public DiagnosticsShellPage()
     {
-        var sp = new StackPanel { Margin = new Thickness(12) };
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        var sp = new StackPanel { Spacing = 14, Margin = new Thickness(20, 16, 20, 20) };
+        sp.Children.Add(WinUiFluentChrome.PageTitle("Diagnostics"));
+        var hint = new TextBlock
+        {
+            Text = "Live log from the shell; export bundles recent lines for support.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        };
+        WinUiFluentChrome.ApplyCaptionTextStyle(hint);
+        sp.Children.Add(hint);
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
         var clear = new Button { Content = "Clear" };
+        WinUiFluentChrome.StyleActionButton(clear);
         clear.Click += (_, _) =>
         {
             _sb.Clear();
             _log.Text = "";
         };
         var export = new Button { Content = "Export to file" };
+        WinUiFluentChrome.StyleActionButton(export, accent: true);
         export.Click += (_, _) =>
         {
             try
@@ -318,9 +347,9 @@ public sealed class DiagnosticsShellPage : Page
         };
         row.Children.Add(clear);
         row.Children.Add(export);
-        sp.Children.Add(row);
-        sp.Children.Add(_log);
-        Content = sp;
+        sp.Children.Add(WinUiFluentChrome.WrapCard(row, new Thickness(16, 12, 16, 12)));
+        sp.Children.Add(WinUiFluentChrome.WrapCard(_log, new Thickness(12, 10, 12, 10)));
+        Content = new ScrollViewer { Content = sp };
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
@@ -351,14 +380,32 @@ public sealed class ConsoleShellPage : Page
 {
     public ConsoleShellPage()
     {
-        var sp = new StackPanel { Spacing = 10, Margin = new Thickness(12), MaxWidth = 900 };
+        var sp = new StackPanel { Spacing = 16, Margin = new Thickness(20, 16, 20, 20), MaxWidth = 920 };
+        sp.Children.Add(WinUiFluentChrome.PageTitle("CLI agents"));
+        var sub = new TextBlock
+        {
+            Text = "Invoke a local CLI agent with a prompt; output streams below.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        };
+        WinUiFluentChrome.ApplyCaptionTextStyle(sub);
+        sp.Children.Add(sub);
         var agent = new ComboBox { Header = "Agent" };
         foreach (var a in new[] { "codex", "claude code", "openclaw" })
             agent.Items.Add(a);
         agent.SelectedIndex = 0;
         var prompt = new TextBox { Header = "Prompt", AcceptsReturn = true, MinHeight = 120 };
         var run = new Button { Content = "Run" };
-        var o = new TextBox { IsReadOnly = true, AcceptsReturn = true, MinHeight = 200, TextWrapping = TextWrapping.Wrap };
+        WinUiFluentChrome.StyleActionButton(run, accent: true);
+        var o = new TextBox
+        {
+            IsReadOnly = true,
+            AcceptsReturn = true,
+            MinHeight = 200,
+            TextWrapping = TextWrapping.Wrap,
+            FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+            FontSize = 12
+        };
         run.Click += async (_, _) =>
         {
             var p = prompt.Text?.Trim();
@@ -379,10 +426,13 @@ public sealed class ConsoleShellPage : Page
                 run.IsEnabled = true;
             }
         };
-        sp.Children.Add(agent);
-        sp.Children.Add(prompt);
-        sp.Children.Add(run);
-        sp.Children.Add(o);
+        var form = new StackPanel { Spacing = 12 };
+        form.Children.Add(agent);
+        form.Children.Add(prompt);
+        form.Children.Add(run);
+        sp.Children.Add(WinUiFluentChrome.WrapCard(form));
+        sp.Children.Add(WinUiFluentChrome.ColumnCaption("Output"));
+        sp.Children.Add(WinUiFluentChrome.WrapCard(o, new Thickness(12, 10, 12, 10)));
         Content = new ScrollViewer { Content = sp };
     }
 }

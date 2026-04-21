@@ -4,6 +4,7 @@
 - **Demo / Pilot / Release-Abgleich:** [docs/Demo-Script-15min-Reality-Bundle.md](docs/Demo-Script-15min-Reality-Bundle.md) · [docs/AX-Pilot-Narrativ-und-Meilensteine.md](docs/AX-Pilot-Narrativ-und-Meilensteine.md) · [docs/Release-Abgleich-Featurekatalog.md](docs/Release-Abgleich-Featurekatalog.md)
 - **Handbuch §5–§14 vs. Avalonia-Tabs (Ist-Abgleich):** [docs/Carolus-Nexus-Handbuch-Tab-Abgleich.md](docs/Carolus-Nexus-Handbuch-Tab-Abgleich.md)
 - **Prioritäten technische Lücken (Adapter/AX/Distribution/WinUI-Parität):** [docs/Implementierungs-Prioritaeten.md](docs/Implementierungs-Prioritaeten.md)
+- **KI / RAG Umgebung (`.env`):** [docs/Ki-und-RAG-Umgebung.md](docs/Ki-und-RAG-Umgebung.md) · **Automation-Ausführungskette:** [docs/Ausfuehrungskette-Automation.md](docs/Ausfuehrungskette-Automation.md) · **Token-Arbeitspakete:** [docs/Token-Runtime-Arbeitspakete.md](docs/Token-Runtime-Arbeitspakete.md)
 - **Persona-Referenz:** [SOUL.md](SOUL.md)
 - **Solution:** [KarlKlammer.slnx](KarlKlammer.slnx) · Projekt `CarolusNexus/CarolusNexus.csproj` · Ziel `net10.0-windows`
 - **Datenpfade:** [CarolusNexus/AppPaths.cs](CarolusNexus/AppPaths.cs) — erwartet Ordner `windows/` unter der Repository-Wurzel (für `DiscoverRepoRoot` beim Start aus `bin/`)

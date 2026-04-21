@@ -14,7 +14,7 @@
           <SolidColorBrush x:Key="NexusMutedForegroundBrush" Color="#9aa3b2" />
           <SolidColorBrush x:Key="NexusCardBackgroundBrush" Color="#2d333d" />
           <SolidColorBrush x:Key="NexusCardBorderBrush" Color="#4a5364" />
-          <SolidColorBrush x:Key="NexusAccentBrush" Color="#3d7aed" />
+          <SolidColorBrush x:Key="NexusAccentBrush" Color="#2563eb" />
           <SolidColorBrush x:Key="NexusDangerBrush" Color="#c53030" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Light">

@@ -55,6 +55,12 @@ internal static class WinUiFluentChrome
             tb.Style = st;
     }
 
+    public static void ApplyBodyTextStyle(TextBlock tb)
+    {
+        if (TryStyle("BodyTextBlockStyle") is { } st)
+            tb.Style = st;
+    }
+
     private static Style? TryStyle(string key) =>
         Application.Current?.Resources.TryGetValue(key, out var o) == true && o is Style s ? s : null;
 

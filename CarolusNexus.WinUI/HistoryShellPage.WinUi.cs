@@ -5,6 +5,7 @@ using System.Text.Json;
 using CarolusNexus;
 using CarolusNexus.Models;
 using CarolusNexus.Services;
+using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -16,7 +17,7 @@ public sealed class HistoryShellPage : Page
     private List<ActionHistoryEntry> _entries = new();
     private bool? _histNarrowLayout;
 
-    private readonly Grid _histRoot = new() { MinHeight = 400, Margin = new Thickness(12) };
+    private readonly Grid _histRoot = new() { MinHeight = 400, Margin = new Thickness(20, 16, 20, 16) };
     private readonly StackPanel _leftPane = new() { Spacing = 8 };
     private readonly StackPanel _rightPane = new() { Spacing = 6 };
 
@@ -33,8 +34,9 @@ public sealed class HistoryShellPage : Page
 
     public HistoryShellPage()
     {
-        var btnRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        var selfHeal = new Button { Content = "Self-heal hint (last audit)", Padding = new Thickness(10, 6, 10, 6) };
+        var btnRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        var selfHeal = new Button { Content = "Self-heal hint (last audit)" };
+        WinUiFluentChrome.StyleActionButton(selfHeal);
         selfHeal.Click += (_, _) =>
         {
             var hint = SelfHealSuggestionService.TrySuggestFromLastAuditFailure();
@@ -42,25 +44,30 @@ public sealed class HistoryShellPage : Page
             if (hint != null)
                 NexusShell.Log("Self-heal: " + hint);
         };
-        var createRitual = new Button { Content = "Create flow from selection", Padding = new Thickness(10, 6, 10, 6) };
+        var createRitual = new Button { Content = "Create flow from selection" };
+        WinUiFluentChrome.StyleActionButton(createRitual, accent: true);
         createRitual.Click += (_, _) => CreateRitualFromSelection();
-        var refresh = new Button { Content = "Reload from disk", Padding = new Thickness(10, 6, 10, 6) };
+        var refresh = new Button { Content = "Reload from disk" };
+        WinUiFluentChrome.StyleActionButton(refresh);
         refresh.Click += (_, _) => Refresh();
         btnRow.Children.Add(selfHeal);
         btnRow.Children.Add(createRitual);
         btnRow.Children.Add(refresh);
 
-        _leftPane.Children.Add(new TextBlock
+        _leftPane.Children.Add(WinUiFluentChrome.PageTitle("Action history"));
+        var histHint = new TextBlock
         {
-            Text = "Action history",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            FontSize = 14
-        });
+            Text = "Audit trail and quick actions toward operator flows.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        };
+        WinUiFluentChrome.ApplyCaptionTextStyle(histHint);
+        _leftPane.Children.Add(histHint);
         _leftPane.Children.Add(_histFilter);
         _leftPane.Children.Add(btnRow);
         _leftPane.Children.Add(_histList);
 
-        _rightPane.Children.Add(new TextBlock { Text = "Detail", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        _rightPane.Children.Add(WinUiFluentChrome.ColumnCaption("Detail"));
         _rightPane.Children.Add(_histDetail);
 
         _histFilter.TextChanged += (_, _) => ApplyFilter();

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CarolusNexus;
 using CarolusNexus.Services;
+using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
@@ -34,30 +35,33 @@ public sealed class KnowledgeShellPage : Page
     public KnowledgeShellPage()
     {
         var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        tools.Children.Add(Mk("Search", (_, _) => ApplySearch()));
+        tools.Children.Add(Mk("Search", (_, _) => ApplySearch(), accent: true));
         tools.Children.Add(Mk("Import…", async (_, _) => await ImportAsync()));
         tools.Children.Add(Mk("Remove", (_, _) => RemoveSelected()));
         tools.Children.Add(Mk("Reindex", (_, _) => OnReindex()));
         tools.Children.Add(Mk("Suggest flow (LLM)", async (_, _) => await SuggestRitualAsync()));
 
-        _leftPane.Children.Add(new TextBlock
+        _leftPane.Children.Add(WinUiFluentChrome.PageTitle("Knowledge"));
+        var knowHint = new TextBlock
         {
-            Text = "Knowledge",
-            FontSize = 18,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
-        });
+            Text = "Local documents, search, import, and reindex — parity with the Avalonia Knowledge tab.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        };
+        WinUiFluentChrome.ApplyCaptionTextStyle(knowHint);
+        _leftPane.Children.Add(knowHint);
         _leftPane.Children.Add(_search);
         _leftPane.Children.Add(tools);
         _leftPane.Children.Add(_docList);
 
-        _rightPane.Children.Add(new TextBlock { Text = "Preview", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        _rightPane.Children.Add(WinUiFluentChrome.ColumnCaption("Preview"));
         _rightPane.Children.Add(_preview);
 
         _docList.SelectionChanged += OnSel;
 
         _knowRoot.Children.Add(_leftPane);
         _knowRoot.Children.Add(_rightPane);
-        Content = new ScrollViewer { Content = _knowRoot };
+        Content = new ScrollViewer { Content = _knowRoot, Padding = new Thickness(20, 16, 20, 16) };
 
         Loaded += (_, _) =>
         {
@@ -67,9 +71,10 @@ public sealed class KnowledgeShellPage : Page
         SizeChanged += (_, e) => ApplyLayout(e.NewSize.Width);
     }
 
-    private static Button Mk(string content, RoutedEventHandler h)
+    private static Button Mk(string content, RoutedEventHandler h, bool accent = false)
     {
-        var b = new Button { Content = content, Padding = new Thickness(12, 6, 12, 6) };
+        var b = new Button { Content = content };
+        WinUiFluentChrome.StyleActionButton(b, accent);
         b.Click += h;
         return b;
     }

@@ -263,17 +263,18 @@ public partial class AskTab : Avalonia.Controls.UserControl
     private void InsertKnowledgeSnippetIntoPrompt()
     {
         var q = PromptBox.Text?.Trim();
-        var bundle = KnowledgeSnippetService.BuildContextBundle(string.IsNullOrEmpty(q) ? "." : q, 3500);
-        if (string.IsNullOrWhiteSpace(bundle.ContextText))
+        var aug = KnowledgeSnippetService.BuildAugmentationResult(string.IsNullOrEmpty(q) ? "." : q, 3500);
+        if (string.IsNullOrWhiteSpace(aug.Bundle.ContextText))
         {
             NexusShell.Log("Insert knowledge: knowledge\\ empty or no match.");
+            RetrievalOut.Text = KnowledgeSnippetService.FormatAugmentationForAskPanel(aug);
             ClearRetrievalSources();
             return;
         }
 
-        AppendPromptLine("[Context from local knowledge]\n" + bundle.ContextText.TrimEnd());
-        RetrievalOut.Text = bundle.ContextText;
-        RenderRetrievalSources(bundle.Sources);
+        AppendPromptLine("[Context from local knowledge]\n" + aug.Bundle.ContextText.TrimEnd());
+        RetrievalOut.Text = KnowledgeSnippetService.FormatAugmentationForAskPanel(aug);
+        RenderRetrievalSources(aug.Bundle.Sources);
         NexusShell.Log("Knowledge excerpt appended to prompt.");
     }
 
@@ -971,12 +972,10 @@ public partial class AskTab : Avalonia.Controls.UserControl
             string? knowledgeOverride = null;
             if (know)
             {
-                var bundle = KnowledgeSnippetService.BuildContextBundle(prompt, 6000);
-                knowledgeOverride = bundle.ContextText;
-                RetrievalOut.Text = string.IsNullOrWhiteSpace(bundle.ContextText)
-                    ? "(no local match)"
-                    : bundle.ContextText;
-                RenderRetrievalSources(bundle.Sources);
+                var aug = KnowledgeSnippetService.BuildAugmentationResult(prompt, 6000);
+                knowledgeOverride = aug.Bundle.ContextText;
+                RetrievalOut.Text = KnowledgeSnippetService.FormatAugmentationForAskPanel(aug);
+                RenderRetrievalSources(aug.Bundle.Sources);
             }
             else
             {

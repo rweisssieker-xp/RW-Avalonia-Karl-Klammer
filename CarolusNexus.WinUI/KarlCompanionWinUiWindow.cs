@@ -13,6 +13,8 @@ namespace CarolusNexus_WinUI;
 /// <summary>Topmost WinUI window that follows the cursor (layout parity with Avalonia KarlCompanionWindow).</summary>
 public sealed partial class KarlCompanionWinUiWindow
 {
+    private const int CompanionWidth = 48;
+    private const int CompanionHeight = 82;
     private const int OffsetX = 16;
     private const int OffsetY = 18;
 
@@ -61,6 +63,7 @@ public sealed partial class KarlCompanionWinUiWindow
         try
         {
             var hwnd = WindowNative.GetWindowHandle(this);
+            InstallMinMaxHook(hwnd);
             var id = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
             var aw = AppWindow.GetFromWindowId(id);
             if (aw?.Presenter is OverlappedPresenter ov)
@@ -71,7 +74,7 @@ public sealed partial class KarlCompanionWinUiWindow
                 ov.IsMinimizable = false;
             }
 
-            aw?.Resize(new Windows.Graphics.SizeInt32 { Width = 64, Height = 96 });
+            aw?.Resize(new Windows.Graphics.SizeInt32 { Width = CompanionWidth, Height = CompanionHeight });
             WinUiCompanionClickThrough.Enable(hwnd);
             TrySetTopMost(hwnd);
         }
@@ -197,6 +200,38 @@ public sealed partial class KarlCompanionWinUiWindow
         }
     }
 
+    private static void InstallMinMaxHook(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !OperatingSystem.IsWindows())
+            return;
+
+        try
+        {
+            SetWindowSubclass(hwnd, _companionWindowSubclassProc, 1, UIntPtr.Zero);
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+
+    private static IntPtr CompanionSubclassProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam, UIntPtr uIdSubclass, UIntPtr dwRefData)
+    {
+        const uint wmGetMinMaxInfo = 0x0024;
+        if (msg == wmGetMinMaxInfo && lParam != IntPtr.Zero)
+        {
+            var info = Marshal.PtrToStructure<MinMaxInfo>(lParam);
+            info.ptMinTrackSize.x = CompanionWidth;
+            info.ptMinTrackSize.y = CompanionHeight;
+            info.ptMaxTrackSize.x = CompanionWidth;
+            info.ptMaxTrackSize.y = CompanionHeight;
+            Marshal.StructureToPtr(info, lParam, false);
+            return IntPtr.Zero;
+        }
+
+        return DefSubclassProc(hwnd, msg, wParam, lParam);
+    }
+
     private void ShowSelf(bool visible)
     {
         try
@@ -244,9 +279,18 @@ public sealed partial class KarlCompanionWinUiWindow
     [DllImport("user32.dll", EntryPoint = "SetWindowPos")]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
+    [DllImport("comctl32.dll", SetLastError = true)]
+    private static extern bool SetWindowSubclass(IntPtr hWnd, SubclassProc pfnSubclass, UIntPtr uIdSubclass, UIntPtr dwRefData);
+
+    [DllImport("comctl32.dll", SetLastError = true)]
+    private static extern IntPtr DefSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);
+
+    private delegate IntPtr SubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, UIntPtr uIdSubclass, UIntPtr dwRefData);
+
     private const int SwpNomove = 0x0002;
     private const int SwpNosize = 0x0001;
     private static readonly IntPtr HwndTopmost = new(-1);
+    private static readonly SubclassProc _companionWindowSubclassProc = CompanionSubclassProc;
 
     private static bool TryGetCursorPos(out Point p) => GetCursorPos(out p);
 
@@ -255,5 +299,22 @@ public sealed partial class KarlCompanionWinUiWindow
     {
         public int X;
         public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint
+    {
+        public int x;
+        public int y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MinMaxInfo
+    {
+        public NativePoint ptReserved;
+        public NativePoint ptMaxSize;
+        public NativePoint ptMaxPosition;
+        public NativePoint ptMinTrackSize;
+        public NativePoint ptMaxTrackSize;
     }
 }

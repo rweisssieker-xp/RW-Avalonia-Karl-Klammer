@@ -16,7 +16,7 @@ Dieses Dokument ergänzt [Carolus-Nexus-Benutzerhandbuch.md](Carolus-Nexus-Benut
 | Live Context: Form-/UIA-Summary + Selektions-Hinweis | **Eingebaut** (`ForegroundUiAutomationContext`, Aktualisierung in `LiveContextTab`). |
 | AX 2012 schmal: `ax.read_context` / `ax.form_summary` / `ax→uia` | **Eingebaut** hinter Feature-Flags; kein separater COM-Dynamics-Client. |
 | Distribution | **Portable-Zip-Skript** (`scripts/Package-Portable.ps1`, `docs/Distribution.md`); MSI/MSIX weiterhin optional. |
-| Avalonia: Experiments + Ctrl+P | **Eingebaut** (Tab „Experiments“, Command Palette). |
+| Avalonia: Experiments + Ctrl+P | **Eingebaut** (Tab „Experiments“, Command Palette — Stand siehe `MainWindow.axaml.cs`). |
 | Flow-Bibliothek: Filter Risk/State/Archive/Category/Source | **Eingebaut** (Avalonia); WinUI: Kategorie-Feld + Textsuche. |
 
 ---
@@ -49,8 +49,8 @@ Dieses Dokument ergänzt [Carolus-Nexus-Benutzerhandbuch.md](Carolus-Nexus-Benut
 
 ### 5. WinUI-Shell-Parität in Avalonia (optional, niedrig)
 
-**Problem:** WinUI hat **Experiments (Tier C)** und **Strg+P Command Palette**; Avalonia nicht ([Handbuch-Tab-Abgleich](Carolus-Nexus-Handbuch-Tab-Abgleich.md) GUI-Abschnitt im Plan).  
-**Ziel:** Optional Tab „Experiments“ und/oder Tastenkürzel zur Seitenwahl — rein UX-Komfort, kein Blocker für Produktnutzung.
+**Ist (Branch):** Avalonia enthält **Experiments (Tier C)** und eine **Strg+P Command Palette**; WinUI hat eigene Shell-Navigation — funktionale Parität für zentrale Workflows ist gegeben, kosmetische Unterschiede bleiben möglich.  
+**Restziel:** Gelegentlich neuen WinUI-Comfort (z. B. zusätzliche Shortcuts) in Avalonia nachziehen — rein UX, kein Blocker.
 
 ---
 

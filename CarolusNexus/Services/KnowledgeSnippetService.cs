@@ -54,28 +54,125 @@ public static class KnowledgeSnippetService
         BuildContextBundle(userQuery, maxChars).ContextText;
 
     /// <summary>Wie <see cref="BuildContext"/> plus strukturierte Quellen für die UI.</summary>
-    public static KnowledgeContextBundle BuildContextBundle(string? userQuery, int maxChars = 12000)
+    public static KnowledgeContextBundle BuildContextBundle(string? userQuery, int maxChars = 12000) =>
+        BuildAugmentationResult(userQuery, maxChars).Bundle;
+
+    /// <summary>Wie <see cref="BuildContextBundle"/> plus Retrieval-Tier und Hinweise für transparente „KI“-Anzeige (§7 Phase A).</summary>
+    public static KnowledgeAugmentationResult BuildAugmentationResult(string? userQuery, int maxChars = 12000)
     {
+        var hints = new List<string>();
         if (!Directory.Exists(AppPaths.KnowledgeDir))
-            return new KnowledgeContextBundle("", Array.Empty<KnowledgeSourceRef>());
-
-        var q = userQuery?.Trim();
-        if (!string.IsNullOrEmpty(q) && File.Exists(AppPaths.KnowledgeChunks))
         {
-            var semantic = EmbeddingRagService.TryGetContextBundle(q, maxChars);
-            if (semantic != null && !string.IsNullOrWhiteSpace(semantic.ContextText))
-                return semantic;
-
-            var fts = KnowledgeFtsStore.TrySearchBundle(q, maxChars);
-            if (fts != null && !string.IsNullOrWhiteSpace(fts.ContextText))
-                return fts;
-
-            var ranked = BuildFromChunksBundle(q, maxChars);
-            if (!string.IsNullOrWhiteSpace(ranked.ContextText))
-                return ranked;
+            hints.Add("Knowledge folder missing — add documents under the configured knowledge directory (see AppPaths / windows/knowledge).");
+            return new KnowledgeAugmentationResult(
+                new KnowledgeContextBundle("", Array.Empty<KnowledgeSourceRef>()),
+                KnowledgeRetrievalTier.None,
+                hints);
         }
 
-        return BuildSequentialFilesBundle(maxChars);
+        var q = userQuery?.Trim();
+        if (string.IsNullOrEmpty(q))
+        {
+            hints.Add("No search query — including excerpts from the first text files in the knowledge folder (sequential scan).");
+            return new KnowledgeAugmentationResult(
+                BuildSequentialFilesBundle(maxChars),
+                KnowledgeRetrievalTier.SequentialFiles,
+                hints);
+        }
+
+        if (!File.Exists(AppPaths.KnowledgeChunks))
+        {
+            hints.Add("No knowledge-chunks.json — run a Knowledge reindex from the Knowledge tab (or main window) to enable chunk search.");
+            hints.Add("Until then, excerpts come from a sequential file scan (not ranked by your prompt).");
+            return new KnowledgeAugmentationResult(
+                BuildSequentialFilesBundle(maxChars),
+                KnowledgeRetrievalTier.SequentialFiles,
+                hints);
+        }
+
+        AppendSemanticRagHints(hints);
+
+        var semantic = EmbeddingRagService.TryGetContextBundle(q, maxChars);
+        if (semantic != null && !string.IsNullOrWhiteSpace(semantic.ContextText))
+        {
+            hints.Clear();
+            hints.Add("Using semantic embedding RAG (knowledge-embeddings.json).");
+            return new KnowledgeAugmentationResult(semantic, KnowledgeRetrievalTier.SemanticEmbedding, hints);
+        }
+
+        if (hints.Count == 0)
+            hints.Add("Semantic RAG did not return chunks — falling back to keyword search.");
+
+        var fts = KnowledgeFtsStore.TrySearchBundle(q, maxChars);
+        if (fts != null && !string.IsNullOrWhiteSpace(fts.ContextText))
+        {
+            hints.Add("Using local FTS5 keyword index (not vector similarity).");
+            return new KnowledgeAugmentationResult(fts, KnowledgeRetrievalTier.Fts, hints);
+        }
+
+        var ranked = BuildFromChunksBundle(q, maxChars);
+        if (!string.IsNullOrWhiteSpace(ranked.ContextText))
+        {
+            hints.Add("Using overlap-ranked chunks from knowledge-chunks.json (no FTS hit).");
+            return new KnowledgeAugmentationResult(ranked, KnowledgeRetrievalTier.KeywordChunks, hints);
+        }
+
+        hints.Add("No chunk matched your query — showing sequential file excerpts.");
+        return new KnowledgeAugmentationResult(
+            BuildSequentialFilesBundle(maxChars),
+            KnowledgeRetrievalTier.SequentialFiles,
+            hints);
+    }
+
+    /// <summary>Human-readable block for Ask „Retrieval + context“ pane (tier, hints, then excerpts).</summary>
+    public static string FormatAugmentationForAskPanel(KnowledgeAugmentationResult aug)
+    {
+        var sb = new StringBuilder();
+        sb.Append("[Retrieval · ").Append(TierDisplayName(aug.Tier)).Append(']');
+        foreach (var h in aug.Hints)
+            sb.AppendLine().Append("· ").Append(h);
+        if (!string.IsNullOrWhiteSpace(aug.Bundle.ContextText))
+        {
+            sb.AppendLine().AppendLine();
+            sb.Append(aug.Bundle.ContextText.TrimEnd());
+        }
+        else
+            sb.AppendLine().Append("(no local excerpts)");
+
+        return sb.ToString();
+    }
+
+    private static string TierDisplayName(KnowledgeRetrievalTier t) =>
+        t switch
+        {
+            KnowledgeRetrievalTier.SemanticEmbedding => "semantic embeddings",
+            KnowledgeRetrievalTier.Fts => "FTS keywords",
+            KnowledgeRetrievalTier.KeywordChunks => "keyword overlap",
+            KnowledgeRetrievalTier.SequentialFiles => "sequential files",
+            _ => "none"
+        };
+
+    private static void AppendSemanticRagHints(ICollection<string> hints)
+    {
+        if (!File.Exists(AppPaths.KnowledgeEmbeddings))
+        {
+            hints.Add("Semantic RAG: knowledge-embeddings.json missing — rebuild embeddings (requires OPENAI_API_KEY) after chunks exist.");
+            return;
+        }
+
+        var env = DotEnvStore.Load();
+        if (!env.TryGetValue("OPENAI_API_KEY", out var key) || string.IsNullOrWhiteSpace(key))
+        {
+            hints.Add("Semantic RAG: OPENAI_API_KEY not set in environment — cannot run embedding search.");
+            return;
+        }
+
+        if (env.TryGetValue("RAG_EMBEDDINGS", out var ragOff) &&
+            (ragOff.Trim().Equals("0", StringComparison.OrdinalIgnoreCase) ||
+             ragOff.Trim().Equals("false", StringComparison.OrdinalIgnoreCase)))
+        {
+            hints.Add("Semantic RAG: disabled by RAG_EMBEDDINGS=0/false.");
+        }
     }
 
     /// <summary>Abwärtskompatibel: gesamter Ordnerscan ohne Query.</summary>

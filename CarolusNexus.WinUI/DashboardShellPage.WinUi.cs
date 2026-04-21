@@ -16,32 +16,27 @@ public sealed class DashboardShellPage : Page
     private readonly TextBox _cardGov = MkCard();
     private readonly TextBox _cardRit = MkCard();
     private readonly TextBox _cardWatch = MkCard();
+    private readonly TextBox _cardUsp = MkCard();
 
     public DashboardShellPage()
     {
         var root = new ScrollViewer();
         var stack = new StackPanel { Spacing = 16, Margin = new Thickness(20, 16, 20, 20) };
-        var dashTitle = new TextBlock
+        stack.Children.Add(WinUiFluentChrome.PageTitle("Dashboard"));
+        var dashHint = new TextBlock
         {
-            Text = "Dashboard",
-            TextWrapping = TextWrapping.Wrap
+            Text = "Seven live cards + watch/proactive context — parity with Avalonia §5.3.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
         };
-        WinUiFluentChrome.ApplyTitleTextStyle(dashTitle);
-        stack.Children.Add(dashTitle);
-        var refresh = new Button
-        {
-            Content = "Refresh now",
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Padding = new Thickness(16, 10, 16, 10),
-            CornerRadius = new CornerRadius(8)
-        };
+        WinUiFluentChrome.ApplyCaptionTextStyle(dashHint);
+        stack.Children.Add(dashHint);
+        var refresh = new Button { Content = "Refresh now", HorizontalAlignment = HorizontalAlignment.Left };
+        WinUiFluentChrome.StyleActionButton(refresh, accent: true);
         refresh.Click += (_, _) => RefreshFull();
         stack.Children.Add(refresh);
 
-        var previewLabel = new TextBlock { Text = "3D preview" };
-        WinUiFluentChrome.ApplyCaptionTextStyle(previewLabel);
-        previewLabel.Foreground = WinUiFluentChrome.SecondaryTextBrush;
-        stack.Children.Add(previewLabel);
+        stack.Children.Add(WinUiFluentChrome.ColumnCaption("3D preview"));
         var previewInner = new TextBlock
         {
             Text =
@@ -111,6 +106,7 @@ public sealed class DashboardShellPage : Page
         Add(1, 1, "5 · Governance + Audit", _cardGov);
         Add(1, 2, "6 · Recent operator flows", _cardRit);
         Add(2, 0, "7 · Recent Watch Sessions", _cardWatch, 3);
+        Add(3, 0, "8 · AI / GUI / WebUI USP Radar", _cardUsp, 3);
 
         stack.Children.Add(grid);
         root.Content = stack;
@@ -129,6 +125,7 @@ public sealed class DashboardShellPage : Page
             s => _cardGov.Text = s,
             s => _cardRit.Text = s,
             s => _cardWatch.Text = s,
+            s => _cardUsp.Text = s,
             WinUiShellState.LiveContextLine,
             WinUiShellState.Settings);
     }
