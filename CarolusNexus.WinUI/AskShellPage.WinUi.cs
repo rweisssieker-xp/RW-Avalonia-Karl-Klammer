@@ -28,6 +28,13 @@ public sealed class AskShellPage : Page
     private readonly CheckBox _shots = new() { Content = "Include screenshots", IsChecked = true };
     private readonly CheckBox _know = new() { Content = "Use local knowledge", IsChecked = true };
     private readonly InfoBar _busy = new() { IsOpen = false, Title = "Working" };
+    private readonly InfoBar _planRisk = new()
+    {
+        IsOpen = true,
+        Title = "Plan risk",
+        Message = "No plan yet.",
+        Severity = InfoBarSeverity.Informational
+    };
     private readonly Grid _root = new() { Padding = new Thickness(20, 16, 20, 16) };
     private CancellationTokenSource? _cts;
     private readonly List<RecipeStep> _planSteps = new();
@@ -75,6 +82,8 @@ public sealed class AskShellPage : Page
             _planExec.Text = "";
             _planSteps.Clear();
             _planStepIndex = 0;
+            _planRisk.Severity = InfoBarSeverity.Informational;
+            _planRisk.Message = "No plan yet.";
         };
         var bPanic = new Button { Content = "Panic stop" };
         WinUiFluentChrome.StyleActionButton(bPanic);
@@ -118,6 +127,7 @@ public sealed class AskShellPage : Page
         WinUiFluentChrome.ApplyCaptionTextStyle(sub);
         top.Children.Add(sub);
         top.Children.Add(toolCard);
+        top.Children.Add(_planRisk);
         var mid = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = top };
 
         var left = new StackPanel { Spacing = 10 };
@@ -417,6 +427,7 @@ public sealed class AskShellPage : Page
                 ? ActionPlanExtractor.FormatPreview(tokens)
                 : FormatStepsForPreview(_planSteps);
             _planExec.Text = $"({_planSteps.Count} steps — run plan / run next)";
+            RefreshPlanRiskPreview();
 
             if (s.SpeakResponses)
             {
@@ -520,6 +531,39 @@ public sealed class AskShellPage : Page
         if (_planSteps.Count > 0)
             return _planSteps;
         return SimplePlanSimulator.ParsePlanPreviewLines(_planPreview.Text ?? "");
+    }
+
+    private void RefreshPlanRiskPreview()
+    {
+        var steps = ActivePlanSteps();
+        if (steps.Count == 0)
+        {
+            _planRisk.Severity = InfoBarSeverity.Informational;
+            _planRisk.Message = "No executable plan detected.";
+            return;
+        }
+
+        var writeLike = steps.Count(s =>
+        {
+            var a = s.ActionArgument ?? "";
+            return a.Contains("[ACTION:", StringComparison.OrdinalIgnoreCase)
+                   || a.Contains("click", StringComparison.OrdinalIgnoreCase)
+                   || a.Contains("type", StringComparison.OrdinalIgnoreCase)
+                   || a.Contains("send", StringComparison.OrdinalIgnoreCase)
+                   || a.Contains("post", StringComparison.OrdinalIgnoreCase)
+                   || a.Contains("book", StringComparison.OrdinalIgnoreCase);
+        });
+        var axLike = steps.Count(s => (s.ActionArgument ?? "").Contains("ax.", StringComparison.OrdinalIgnoreCase)
+                                     || (s.ActionArgument ?? "").Contains("ax|", StringComparison.OrdinalIgnoreCase));
+        var powerUser = string.Equals(WinUiShellState.Settings.Safety.Profile, "power-user", StringComparison.OrdinalIgnoreCase);
+        var severity = writeLike > 0 || axLike > 0
+            ? (powerUser ? InfoBarSeverity.Warning : InfoBarSeverity.Error)
+            : InfoBarSeverity.Success;
+
+        _planRisk.Severity = severity;
+        _planRisk.Message =
+            $"{steps.Count} step(s) · write-like: {writeLike} · AX-like: {axLike} · safety: {WinUiShellState.Settings.Safety.Profile}. " +
+            (powerUser ? "Execution can run through guards." : "Execution remains guarded/simulation unless safety allows it.");
     }
 
     private void SavePlanAsRitual()

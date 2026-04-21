@@ -13,6 +13,9 @@ namespace CarolusNexus_WinUI.Pages;
 /// <summary>Parity with Avalonia <c>LiveContextTab</c> (adapter buttons, inspector, three panes).</summary>
 public sealed class LiveContextShellPage : Page
 {
+    private readonly TextBlock _activeApp = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _activeAdapter = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _watchState = new() { TextWrapping = TextWrapping.Wrap };
     private readonly TextBox _snapActive = MkSnap();
     private readonly TextBox _snapAx = MkSnap();
     private readonly TextBox _snapCross = MkSnap();
@@ -31,6 +34,7 @@ public sealed class LiveContextShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(liveHint);
         root.Children.Add(liveHint);
+        root.Children.Add(BuildStatusStrip());
         root.Children.Add(WinUiFluentChrome.ColumnCaption("Adapter families"));
 
         var adapters = new GridView { SelectionMode = ListViewSelectionMode.None };
@@ -99,6 +103,44 @@ public sealed class LiveContextShellPage : Page
             MinHeight = 200,
             FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas")
         };
+
+    private UIElement BuildStatusStrip()
+    {
+        var grid = new Grid { ColumnSpacing = 10 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var a = StatusTile("Active app", _activeApp);
+        var b = StatusTile("Adapter", _activeAdapter);
+        var c = StatusTile("Watch", _watchState);
+        grid.Children.Add(a);
+        grid.Children.Add(b);
+        grid.Children.Add(c);
+        Grid.SetColumn(b, 1);
+        Grid.SetColumn(c, 2);
+        return grid;
+    }
+
+    private static Border StatusTile(string title, TextBlock body)
+    {
+        body.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        return WinUiFluentChrome.WrapCard(new StackPanel
+        {
+            Spacing = 6,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = title,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    Foreground = WinUiFluentChrome.PrimaryTextBrush,
+                    TextWrapping = TextWrapping.Wrap
+                },
+                body
+            }
+        }, new Thickness(14, 12, 14, 12));
+    }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
@@ -203,6 +245,9 @@ public sealed class LiveContextShellPage : Page
             _snapActive.Text = "Live Context: Windows only.";
             _snapAx.Text = "—";
             _snapCross.Text = "—";
+            _activeApp.Text = "Windows only";
+            _activeAdapter.Text = "—";
+            _watchState.Text = "—";
             return;
         }
 
@@ -211,10 +256,16 @@ public sealed class LiveContextShellPage : Page
         {
             _snapActive.Text = "(no foreground window)";
             _snapAx.Text = "—";
+            _activeApp.Text = "No foreground window";
+            _activeAdapter.Text = "generic";
+            _watchState.Text = FormatWatchStatus();
             return;
         }
 
         var fam = OperatorAdapterRegistry.ResolveFamily(d.Value.ProcessName, d.Value.Title);
+        _activeApp.Text = $"{d.Value.ProcessName}\n{d.Value.Title}";
+        _activeAdapter.Text = $"{fam}\n{d.Value.WindowClass}";
+        _watchState.Text = FormatWatchStatus();
         var sb = new StringBuilder();
         sb.AppendLine($"Title: {d.Value.Title}");
         sb.AppendLine($"Process: {d.Value.ProcessName} (PID {d.Value.ProcessId})");
@@ -237,5 +288,15 @@ public sealed class LiveContextShellPage : Page
                 $"No AX window in the foreground (current: {fam}).\r\n" +
                 "Switch to the AX client or use the AX button for context hints.";
         }
+    }
+
+    private static string FormatWatchStatus()
+    {
+        var doc = WatchSessionService.LoadOrEmpty();
+        var mode = WinUiShellState.Settings.Mode;
+        if (doc.Entries.Count == 0)
+            return $"{mode} · no entries";
+        var last = doc.Entries[^1].UtcAt.ToLocalTime();
+        return $"{mode} · {doc.Entries.Count} entries\nlast {last:HH:mm:ss}";
     }
 }

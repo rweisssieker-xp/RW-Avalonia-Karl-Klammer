@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using CarolusNexus;
 using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
@@ -9,6 +10,9 @@ namespace CarolusNexus_WinUI.Pages;
 /// <summary>Seven summary cards + 3D placeholder — aligned with Avalonia <c>DashboardTab</c>.</summary>
 public sealed class DashboardShellPage : Page
 {
+    private readonly TextBlock _heroHeadline = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _heroReadiness = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _heroUsp = new() { TextWrapping = TextWrapping.Wrap };
     private readonly TextBox _cardEnv = MkCard();
     private readonly TextBox _cardKnow = MkCard();
     private readonly TextBox _cardLive = MkCard();
@@ -31,6 +35,7 @@ public sealed class DashboardShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(dashHint);
         stack.Children.Add(dashHint);
+        stack.Children.Add(BuildDemoHero());
         var refresh = new Button { Content = "Refresh now", HorizontalAlignment = HorizontalAlignment.Left };
         WinUiFluentChrome.StyleActionButton(refresh, accent: true);
         refresh.Click += (_, _) => RefreshFull();
@@ -128,6 +133,69 @@ public sealed class DashboardShellPage : Page
             s => _cardUsp.Text = s,
             WinUiShellState.LiveContextLine,
             WinUiShellState.Settings);
+        RefreshDemoHero();
+    }
+
+    private UIElement BuildDemoHero()
+    {
+        var hero = new Grid { ColumnSpacing = 16 };
+        hero.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        hero.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(240) });
+
+        var title = new TextBlock
+        {
+            Text = "AI operator cockpit",
+            FontSize = 26,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = WinUiFluentChrome.PrimaryTextBrush,
+            TextWrapping = TextWrapping.Wrap
+        };
+        _heroHeadline.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        WinUiFluentChrome.ApplyBodyTextStyle(_heroHeadline);
+        _heroUsp.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        WinUiFluentChrome.ApplyCaptionTextStyle(_heroUsp);
+
+        var left = new StackPanel
+        {
+            Spacing = 8,
+            Children = { title, _heroHeadline, _heroUsp }
+        };
+
+        _heroReadiness.FontSize = 30;
+        _heroReadiness.FontWeight = Microsoft.UI.Text.FontWeights.Bold;
+        _heroReadiness.Foreground = WinUiFluentChrome.PrimaryTextBrush;
+        var right = new StackPanel
+        {
+            Spacing = 4,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "Demo readiness",
+                    Foreground = WinUiFluentChrome.SecondaryTextBrush,
+                    TextWrapping = TextWrapping.Wrap
+                },
+                _heroReadiness
+            }
+        };
+
+        hero.Children.Add(left);
+        hero.Children.Add(right);
+        Grid.SetColumn(right, 1);
+
+        return WinUiFluentChrome.WrapCard(hero, new Thickness(18, 16, 18, 16));
+    }
+
+    private void RefreshDemoHero()
+    {
+        var live = string.IsNullOrWhiteSpace(WinUiShellState.LiveContextLine)
+            ? "No foreground context captured yet."
+            : WinUiShellState.LiveContextLine;
+        var radar = (_cardUsp.Text ?? "").Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+        _heroReadiness.Text = radar.FirstOrDefault(l => l.StartsWith("Readiness:", StringComparison.OrdinalIgnoreCase))?.Replace("Readiness:", "").Trim() ?? "—";
+        _heroUsp.Text = radar.LastOrDefault(l => l.StartsWith("USP candidate:", StringComparison.OrdinalIgnoreCase)) ?? "USP candidate: local AI + GUI context + governed operator flows.";
+        _heroHeadline.Text = $"{WinUiShellState.Settings.Provider} / {WinUiShellState.Settings.Mode} · {live}";
     }
 
     private static TextBox MkCard() =>
