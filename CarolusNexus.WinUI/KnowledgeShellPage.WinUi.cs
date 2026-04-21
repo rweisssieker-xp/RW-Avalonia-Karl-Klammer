@@ -19,6 +19,12 @@ public sealed class KnowledgeShellPage : Page
     private readonly Grid _knowRoot = new();
     private readonly StackPanel _leftPane = new() { Spacing = 8 };
     private readonly StackPanel _rightPane = new() { Spacing = 8 };
+    private readonly StackPanel _knowledgeStatus = new() { Orientation = Orientation.Horizontal, Spacing = 10 };
+    private readonly Button _nbaPrimary = new();
+    private readonly Button _nbaSecondary = new();
+    private readonly Button _nbaDismiss = new();
+    private Border? _nextBestActionBar;
+    private NextBestAction? _nextBestAction;
     private readonly TextBox _search = new() { Header = "Search", PlaceholderText = "Filter by filename…" };
     private readonly ListView _docList = new() { MinHeight = 160, SelectionMode = ListViewSelectionMode.Single };
     private readonly TextBox _preview = new()
@@ -34,12 +40,11 @@ public sealed class KnowledgeShellPage : Page
 
     public KnowledgeShellPage()
     {
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        tools.Children.Add(Mk("Search", (_, _) => ApplySearch(), accent: true));
-        tools.Children.Add(Mk("Import…", async (_, _) => await ImportAsync()));
-        tools.Children.Add(Mk("Remove", (_, _) => RemoveSelected()));
-        tools.Children.Add(Mk("Reindex", (_, _) => OnReindex()));
-        tools.Children.Add(Mk("Suggest flow (LLM)", async (_, _) => await SuggestRitualAsync()));
+        var search = WinUiFluentChrome.AppBarCommand("Search", "\uE721", (_, _) => ApplySearch());
+        var import = WinUiFluentChrome.AppBarCommand("Import", "\uE8B5", async (_, _) => await ImportAsync());
+        var remove = WinUiFluentChrome.AppBarCommand("Remove", "\uE74D", (_, _) => RemoveSelected());
+        var reindex = WinUiFluentChrome.AppBarCommand("Reindex", "\uE72C", (_, _) => OnReindex());
+        var suggest = WinUiFluentChrome.AppBarCommand("Suggest flow", "\uE9CE", async (_, _) => await SuggestRitualAsync());
 
         _leftPane.Children.Add(WinUiFluentChrome.PageTitle("Knowledge"));
         var knowHint = new TextBlock
@@ -50,8 +55,11 @@ public sealed class KnowledgeShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(knowHint);
         _leftPane.Children.Add(knowHint);
+        _nextBestActionBar = BuildNextBestActionBar();
+        _leftPane.Children.Add(_nextBestActionBar);
+        _leftPane.Children.Add(_knowledgeStatus);
         _leftPane.Children.Add(_search);
-        _leftPane.Children.Add(tools);
+        _leftPane.Children.Add(WinUiFluentChrome.CommandSurface("Knowledge actions", search, import, remove, reindex, suggest));
         _leftPane.Children.Add(_docList);
 
         _rightPane.Children.Add(WinUiFluentChrome.ColumnCaption("Preview"));
@@ -66,17 +74,10 @@ public sealed class KnowledgeShellPage : Page
         Loaded += (_, _) =>
         {
             RefreshList();
+            RefreshNextBestActionBar();
             ApplyLayout(ActualWidth);
         };
         SizeChanged += (_, e) => ApplyLayout(e.NewSize.Width);
-    }
-
-    private static Button Mk(string content, RoutedEventHandler h, bool accent = false)
-    {
-        var b = new Button { Content = content };
-        WinUiFluentChrome.StyleActionButton(b, accent);
-        b.Click += h;
-        return b;
     }
 
     private void ApplyLayout(double w)
@@ -119,7 +120,49 @@ public sealed class KnowledgeShellPage : Page
         Directory.CreateDirectory(AppPaths.KnowledgeDir);
         _allFiles = Directory.GetFiles(AppPaths.KnowledgeDir, "*.*", SearchOption.TopDirectoryOnly)
             .Select(Path.GetFileName).Where(f => f != null).Select(f => f!).ToArray();
+        RefreshKnowledgeStatus();
         ApplySearch();
+    }
+
+    private void RefreshKnowledgeStatus()
+    {
+        _knowledgeStatus.Children.Clear();
+        var indexState = File.Exists(AppPaths.KnowledgeIndex) ? "index ready" : "index missing";
+        var embeddingsState = File.Exists(AppPaths.KnowledgeEmbeddings) ? "embeddings ready" : "optional";
+        _knowledgeStatus.Children.Add(WinUiFluentChrome.StatusTile("Documents", _allFiles.Length.ToString(), "local RAG corpus"));
+        _knowledgeStatus.Children.Add(WinUiFluentChrome.StatusTile("Index", indexState, AppPaths.KnowledgeIndex));
+        _knowledgeStatus.Children.Add(WinUiFluentChrome.StatusTile("Semantic RAG", embeddingsState, "OpenAI key dependent"));
+    }
+
+    private Border BuildNextBestActionBar()
+    {
+        _nbaPrimary.Click += (_, _) =>
+        {
+            NexusShell.Log("Next action: ask with local knowledge from the Ask page.");
+        };
+        _nbaSecondary.Click += (_, _) => OnReindex();
+        _nbaDismiss.Click += (_, _) =>
+        {
+            if (_nextBestActionBar != null)
+                _nextBestActionBar.Visibility = Visibility.Collapsed;
+        };
+        _nextBestAction = NextBestActionService.Build(WinUiShellState.Settings, WinUiShellState.LiveContextLine);
+        return WinUiFluentChrome.NextBestActionBar(_nextBestAction, _nbaPrimary, _nbaSecondary, _nbaDismiss);
+    }
+
+    private void RefreshNextBestActionBar()
+    {
+        _nextBestAction = NextBestActionService.Build(WinUiShellState.Settings, WinUiShellState.LiveContextLine);
+        if (_nextBestActionBar == null)
+            return;
+        var parent = _nextBestActionBar.Parent as StackPanel;
+        var index = parent?.Children.IndexOf(_nextBestActionBar) ?? -1;
+        var visible = _nextBestActionBar.Visibility;
+        parent?.Children.Remove(_nextBestActionBar);
+        _nextBestActionBar = WinUiFluentChrome.NextBestActionBar(_nextBestAction, _nbaPrimary, _nbaSecondary, _nbaDismiss);
+        _nextBestActionBar.Visibility = visible == Visibility.Collapsed ? Visibility.Collapsed : Visibility.Visible;
+        if (parent != null && index >= 0)
+            parent.Children.Insert(index, _nextBestActionBar);
     }
 
     private void ApplySearch()

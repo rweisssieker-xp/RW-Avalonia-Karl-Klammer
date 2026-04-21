@@ -26,6 +26,12 @@ public sealed class RitualsShellPage : Page
     private readonly StackPanel _libraryPane = new() { Spacing = 8 };
     private readonly StackPanel _builderPane = new() { Spacing = 8 };
     private readonly StackPanel _stepsPane = new() { Spacing = 8 };
+    private readonly StackPanel _flowStatus = new() { Orientation = Orientation.Horizontal, Spacing = 10 };
+    private readonly Button _nbaPrimary = new();
+    private readonly Button _nbaSecondary = new();
+    private readonly Button _nbaDismiss = new();
+    private Border? _nextBestActionBar;
+    private NextBestAction? _nextBestAction;
 
     private readonly TextBox _libFilter = new() { Header = "Filter library", PlaceholderText = "Name or description…" };
     private readonly StackPanel _recipeButtons = new() { Spacing = 4 };
@@ -81,6 +87,9 @@ public sealed class RitualsShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(flowHint);
         _libraryPane.Children.Add(flowHint);
+        _nextBestActionBar = BuildNextBestActionBar();
+        _libraryPane.Children.Add(_nextBestActionBar);
+        _libraryPane.Children.Add(_flowStatus);
         _libraryPane.Children.Add(WinUiFluentChrome.ColumnCaption("Flow library"));
         _libraryPane.Children.Add(_libFilter);
         _libraryPane.Children.Add(new ScrollViewer { Content = _recipeButtons, MaxHeight = 420 });
@@ -246,6 +255,8 @@ public sealed class RitualsShellPage : Page
         }
 
         RefreshQueueStatus();
+        RefreshFlowStatus();
+        RefreshNextBestActionBar();
     }
 
     private void RefreshQueueStatus()
@@ -296,6 +307,61 @@ public sealed class RitualsShellPage : Page
         _maxAutonomySteps.Text = r.MaxAutonomySteps > 0 ? r.MaxAutonomySteps.ToString() : "";
         _stepsEditor.Text = JsonSerializer.Serialize(r.Steps, new JsonSerializerOptions { WriteIndented = true });
         _stepCursor = 0;
+        RefreshFlowStatus();
+    }
+
+    private void RefreshFlowStatus()
+    {
+        _flowStatus.Children.Clear();
+        var selected = _selected?.Name ?? "none";
+        var risk = _selected?.RiskLevel ?? "medium";
+        var approval = _selected?.ApprovalMode ?? "manual";
+        var queue = RitualJobQueueStore.GetPendingCount().ToString();
+        var teach = RitualsTeachSession.IsActive ? "active" : "off";
+        _flowStatus.Children.Add(WinUiFluentChrome.StatusTile("Selected flow", selected, "library selection"));
+        _flowStatus.Children.Add(WinUiFluentChrome.StatusTile("Risk", risk, "governance"));
+        _flowStatus.Children.Add(WinUiFluentChrome.StatusTile("Approval", approval, "execution gate"));
+        _flowStatus.Children.Add(WinUiFluentChrome.StatusTile("Queue", queue, "pending jobs"));
+        _flowStatus.Children.Add(WinUiFluentChrome.StatusTile("Teach", teach, "capture mode"));
+    }
+
+    private Border BuildNextBestActionBar()
+    {
+        _nbaPrimary.Click += async (_, _) =>
+        {
+            if (_nextBestAction?.Intent == "rituals.promote_watch")
+                await PromoteFromWatchAsync();
+            else
+                NexusShell.Log("Next action: select or teach a flow before running.");
+            RefreshNextBestActionBar();
+        };
+        _nbaSecondary.Click += (_, _) =>
+        {
+            if (_nextBestAction != null)
+                NexusShell.Log("Next action suggestion: " + _nextBestAction.Message);
+        };
+        _nbaDismiss.Click += (_, _) =>
+        {
+            if (_nextBestActionBar != null)
+                _nextBestActionBar.Visibility = Visibility.Collapsed;
+        };
+        _nextBestAction = NextBestActionService.Build(WinUiShellState.Settings, WinUiShellState.LiveContextLine);
+        return WinUiFluentChrome.NextBestActionBar(_nextBestAction, _nbaPrimary, _nbaSecondary, _nbaDismiss);
+    }
+
+    private void RefreshNextBestActionBar()
+    {
+        _nextBestAction = NextBestActionService.Build(WinUiShellState.Settings, WinUiShellState.LiveContextLine);
+        if (_nextBestActionBar == null)
+            return;
+        var parent = _nextBestActionBar.Parent as StackPanel;
+        var index = parent?.Children.IndexOf(_nextBestActionBar) ?? -1;
+        var visible = _nextBestActionBar.Visibility;
+        parent?.Children.Remove(_nextBestActionBar);
+        _nextBestActionBar = WinUiFluentChrome.NextBestActionBar(_nextBestAction, _nbaPrimary, _nbaSecondary, _nbaDismiss);
+        _nextBestActionBar.Visibility = visible == Visibility.Collapsed ? Visibility.Collapsed : Visibility.Visible;
+        if (parent != null && index >= 0)
+            parent.Children.Insert(index, _nextBestActionBar);
     }
 
     private List<RecipeStep> ParseStepsEditor()

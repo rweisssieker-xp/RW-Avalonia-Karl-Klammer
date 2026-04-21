@@ -20,6 +20,7 @@ public sealed class HistoryShellPage : Page
     private readonly Grid _histRoot = new() { MinHeight = 400, Margin = new Thickness(20, 16, 20, 16) };
     private readonly StackPanel _leftPane = new() { Spacing = 8 };
     private readonly StackPanel _rightPane = new() { Spacing = 6 };
+    private readonly StackPanel _historyStatus = new() { Orientation = Orientation.Horizontal, Spacing = 10 };
 
     private readonly TextBox _histFilter = new() { Header = "Search", PlaceholderText = "Filter by label, summary, kind…" };
     private readonly ListView _histList = new() { SelectionMode = ListViewSelectionMode.Single, MinHeight = 120 };
@@ -34,7 +35,6 @@ public sealed class HistoryShellPage : Page
 
     public HistoryShellPage()
     {
-        var btnRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
         var selfHeal = new Button { Content = "Self-heal hint (last audit)" };
         WinUiFluentChrome.StyleActionButton(selfHeal);
         selfHeal.Click += (_, _) =>
@@ -50,10 +50,6 @@ public sealed class HistoryShellPage : Page
         var refresh = new Button { Content = "Reload from disk" };
         WinUiFluentChrome.StyleActionButton(refresh);
         refresh.Click += (_, _) => Refresh();
-        btnRow.Children.Add(selfHeal);
-        btnRow.Children.Add(createRitual);
-        btnRow.Children.Add(refresh);
-
         _leftPane.Children.Add(WinUiFluentChrome.PageTitle("Action history"));
         var histHint = new TextBlock
         {
@@ -63,8 +59,9 @@ public sealed class HistoryShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(histHint);
         _leftPane.Children.Add(histHint);
+        _leftPane.Children.Add(_historyStatus);
         _leftPane.Children.Add(_histFilter);
-        _leftPane.Children.Add(btnRow);
+        _leftPane.Children.Add(WinUiFluentChrome.ActionGroup("Audit actions", selfHeal, createRitual, refresh));
         _leftPane.Children.Add(_histList);
 
         _rightPane.Children.Add(WinUiFluentChrome.ColumnCaption("Detail"));
@@ -145,6 +142,7 @@ public sealed class HistoryShellPage : Page
     {
         var doc = ActionHistoryService.Load();
         _entries = doc.Entries.OrderByDescending(e => e.UtcAt).ToList();
+        RefreshHistoryStatus();
         if (_entries.Count == 0)
         {
             RebuildListPlaceholder("(no entries in action-history.json yet — run a plan or operator flow)");
@@ -153,6 +151,16 @@ public sealed class HistoryShellPage : Page
         }
 
         ApplyFilter();
+    }
+
+    private void RefreshHistoryStatus()
+    {
+        _historyStatus.Children.Clear();
+        var last = _entries.Count == 0 ? "none" : _entries[0].UtcAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+        var latestPlan = _entries.FirstOrDefault(e => e.Steps.Count > 0);
+        _historyStatus.Children.Add(WinUiFluentChrome.StatusTile("Audit entries", _entries.Count.ToString(), "action-history.json"));
+        _historyStatus.Children.Add(WinUiFluentChrome.StatusTile("Last activity", last, "local time"));
+        _historyStatus.Children.Add(WinUiFluentChrome.StatusTile("Flow recovery", latestPlan == null ? "not ready" : "ready", "create from selection"));
     }
 
     private void ApplyFilter()

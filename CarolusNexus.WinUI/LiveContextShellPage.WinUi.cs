@@ -16,9 +16,17 @@ public sealed class LiveContextShellPage : Page
     private readonly TextBlock _activeApp = new() { TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _activeAdapter = new() { TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _watchState = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _likelyTask = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _safeNext = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly Button _nbaPrimary = new();
+    private readonly Button _nbaSecondary = new();
+    private readonly Button _nbaDismiss = new();
+    private Border? _nextBestActionBar;
+    private NextBestAction? _nextBestAction;
     private readonly TextBox _snapActive = MkSnap();
     private readonly TextBox _snapAx = MkSnap();
     private readonly TextBox _snapCross = MkSnap();
+    private readonly TextBox _contextReplay = MkSnap();
     private readonly TextBox _inspectorAction = new() { PlaceholderText = "InspectorAction / custom (e.g. ax.read_context)" };
     private DispatcherQueueTimer? _refreshTimer;
 
@@ -34,6 +42,8 @@ public sealed class LiveContextShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(liveHint);
         root.Children.Add(liveHint);
+        _nextBestActionBar = BuildNextBestActionBar();
+        root.Children.Add(_nextBestActionBar);
         root.Children.Add(BuildStatusStrip());
         root.Children.Add(WinUiFluentChrome.ColumnCaption("Adapter families"));
 
@@ -69,6 +79,7 @@ public sealed class LiveContextShellPage : Page
         inspectorRow.Children.Add(_inspectorAction);
         var run = new Button { Content = "Run", Margin = new Thickness(8, 0, 0, 0) };
         WinUiFluentChrome.StyleActionButton(run, accent: true);
+        WinUiFluentChrome.SetIconButton(run, "Run", "\uE768");
         run.Click += (_, _) => RunInspectorCustom();
         Grid.SetColumn(run, 1);
         inspectorRow.Children.Add(run);
@@ -79,6 +90,7 @@ public sealed class LiveContextShellPage : Page
         pivot.Items.Add(new PivotItem { Header = "Active Window", Content = _snapActive });
         pivot.Items.Add(new PivotItem { Header = "AX Context", Content = _snapAx });
         pivot.Items.Add(new PivotItem { Header = "Cross-App", Content = _snapCross });
+        pivot.Items.Add(new PivotItem { Header = "Context Replay", Content = _contextReplay });
         root.Children.Add(WinUiFluentChrome.WrapCard(pivot, new Thickness(8, 8, 8, 8)));
 
         Content = new ScrollViewer { Content = root };
@@ -94,6 +106,46 @@ public sealed class LiveContextShellPage : Page
         RefreshActiveSnapshot();
     }
 
+    private Border BuildNextBestActionBar()
+    {
+        _nbaPrimary.Click += (_, _) =>
+        {
+            RefreshActiveSnapshot();
+            if (_nextBestAction?.Intent == "live.ax_context")
+                _inspectorAction.Text = "ax.read_context";
+            NexusShell.Log("Next action: live context refreshed.");
+        };
+        _nbaSecondary.Click += (_, _) =>
+        {
+            _inspectorAction.Text = _nextBestAction?.Intent == "live.ax_context"
+                ? "ax.read_context"
+                : "context|read";
+            NexusShell.Log("Next action: safe inspector token prepared.");
+        };
+        _nbaDismiss.Click += (_, _) =>
+        {
+            if (_nextBestActionBar != null)
+                _nextBestActionBar.Visibility = Visibility.Collapsed;
+        };
+        _nextBestAction = NextBestActionService.Build(WinUiShellState.Settings, WinUiShellState.LiveContextLine);
+        return WinUiFluentChrome.NextBestActionBar(_nextBestAction, _nbaPrimary, _nbaSecondary, _nbaDismiss);
+    }
+
+    private void RefreshNextBestActionBar()
+    {
+        _nextBestAction = NextBestActionService.Build(WinUiShellState.Settings, WinUiShellState.LiveContextLine);
+        if (_nextBestActionBar == null)
+            return;
+        var parent = _nextBestActionBar.Parent as StackPanel;
+        var index = parent?.Children.IndexOf(_nextBestActionBar) ?? -1;
+        var visible = _nextBestActionBar.Visibility;
+        parent?.Children.Remove(_nextBestActionBar);
+        _nextBestActionBar = WinUiFluentChrome.NextBestActionBar(_nextBestAction, _nbaPrimary, _nbaSecondary, _nbaDismiss);
+        _nextBestActionBar.Visibility = visible == Visibility.Collapsed ? Visibility.Collapsed : Visibility.Visible;
+        if (parent != null && index >= 0)
+            parent.Children.Insert(index, _nextBestActionBar);
+    }
+
     private static TextBox MkSnap() =>
         new()
         {
@@ -107,18 +159,23 @@ public sealed class LiveContextShellPage : Page
     private UIElement BuildStatusStrip()
     {
         var grid = new Grid { ColumnSpacing = 10 };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        for (var i = 0; i < 5; i++)
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         var a = StatusTile("Active app", _activeApp);
         var b = StatusTile("Adapter", _activeAdapter);
         var c = StatusTile("Watch", _watchState);
+        var d = StatusTile("Likely task", _likelyTask);
+        var e = StatusTile("Safe next", _safeNext);
         grid.Children.Add(a);
         grid.Children.Add(b);
         grid.Children.Add(c);
+        grid.Children.Add(d);
+        grid.Children.Add(e);
         Grid.SetColumn(b, 1);
         Grid.SetColumn(c, 2);
+        Grid.SetColumn(d, 3);
+        Grid.SetColumn(e, 4);
         return grid;
     }
 
@@ -240,6 +297,7 @@ public sealed class LiveContextShellPage : Page
 
     private void RefreshActiveSnapshot()
     {
+        RefreshNextBestActionBar();
         if (!OperatingSystem.IsWindows())
         {
             _snapActive.Text = "Live Context: Windows only.";
@@ -248,6 +306,9 @@ public sealed class LiveContextShellPage : Page
             _activeApp.Text = "Windows only";
             _activeAdapter.Text = "—";
             _watchState.Text = "—";
+            _likelyTask.Text = "—";
+            _safeNext.Text = "—";
+            _contextReplay.Text = "Windows only.";
             return;
         }
 
@@ -259,13 +320,25 @@ public sealed class LiveContextShellPage : Page
             _activeApp.Text = "No foreground window";
             _activeAdapter.Text = "generic";
             _watchState.Text = FormatWatchStatus();
+            var emptyInsight = OperatorInsightService.BuildSnapshot(WinUiShellState.Settings);
+            _likelyTask.Text = emptyInsight.LikelyTask;
+            _safeNext.Text = emptyInsight.SafeNextAction;
+            _contextReplay.Text = emptyInsight.ContextReplay;
             return;
         }
 
         var fam = OperatorAdapterRegistry.ResolveFamily(d.Value.ProcessName, d.Value.Title);
+        var insight = OperatorInsightService.BuildSnapshot(WinUiShellState.Settings);
         _activeApp.Text = $"{d.Value.ProcessName}\n{d.Value.Title}";
         _activeAdapter.Text = $"{fam}\n{d.Value.WindowClass}";
         _watchState.Text = FormatWatchStatus();
+        _likelyTask.Text = insight.LikelyTask;
+        _safeNext.Text = insight.SafeNextAction;
+        _contextReplay.Text =
+            $"Likely task: {insight.LikelyTask}\r\n" +
+            $"Safe next: {insight.SafeNextAction}\r\n" +
+            $"Recommended flow: {insight.RecommendedFlow}\r\n\r\n" +
+            insight.ContextReplay;
         var sb = new StringBuilder();
         sb.AppendLine($"Title: {d.Value.Title}");
         sb.AppendLine($"Process: {d.Value.ProcessName} (PID {d.Value.ProcessId})");

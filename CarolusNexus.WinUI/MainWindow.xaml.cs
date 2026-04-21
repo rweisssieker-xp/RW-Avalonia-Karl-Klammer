@@ -56,7 +56,7 @@ public sealed partial class MainWindow : Window
         Header = "Companion",
         OnContent = "Follow cursor",
         OffContent = "Off",
-        IsOn = true,
+        IsOn = false,
         MinWidth = 0,
         VerticalAlignment = VerticalAlignment.Center
     };

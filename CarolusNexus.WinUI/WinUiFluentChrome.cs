@@ -106,6 +106,38 @@ internal static class WinUiFluentChrome
             b.Style = st;
     }
 
+    public static void SetIconButton(Button b, string label, string glyph)
+    {
+        b.Content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children =
+            {
+                new FontIcon
+                {
+                    Glyph = glyph,
+                    FontFamily = new FontFamily("Segoe Fluent Icons"),
+                    FontSize = 14
+                },
+                new TextBlock
+                {
+                    Text = label,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            }
+        };
+    }
+
+    public static Button AppBarCommand(string label, string glyph, RoutedEventHandler handler)
+    {
+        var command = new Button();
+        StyleActionButton(command);
+        SetIconButton(command, label, glyph);
+        command.Click += handler;
+        return command;
+    }
+
     public static Border WrapCard(UIElement child, Thickness? padding = null)
     {
         var b = new Border
@@ -119,6 +151,288 @@ internal static class WinUiFluentChrome
         };
         ApplyCardElevation(b, 2f);
         return b;
+    }
+
+    public static Border SectionCard(string title, string? subtitle, UIElement content)
+    {
+        var inner = new StackPanel { Spacing = 8 };
+        inner.Children.Add(new TextBlock
+        {
+            Text = title,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = PrimaryTextBrush,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            FontSize = 15
+        });
+        if (!string.IsNullOrWhiteSpace(subtitle))
+        {
+            var sub = new TextBlock
+            {
+                Text = subtitle,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = SecondaryTextBrush
+            };
+            ApplyCaptionTextStyle(sub);
+            inner.Children.Add(sub);
+        }
+
+        inner.Children.Add(content);
+        return WrapCard(inner);
+    }
+
+    public static Border StatusTile(string title, string value, string? caption = null)
+    {
+        var inner = new StackPanel { Spacing = 4 };
+        inner.Children.Add(new TextBlock
+        {
+            Text = title,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = SecondaryTextBrush,
+            FontSize = 11
+        });
+        inner.Children.Add(new TextBlock
+        {
+            Text = value,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = PrimaryTextBrush,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            FontSize = 13
+        });
+        if (!string.IsNullOrWhiteSpace(caption))
+        {
+            var cap = new TextBlock
+            {
+                Text = caption,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = TertiaryTextBrush
+            };
+            ApplyCaptionTextStyle(cap);
+            inner.Children.Add(cap);
+        }
+
+        return WrapCard(inner, new Thickness(12, 10, 12, 10));
+    }
+
+    public static Border ActionGroup(string title, params UIElement[] actions)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        foreach (var action in actions)
+            row.Children.Add(action);
+
+        return SectionCard(title, null, row);
+    }
+
+    public static Border CommandSurface(string title, params UIElement[] commands)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        foreach (var command in commands)
+            row.Children.Add(command);
+
+        return SectionCard(title, null, row);
+    }
+
+    public static Border EmptyState(string title, string message, string? hint = null)
+    {
+        var inner = new StackPanel { Spacing = 6 };
+        inner.Children.Add(new TextBlock
+        {
+            Text = title,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = PrimaryTextBrush,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+        });
+        inner.Children.Add(new TextBlock
+        {
+            Text = message,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = SecondaryTextBrush
+        });
+        if (!string.IsNullOrWhiteSpace(hint))
+        {
+            var h = new TextBlock
+            {
+                Text = hint,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = TertiaryTextBrush
+            };
+            ApplyCaptionTextStyle(h);
+            inner.Children.Add(h);
+        }
+
+        return WrapCard(inner, new Thickness(14, 12, 14, 12));
+    }
+
+    public static InfoBar RiskGateCard(string title, string message, InfoBarSeverity severity)
+    {
+        return new InfoBar
+        {
+            IsOpen = true,
+            Title = title,
+            Message = message,
+            Severity = severity
+        };
+    }
+
+    public static Border NextBestActionBar(
+        NextBestAction action,
+        Button primary,
+        Button secondary,
+        Button dismiss)
+    {
+        primary.Content = action.PrimaryLabel;
+        secondary.Content = action.SecondaryLabel;
+        dismiss.Content = "Dismiss";
+        StyleActionButton(primary, accent: action.Severity is "success" or "warning");
+        StyleActionButton(secondary);
+        StyleActionButton(dismiss, compact: true);
+
+        var badge = new Border
+        {
+            CornerRadius = new CornerRadius(PillCornerRadius),
+            Padding = new Thickness(10, 4, 10, 4),
+            Background = BadgeBackground,
+            Child = new TextBlock
+            {
+                Text = action.RequiresApproval ? "approval required" : action.Severity,
+                TextWrapping = TextWrapping.NoWrap,
+                Foreground = SecondaryTextBrush,
+                FontSize = 11
+            }
+        };
+
+        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        titleRow.Children.Add(new TextBlock
+        {
+            Text = action.Title,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = PrimaryTextBrush,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            FontSize = 15
+        });
+        titleRow.Children.Add(badge);
+
+        var left = new StackPanel { Spacing = 6 };
+        left.Children.Add(titleRow);
+        left.Children.Add(new TextBlock
+        {
+            Text = action.Message,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = PrimaryTextBrush,
+            FontSize = 14
+        });
+        var context = new TextBlock
+        {
+            Text = action.Context,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = SecondaryTextBrush
+        };
+        ApplyCaptionTextStyle(context);
+        left.Children.Add(context);
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Spacing = 8
+        };
+        if (!string.IsNullOrWhiteSpace(action.PrimaryLabel))
+            buttons.Children.Add(primary);
+        if (!string.IsNullOrWhiteSpace(action.SecondaryLabel))
+            buttons.Children.Add(secondary);
+        buttons.Children.Add(dismiss);
+
+        var grid = new Grid { ColumnSpacing = 16 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.Children.Add(left);
+        grid.Children.Add(buttons);
+        Grid.SetColumn(buttons, 1);
+        return WrapCard(grid, new Thickness(16, 14, 16, 14));
+    }
+
+    public static Border GhostOperatorCard(
+        GhostOperatorSuggestion suggestion,
+        Button primary,
+        Button why,
+        Button ignore,
+        Button openPowerUser)
+    {
+        primary.Content = suggestion.ActionLabel;
+        why.Content = "Why?";
+        ignore.Content = "Ignore";
+        openPowerUser.Content = suggestion.SecondaryLabel;
+        StyleActionButton(primary, accent: !suggestion.RequiresApproval);
+        StyleActionButton(why);
+        StyleActionButton(openPowerUser);
+        StyleActionButton(ignore, compact: true);
+
+        var badge = new Border
+        {
+            CornerRadius = new CornerRadius(PillCornerRadius),
+            Padding = new Thickness(10, 4, 10, 4),
+            Background = BadgeBackground,
+            Child = new TextBlock
+            {
+                Text = $"{suggestion.Risk} · {(int)(suggestion.Confidence * 100)}%",
+                TextWrapping = TextWrapping.NoWrap,
+                Foreground = SecondaryTextBrush,
+                FontSize = 11
+            }
+        };
+
+        var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        header.Children.Add(new FontIcon
+        {
+            Glyph = "\uE9F5",
+            FontFamily = new FontFamily("Segoe Fluent Icons"),
+            Foreground = PrimaryTextBrush
+        });
+        header.Children.Add(new TextBlock
+        {
+            Text = suggestion.Title,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = PrimaryTextBrush,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            FontSize = 16
+        });
+        header.Children.Add(badge);
+
+        var copy = new StackPanel { Spacing = 6 };
+        copy.Children.Add(header);
+        copy.Children.Add(new TextBlock
+        {
+            Text = suggestion.Situation,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = PrimaryTextBrush,
+            FontSize = 14
+        });
+        copy.Children.Add(new TextBlock
+        {
+            Text = suggestion.Why,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = SecondaryTextBrush
+        });
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Spacing = 8
+        };
+        buttons.Children.Add(primary);
+        buttons.Children.Add(openPowerUser);
+        buttons.Children.Add(why);
+        buttons.Children.Add(ignore);
+
+        var grid = new Grid { ColumnSpacing = 16 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.Children.Add(copy);
+        grid.Children.Add(buttons);
+        Grid.SetColumn(buttons, 1);
+        return WrapCard(grid, new Thickness(16, 14, 16, 14));
     }
 
     public static void ApplyCardElevation(Border border, float z = 6f)

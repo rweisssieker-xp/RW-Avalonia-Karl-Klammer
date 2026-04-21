@@ -20,14 +20,33 @@ namespace CarolusNexus_WinUI.Pages;
 /// <summary>Full Ask workflow (plans, PTT, speak) — parity target for Avalonia Ask tab.</summary>
 public sealed class AskShellPage : Page
 {
+    private sealed class PlanPreviewRow
+    {
+        public int Step { get; init; }
+        public string ActionType { get; init; } = "";
+        public string Target { get; init; } = "";
+        public string Risk { get; init; } = "";
+        public string Status { get; init; } = "";
+        public int WaitMs { get; init; }
+    }
+
     private readonly TextBox _prompt = new() { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 100 };
     private readonly TextBox _assistant = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 100 };
     private readonly TextBox _retrieval = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 56 };
     private readonly TextBox _planPreview = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 80, FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas") };
+    private readonly ListView _planTable = new() { MinHeight = 160, SelectionMode = ListViewSelectionMode.None };
     private readonly TextBox _planExec = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 100, FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas") };
     private readonly CheckBox _shots = new() { Content = "Include screenshots", IsChecked = true };
     private readonly CheckBox _know = new() { Content = "Use local knowledge", IsChecked = true };
     private readonly InfoBar _busy = new() { IsOpen = false, Title = "Working" };
+    private readonly TextBlock _commandStatus = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _nextAction = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _safetyGate = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly Button _nbaPrimary = new();
+    private readonly Button _nbaSecondary = new();
+    private readonly Button _nbaDismiss = new();
+    private Border? _nextBestActionBar;
+    private NextBestAction? _nextBestAction;
     private readonly InfoBar _planRisk = new()
     {
         IsOpen = true,
@@ -44,71 +63,40 @@ public sealed class AskShellPage : Page
     private bool _awaitGlobalHotkeyRelease;
     public AskShellPage()
     {
-        var bAsk = new Button { Content = "Ask now" };
-        WinUiFluentChrome.StyleActionButton(bAsk, accent: true);
-        bAsk.Click += async (_, _) => await RunAskAsync();
-        var bSmoke = new Button { Content = "Smoke test" };
-        WinUiFluentChrome.StyleActionButton(bSmoke);
-        bSmoke.Click += async (_, _) => await RunSmokeAsync();
-        var bImport = new Button { Content = "Import audio + transcribe" };
-        WinUiFluentChrome.StyleActionButton(bImport);
-        bImport.Click += async (_, _) => await ImportAudioAsync();
-        var bPtt0 = new Button { Content = "Start push-to-talk" };
-        WinUiFluentChrome.StyleActionButton(bPtt0);
-        bPtt0.Click += (_, _) => StartMic("(button)", false);
-        var bPtt1 = new Button { Content = "Stop + ask" };
-        WinUiFluentChrome.StyleActionButton(bPtt1);
-        bPtt1.Click += async (_, _) => await StopMicTranscribeAndAskAsync();
-        var bCancel = new Button { Content = "Cancel recording" };
-        WinUiFluentChrome.StyleActionButton(bCancel);
-        bCancel.Click += (_, _) => CancelMic();
-        var bRun = new Button { Content = "Run plan" };
-        WinUiFluentChrome.StyleActionButton(bRun, accent: true);
-        bRun.Click += async (_, _) => await ExecutePlanAsync(false);
-        var bApr = new Button { Content = "Approve + run" };
-        WinUiFluentChrome.StyleActionButton(bApr);
-        bApr.Click += async (_, _) => await ExecutePlanAfterConfirmAsync();
-        var bNext = new Button { Content = "Run next step" };
-        WinUiFluentChrome.StyleActionButton(bNext);
-        bNext.Click += async (_, _) => await RunNextPlanStepAsync();
-        var bSave = new Button { Content = "Save plan as flow" };
-        WinUiFluentChrome.StyleActionButton(bSave);
-        bSave.Click += (_, _) => SavePlanAsRitual();
-        var bClr = new Button { Content = "Clear plan" };
-        WinUiFluentChrome.StyleActionButton(bClr);
-        bClr.Click += (_, _) =>
+        var bAsk = WinUiFluentChrome.AppBarCommand("Ask now", "\uE768", async (_, _) => await RunAskAsync());
+        var bSmoke = WinUiFluentChrome.AppBarCommand("Smoke test", "\uE9CE", async (_, _) => await RunSmokeAsync());
+        var bImport = WinUiFluentChrome.AppBarCommand("Import audio + transcribe", "\uE8B5", async (_, _) => await ImportAudioAsync());
+        var bPtt0 = WinUiFluentChrome.AppBarCommand("Start push-to-talk", "\uE720", (_, _) => StartMic("(button)", false));
+        var bPtt1 = WinUiFluentChrome.AppBarCommand("Stop + ask", "\uE71A", async (_, _) => await StopMicTranscribeAndAskAsync());
+        var bCancel = WinUiFluentChrome.AppBarCommand("Cancel recording", "\uE711", (_, _) => CancelMic());
+        var bRun = WinUiFluentChrome.AppBarCommand("Run plan", "\uE768", async (_, _) => await ExecutePlanAsync(false));
+        var bApr = WinUiFluentChrome.AppBarCommand("Approve + run", "\uE73E", async (_, _) => await ExecutePlanAfterConfirmAsync());
+        var bNext = WinUiFluentChrome.AppBarCommand("Run next step", "\uE72A", async (_, _) => await RunNextPlanStepAsync());
+        var bSave = WinUiFluentChrome.AppBarCommand("Save plan as flow", "\uE74E", (_, _) => SavePlanAsRitual());
+        var bClr = WinUiFluentChrome.AppBarCommand("Clear plan", "\uE74D", (_, _) =>
         {
             _planPreview.Text = "";
             _planExec.Text = "";
             _planSteps.Clear();
             _planStepIndex = 0;
+            _planTable.ItemsSource = Array.Empty<PlanPreviewRow>();
             _planRisk.Severity = InfoBarSeverity.Informational;
             _planRisk.Message = "No plan yet.";
-        };
-        var bPanic = new Button { Content = "Panic stop" };
-        WinUiFluentChrome.StyleActionButton(bPanic);
-        bPanic.Click += (_, _) =>
+        });
+        var bPanic = WinUiFluentChrome.AppBarCommand("Panic stop", "\uE711", (_, _) =>
         {
             _cts?.Cancel();
             NexusShell.Log("panic stop");
-        };
-        var bSpeak = new Button { Content = "Speak response" };
-        WinUiFluentChrome.StyleActionButton(bSpeak);
-        bSpeak.Click += async (_, _) => await SpeakAsync();
-
-        static StackPanel HRow(params UIElement[] els)
-        {
-            var sp = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-            foreach (var e in els)
-                sp.Children.Add(e);
-            return sp;
-        }
+        });
+        var bSpeak = WinUiFluentChrome.AppBarCommand("Speak response", "\uE995", async (_, _) => await SpeakAsync());
 
         var toolInner = new StackPanel { Spacing = 10 };
         toolInner.Children.Add(WinUiFluentChrome.ColumnCaption("Ask, voice, and plans"));
-        toolInner.Children.Add(HRow(bAsk, bSmoke, bImport));
-        toolInner.Children.Add(HRow(bPtt0, bPtt1, bCancel));
-        toolInner.Children.Add(HRow(bRun, bApr, bNext, bSave, bClr, bPanic, bSpeak));
+        toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Ask", bAsk, bSmoke));
+        toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Voice", bPtt0, bPtt1, bCancel, bImport, bSpeak));
+        toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Plan", bSave, bClr));
+        toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Execution", bRun, bApr, bNext));
+        toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Safety", bPanic));
         var opts = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
         opts.Children.Add(_shots);
         opts.Children.Add(_know);
@@ -126,6 +114,9 @@ public sealed class AskShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(sub);
         top.Children.Add(sub);
+        top.Children.Add(BuildCommandCenter());
+        _nextBestActionBar = BuildNextBestActionBar();
+        top.Children.Add(_nextBestActionBar);
         top.Children.Add(toolCard);
         top.Children.Add(_planRisk);
         var mid = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = top };
@@ -139,7 +130,10 @@ public sealed class AskShellPage : Page
         left.Children.Add(_retrieval);
 
         var right = new StackPanel { Spacing = 10 };
-        right.Children.Add(WinUiFluentChrome.ColumnCaption("Action plan preview"));
+        right.Children.Add(WinUiFluentChrome.ColumnCaption("Action plan risk table"));
+        ConfigurePlanTable();
+        right.Children.Add(_planTable);
+        _planPreview.Visibility = Visibility.Collapsed;
         right.Children.Add(_planPreview);
         right.Children.Add(WinUiFluentChrome.ColumnCaption("Plan execution log"));
         right.Children.Add(_planExec);
@@ -174,7 +168,124 @@ public sealed class AskShellPage : Page
             WinUiShellState.PttAwaitsHotkeyRelease = () => _isRecording && _awaitGlobalHotkeyRelease;
             WinUiShellState.OnPttReleasedAsync = StopMicTranscribeAndAskAsync;
             ActivityStatusHub.RefreshFromStores();
+            RefreshCommandCenter();
+            RefreshNextBestAction();
         };
+    }
+
+    private Border BuildNextBestActionBar()
+    {
+        _nbaPrimary.Click += (_, _) => ApplyNextBestActionPrimary();
+        _nbaSecondary.Click += (_, _) => ApplyNextBestActionSecondary();
+        _nbaDismiss.Click += (_, _) =>
+        {
+            if (_nextBestActionBar != null)
+                _nextBestActionBar.Visibility = Visibility.Collapsed;
+        };
+        _nextBestAction = NextBestActionService.Build(WinUiShellState.Settings, WinUiShellState.LiveContextLine);
+        return WinUiFluentChrome.NextBestActionBar(_nextBestAction, _nbaPrimary, _nbaSecondary, _nbaDismiss);
+    }
+
+    private void RefreshNextBestAction()
+    {
+        _nextBestAction = NextBestActionService.Build(WinUiShellState.Settings, WinUiShellState.LiveContextLine);
+        if (_nextBestActionBar == null)
+            return;
+        var parent = _nextBestActionBar.Parent as StackPanel;
+        var index = parent?.Children.IndexOf(_nextBestActionBar) ?? -1;
+        var visible = _nextBestActionBar.Visibility;
+        parent?.Children.Remove(_nextBestActionBar);
+        _nextBestActionBar = WinUiFluentChrome.NextBestActionBar(_nextBestAction, _nbaPrimary, _nbaSecondary, _nbaDismiss);
+        _nextBestActionBar.Visibility = visible == Visibility.Collapsed ? Visibility.Collapsed : Visibility.Visible;
+        if (parent != null && index >= 0)
+            parent.Children.Insert(index, _nextBestActionBar);
+    }
+
+    private void ApplyNextBestActionPrimary()
+    {
+        if (_nextBestAction == null)
+            return;
+
+        switch (_nextBestAction.Intent)
+        {
+            case "setup.provider":
+                NexusShell.Log("Next action: open Setup and configure the provider key.");
+                break;
+            case "live.ax_context":
+                _prompt.Text = "Inspect the active AX context and propose a guarded, read-first plan. Do not write or post anything.";
+                NexusShell.Log("Next action: AX context prompt prepared.");
+                break;
+            default:
+                _prompt.Text = _nextBestAction.Message;
+                NexusShell.Log("Next action: prompt prepared.");
+                break;
+        }
+    }
+
+    private void ApplyNextBestActionSecondary()
+    {
+        if (_nextBestAction == null)
+            return;
+
+        _prompt.Text = _nextBestAction.Intent switch
+        {
+            "ask.mail_summary" => "Summarize the active mail and draft a safe reply. Do not send.",
+            "ask.knowledge" => "Use local knowledge to answer my current task. Cite the relevant local context and do not execute actions.",
+            "live.ax_context" => "Build a guarded AX plan from the current foreground context. Read first, require approval for any write step.",
+            _ => "Use the current desktop context to propose the safest next action. Do not execute anything."
+        };
+        NexusShell.Log("Next action: secondary prompt prepared.");
+    }
+
+    private UIElement BuildCommandCenter()
+    {
+        _commandStatus.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        _nextAction.Foreground = WinUiFluentChrome.PrimaryTextBrush;
+        _nextAction.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+        _safetyGate.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+
+        var grid = new Grid { ColumnSpacing = 12 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var left = new StackPanel
+        {
+            Spacing = 6,
+            Children =
+            {
+                WinUiFluentChrome.ColumnCaption("AI Command Center"),
+                _commandStatus
+            }
+        };
+        var right = new StackPanel
+        {
+            Spacing = 6,
+            Children =
+            {
+                WinUiFluentChrome.ColumnCaption("Next Action + Safety Gate"),
+                _nextAction,
+                _safetyGate
+            }
+        };
+
+        grid.Children.Add(left);
+        grid.Children.Add(right);
+        Grid.SetColumn(right, 1);
+        return WinUiFluentChrome.WrapCard(grid, new Thickness(16, 14, 16, 14));
+    }
+
+    private void RefreshCommandCenter()
+    {
+        var insight = OperatorInsightService.BuildSnapshot(WinUiShellState.Settings);
+        var screenshots = _shots.IsChecked == true ? "screenshots on" : "screenshots off";
+        var knowledge = _know.IsChecked == true ? "knowledge on" : "knowledge off";
+        _commandStatus.Text =
+            $"{WinUiShellState.Settings.Provider} / {WinUiShellState.Settings.Mode} · {insight.ProcessName} · {insight.AdapterFamily}\n" +
+            $"{screenshots} · {knowledge} · readiness {insight.ReadinessScore}/{insight.ReadinessMax}";
+        _nextAction.Text = insight.SafeNextAction;
+        _safetyGate.Text =
+            $"Risky: {insight.RiskyAction}\n" +
+            $"Gate: plan execution stays behind PlanGuard, approval, and Panic Stop.";
     }
 
     private void SetBusyBar(bool busy)
@@ -426,6 +537,7 @@ public sealed class AskShellPage : Page
             _planPreview.Text = fromRegex.Count > 0
                 ? ActionPlanExtractor.FormatPreview(tokens)
                 : FormatStepsForPreview(_planSteps);
+            RefreshPlanTable();
             _planExec.Text = $"({_planSteps.Count} steps — run plan / run next)";
             RefreshPlanRiskPreview();
 
@@ -561,8 +673,10 @@ public sealed class AskShellPage : Page
             : InfoBarSeverity.Success;
 
         _planRisk.Severity = severity;
+        var quality = OperatorInsightService.ScoreFlow(steps, WinUiShellState.Settings);
         _planRisk.Message =
             $"{steps.Count} step(s) · write-like: {writeLike} · AX-like: {axLike} · safety: {WinUiShellState.Settings.Safety.Profile}. " +
+            $"{quality.Summary} " +
             (powerUser ? "Execution can run through guards." : "Execution remains guarded/simulation unless safety allows it.");
     }
 
@@ -621,5 +735,124 @@ public sealed class AskShellPage : Page
         }
 
         return sb.ToString().TrimEnd();
+    }
+
+    private void ConfigurePlanTable()
+    {
+        if (_planTable.ItemTemplate != null)
+            return;
+
+        _planTable.Header = new Grid
+        {
+            ColumnSpacing = 10,
+            Padding = new Thickness(8, 6, 8, 6),
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = new GridLength(44) },
+                new ColumnDefinition { Width = new GridLength(110) },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = new GridLength(92) },
+                new ColumnDefinition { Width = new GridLength(98) },
+                new ColumnDefinition { Width = new GridLength(70) }
+            },
+            Children =
+            {
+                HeaderText("#", 0),
+                HeaderText("Action", 1),
+                HeaderText("Target", 2),
+                HeaderText("Risk", 3),
+                HeaderText("Status", 4),
+                HeaderText("Wait", 5)
+            }
+        };
+
+        _planTable.ItemTemplate = BuildPlanRowTemplate();
+        _planTable.ItemsSource = Array.Empty<PlanPreviewRow>();
+    }
+
+    private static TextBlock HeaderText(string text, int col)
+    {
+        var tb = new TextBlock
+        {
+            Text = text,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = WinUiFluentChrome.PrimaryTextBrush
+        };
+        Grid.SetColumn(tb, col);
+        return tb;
+    }
+
+    private static DataTemplate BuildPlanRowTemplate()
+    {
+        const string xaml =
+            """
+            <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+              <Grid ColumnSpacing="10" Padding="8,6,8,6">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="44"/>
+                  <ColumnDefinition Width="110"/>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="92"/>
+                  <ColumnDefinition Width="98"/>
+                  <ColumnDefinition Width="70"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{Binding Step}" TextWrapping="Wrap"/>
+                <TextBlock Grid.Column="1" Text="{Binding ActionType}" TextWrapping="Wrap"/>
+                <TextBlock Grid.Column="2" Text="{Binding Target}" TextWrapping="Wrap"/>
+                <TextBlock Grid.Column="3" Text="{Binding Risk}" TextWrapping="Wrap"/>
+                <TextBlock Grid.Column="4" Text="{Binding Status}" TextWrapping="Wrap"/>
+                <TextBlock Grid.Column="5" Text="{Binding WaitMs}" TextWrapping="Wrap"/>
+              </Grid>
+            </DataTemplate>
+            """;
+        return (DataTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(xaml);
+    }
+
+    private void RefreshPlanTable()
+    {
+        var steps = ActivePlanSteps();
+        _planTable.ItemsSource = steps.Select((s, i) => new PlanPreviewRow
+        {
+            Step = i + 1,
+            ActionType = string.IsNullOrWhiteSpace(s.ActionType) ? "token" : s.ActionType,
+            Target = Shorten(s.ActionArgument ?? "", 96),
+            Risk = ClassifyRisk(s),
+            Status = ClassifyStatus(s),
+            WaitMs = s.WaitMs
+        }).ToList();
+    }
+
+    private static string ClassifyRisk(RecipeStep step)
+    {
+        var a = step.ActionArgument ?? "";
+        if (a.Contains("ax.", StringComparison.OrdinalIgnoreCase) || a.Contains("ax|", StringComparison.OrdinalIgnoreCase))
+            return "AX";
+        if (a.Contains("send", StringComparison.OrdinalIgnoreCase) ||
+            a.Contains("post", StringComparison.OrdinalIgnoreCase) ||
+            a.Contains("book", StringComparison.OrdinalIgnoreCase))
+            return "High";
+        if (a.Contains("[ACTION:", StringComparison.OrdinalIgnoreCase) ||
+            a.Contains("click", StringComparison.OrdinalIgnoreCase) ||
+            a.Contains("type", StringComparison.OrdinalIgnoreCase))
+            return "Guarded";
+        return "Low";
+    }
+
+    private static string ClassifyStatus(RecipeStep step)
+    {
+        var risk = ClassifyRisk(step);
+        return risk switch
+        {
+            "Low" => "safe",
+            "Guarded" => "guarded",
+            "AX" => "review",
+            _ => "confirm"
+        };
+    }
+
+    private static string Shorten(string value, int max)
+    {
+        value = value.Replace("\r", " ").Replace("\n", " ").Trim();
+        return value.Length <= max ? value : value[..max] + "...";
     }
 }

@@ -59,6 +59,7 @@ public sealed class SetupShellPage : Page
         TextWrapping = TextWrapping.Wrap
     };
     private readonly TextBlock _envPath = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly StackPanel _setupStatus = new() { Orientation = Orientation.Horizontal, Spacing = 10 };
     private readonly InfoBar _bar = new() { IsOpen = false };
 
     public SetupShellPage()
@@ -100,6 +101,7 @@ public sealed class SetupShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(setupHint);
         sp.Children.Add(setupHint);
+        sp.Children.Add(_setupStatus);
         sp.Children.Add(_bar);
 
         var actionRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
@@ -185,6 +187,7 @@ public sealed class SetupShellPage : Page
         _envSummary.Text = keys.Count == 0
             ? "(no .env or empty — template: windows\\.env.example)"
             : string.Join("\r\n", keys.Select(k => k + "=***"));
+        RefreshSetupStatus(WinUiShellState.Settings);
     }
 
     private void Apply(NexusSettings s)
@@ -222,6 +225,20 @@ public sealed class SetupShellPage : Page
         _axDb.Text = s.AxBcDatabase ?? "";
         _axLang.Text = string.IsNullOrWhiteSpace(s.AxBcLanguage) ? "en-us" : s.AxBcLanguage;
         RefreshEnvSummary();
+        RefreshSetupStatus(s);
+    }
+
+    private void RefreshSetupStatus(NexusSettings s)
+    {
+        _setupStatus.Children.Clear();
+        var keyState = DotEnvStore.HasProviderKey(s.Provider) ? "key ready" : "key missing";
+        var toolHost = s.EnableLocalToolHost ? $"127.0.0.1:{s.LocalToolHostPort}" : "off";
+        var ax = s.AxIntegrationEnabled ? s.AxIntegrationBackend : "off";
+        _setupStatus.Children.Add(WinUiFluentChrome.StatusTile("Provider", s.Provider, keyState));
+        _setupStatus.Children.Add(WinUiFluentChrome.StatusTile("Mode", s.Mode, s.Model));
+        _setupStatus.Children.Add(WinUiFluentChrome.StatusTile("Safety", s.Safety.Profile, s.Safety.PanicStopEnabled ? "panic enabled" : "panic off"));
+        _setupStatus.Children.Add(WinUiFluentChrome.StatusTile("Tool host", toolHost, "local only"));
+        _setupStatus.Children.Add(WinUiFluentChrome.StatusTile("AX", ax, s.AxTestTenantLabel ?? "test tenant optional"));
     }
 
     private NexusSettings Gather()
