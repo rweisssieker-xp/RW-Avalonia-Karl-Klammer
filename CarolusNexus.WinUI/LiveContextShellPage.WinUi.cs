@@ -7,6 +7,8 @@ using CarolusNexus_WinUI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using VirtualKey = Windows.System.VirtualKey;
+using VirtualKeyModifiers = Windows.System.VirtualKeyModifiers;
 
 namespace CarolusNexus_WinUI.Pages;
 
@@ -79,7 +81,8 @@ public sealed class LiveContextShellPage : Page
         inspectorRow.Children.Add(_inspectorAction);
         var run = new Button { Content = "Run", Margin = new Thickness(8, 0, 0, 0) };
         WinUiFluentChrome.StyleActionButton(run, accent: true);
-        WinUiFluentChrome.SetIconButton(run, "Run", "\uE768");
+        WinUiFluentChrome.SetIconButton(run, "Run", "\uE768", "F9");
+        WinUiFluentChrome.AddShortcut(run, VirtualKey.F9, tooltip: "F9");
         run.Click += (_, _) => RunInspectorCustom();
         Grid.SetColumn(run, 1);
         inspectorRow.Children.Add(run);
@@ -134,16 +137,7 @@ public sealed class LiveContextShellPage : Page
     private void RefreshNextBestActionBar()
     {
         _nextBestAction = NextBestActionService.Build(WinUiShellState.Settings, WinUiShellState.LiveContextLine);
-        if (_nextBestActionBar == null)
-            return;
-        var parent = _nextBestActionBar.Parent as StackPanel;
-        var index = parent?.Children.IndexOf(_nextBestActionBar) ?? -1;
-        var visible = _nextBestActionBar.Visibility;
-        parent?.Children.Remove(_nextBestActionBar);
-        _nextBestActionBar = WinUiFluentChrome.NextBestActionBar(_nextBestAction, _nbaPrimary, _nbaSecondary, _nbaDismiss);
-        _nextBestActionBar.Visibility = visible == Visibility.Collapsed ? Visibility.Collapsed : Visibility.Visible;
-        if (parent != null && index >= 0)
-            parent.Children.Insert(index, _nextBestActionBar);
+        NexusShell.Log("Live Context next action refreshed: " + _nextBestAction.Message);
     }
 
     private static TextBox MkSnap() =>
@@ -362,6 +356,8 @@ public sealed class LiveContextShellPage : Page
                 "Switch to the AX client or use the AX button for context hints.";
         }
     }
+
+    public void PaletteRunInspector() => RunInspectorCustom();
 
     private static string FormatWatchStatus()
     {

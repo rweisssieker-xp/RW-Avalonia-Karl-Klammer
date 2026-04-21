@@ -1,12 +1,15 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using CarolusNexus;
 using CarolusNexus.Services;
 using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using VirtualKey = Windows.System.VirtualKey;
+using VirtualKeyModifiers = Windows.System.VirtualKeyModifiers;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
@@ -35,16 +38,21 @@ public sealed class KnowledgeShellPage : Page
         MinHeight = 200,
         FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas")
     };
+    private readonly TextBlock _editState = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
+    private string? _editingPath;
     private string[] _allFiles = Array.Empty<string>();
     private bool? _narrow;
 
     public KnowledgeShellPage()
     {
-        var search = WinUiFluentChrome.AppBarCommand("Search", "\uE721", (_, _) => ApplySearch());
-        var import = WinUiFluentChrome.AppBarCommand("Import", "\uE8B5", async (_, _) => await ImportAsync());
-        var remove = WinUiFluentChrome.AppBarCommand("Remove", "\uE74D", (_, _) => RemoveSelected());
-        var reindex = WinUiFluentChrome.AppBarCommand("Reindex", "\uE72C", (_, _) => OnReindex());
-        var suggest = WinUiFluentChrome.AppBarCommand("Suggest flow", "\uE9CE", async (_, _) => await SuggestRitualAsync());
+        var search = WinUiFluentChrome.AppBarCommand("Search", "\uE721", (_, _) => ApplySearch(), "Ctrl+F", VirtualKey.F, VirtualKeyModifiers.Control);
+        var import = WinUiFluentChrome.AppBarCommand("Import", "\uE8B5", async (_, _) => await ImportAsync(), "Ctrl+I", VirtualKey.I, VirtualKeyModifiers.Control);
+        var remove = WinUiFluentChrome.AppBarCommand("Remove", "\uE74D", (_, _) => RemoveSelected(), "Del", VirtualKey.Delete);
+        var reindex = WinUiFluentChrome.AppBarCommand("Reindex", "\uE72C", (_, _) => OnReindex(), "F5", VirtualKey.F5);
+        var suggest = WinUiFluentChrome.AppBarCommand("Suggest flow", "\uE9CE", async (_, _) => await SuggestRitualAsync(), "Ctrl+G", VirtualKey.G, VirtualKeyModifiers.Control);
+        var edit = WinUiFluentChrome.AppBarCommand("Edit selected", "\uE70F", (_, _) => BeginEditSelected(), "Ctrl+E", VirtualKey.E, VirtualKeyModifiers.Control);
+        var save = WinUiFluentChrome.AppBarCommand("Save changes", "\uE74E", (_, _) => SaveEdit(), "Ctrl+S", VirtualKey.S, VirtualKeyModifiers.Control);
+        var cancel = WinUiFluentChrome.AppBarCommand("Cancel edit", "\uE711", (_, _) => CancelEdit(), "Esc", VirtualKey.Escape);
 
         _leftPane.Children.Add(WinUiFluentChrome.PageTitle("Knowledge"));
         var knowHint = new TextBlock
@@ -55,14 +63,19 @@ public sealed class KnowledgeShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(knowHint);
         _leftPane.Children.Add(knowHint);
+        _leftPane.Children.Add(WinUiFluentChrome.StatusTile("Runtime reality", "real local files", "semantic RAG optional; editor supports text formats"));
+        _leftPane.Children.Add(WinUiFluentChrome.CommandSurface("Knowledge actions", search, import, remove, reindex, suggest));
+        _leftPane.Children.Add(WinUiFluentChrome.CommandSurface("Editor", edit, save, cancel));
         _nextBestActionBar = BuildNextBestActionBar();
         _leftPane.Children.Add(_nextBestActionBar);
         _leftPane.Children.Add(_knowledgeStatus);
         _leftPane.Children.Add(_search);
-        _leftPane.Children.Add(WinUiFluentChrome.CommandSurface("Knowledge actions", search, import, remove, reindex, suggest));
         _leftPane.Children.Add(_docList);
 
         _rightPane.Children.Add(WinUiFluentChrome.ColumnCaption("Preview"));
+        _editState.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        WinUiFluentChrome.ApplyCaptionTextStyle(_editState);
+        _rightPane.Children.Add(_editState);
         _rightPane.Children.Add(_preview);
 
         _docList.SelectionChanged += OnSel;
@@ -95,7 +108,7 @@ public sealed class KnowledgeShellPage : Page
 
         if (narrow)
         {
-            _knowRoot.RowDefinitions.Add(new RowDefinition { Height = new GridLength(220) });
+            _knowRoot.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             _knowRoot.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             _knowRoot.Children.Add(_leftPane);
             _knowRoot.Children.Add(_rightPane);
@@ -105,7 +118,7 @@ public sealed class KnowledgeShellPage : Page
         }
         else
         {
-            _knowRoot.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(260) });
+            _knowRoot.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(380) });
             _knowRoot.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             _knowRoot.Children.Add(_leftPane);
             _knowRoot.Children.Add(_rightPane);
@@ -153,16 +166,7 @@ public sealed class KnowledgeShellPage : Page
     private void RefreshNextBestActionBar()
     {
         _nextBestAction = NextBestActionService.Build(WinUiShellState.Settings, WinUiShellState.LiveContextLine);
-        if (_nextBestActionBar == null)
-            return;
-        var parent = _nextBestActionBar.Parent as StackPanel;
-        var index = parent?.Children.IndexOf(_nextBestActionBar) ?? -1;
-        var visible = _nextBestActionBar.Visibility;
-        parent?.Children.Remove(_nextBestActionBar);
-        _nextBestActionBar = WinUiFluentChrome.NextBestActionBar(_nextBestAction, _nbaPrimary, _nbaSecondary, _nbaDismiss);
-        _nextBestActionBar.Visibility = visible == Visibility.Collapsed ? Visibility.Collapsed : Visibility.Visible;
-        if (parent != null && index >= 0)
-            parent.Children.Insert(index, _nextBestActionBar);
+        NexusShell.Log("Knowledge next action refreshed: " + _nextBestAction.Message);
     }
 
     private void ApplySearch()
@@ -237,6 +241,8 @@ public sealed class KnowledgeShellPage : Page
 
         RefreshList();
         _preview.Text = "";
+        _editingPath = null;
+        UpdateEditState();
     }
 
     private void OnReindex()
@@ -290,6 +296,87 @@ public sealed class KnowledgeShellPage : Page
         if (_docList.SelectedItem is not string fname)
             return;
         var path = Path.Combine(AppPaths.KnowledgeDir, fname);
+        _editingPath = null;
+        _preview.IsReadOnly = true;
         _preview.Text = KnowledgeIndexService.ReadDocumentForPreview(path);
+        UpdateEditState();
+    }
+
+    private void BeginEditSelected()
+    {
+        if (_docList.SelectedItem is not string name)
+        {
+            NexusShell.Log("Edit: select a knowledge document first.");
+            return;
+        }
+
+        var path = Path.Combine(AppPaths.KnowledgeDir, name);
+        if (!IsEditableKnowledgeFile(path))
+        {
+            NexusShell.Log("Edit: this format is preview-only. Use text/markdown/json/csv/xml/html for direct editing.");
+            return;
+        }
+
+        try
+        {
+            _preview.Text = File.ReadAllText(path, Encoding.UTF8);
+            _preview.IsReadOnly = false;
+            _editingPath = path;
+            UpdateEditState();
+            NexusShell.Log("Edit mode: " + name);
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("Edit failed: " + ex.Message);
+        }
+    }
+
+    private void SaveEdit()
+    {
+        if (string.IsNullOrWhiteSpace(_editingPath))
+        {
+            NexusShell.Log("Save edit: no active edit.");
+            return;
+        }
+
+        try
+        {
+            File.WriteAllText(_editingPath, _preview.Text ?? "", Encoding.UTF8);
+            _preview.IsReadOnly = true;
+            var saved = Path.GetFileName(_editingPath);
+            _editingPath = null;
+            RefreshList();
+            UpdateEditState();
+            NexusShell.Log("Knowledge saved: " + saved + " — reindex recommended.");
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log("Save edit failed: " + ex.Message);
+        }
+    }
+
+    private void CancelEdit()
+    {
+        if (string.IsNullOrWhiteSpace(_editingPath))
+            return;
+        var path = _editingPath;
+        _editingPath = null;
+        _preview.IsReadOnly = true;
+        _preview.Text = KnowledgeIndexService.ReadDocumentForPreview(path);
+        UpdateEditState();
+        NexusShell.Log("Knowledge edit canceled.");
+    }
+
+    private void UpdateEditState()
+    {
+        _editState.Text = string.IsNullOrWhiteSpace(_editingPath)
+            ? "Preview mode. Select a text document and choose Edit selected to modify it locally."
+            : "Edit mode: " + Path.GetFileName(_editingPath) + " — Save changes writes the local file.";
+    }
+
+    private static bool IsEditableKnowledgeFile(string path)
+    {
+        var ext = Path.GetExtension(path).ToLowerInvariant();
+        return ext is ".txt" or ".md" or ".csv" or ".json" or ".xml" or ".html" or ".htm" or ".log";
     }
 }

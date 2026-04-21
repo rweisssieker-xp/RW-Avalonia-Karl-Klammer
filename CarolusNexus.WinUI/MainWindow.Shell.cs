@@ -93,7 +93,8 @@ public sealed partial class MainWindow
         _statusActivityTimer.Tick += (_, _) => ActivityStatusHub.RefreshFromStores();
 
         SetupPushToTalk();
-        _dashTimer.Start();
+        // Disabled for stability: dashboard refresh mutates dense WinUI visual trees after startup.
+        // Manual refresh still works through the Dashboard page button.
         _statusActivityTimer.Start();
         NexusShell.Log("WinUI: tray · companion · PTT · cached pages · dashboard timer.");
     }

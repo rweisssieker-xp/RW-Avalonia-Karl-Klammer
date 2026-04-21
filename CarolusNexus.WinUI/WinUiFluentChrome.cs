@@ -1,7 +1,10 @@
+using System.Collections.Generic;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Windows.System;
 
 namespace CarolusNexus_WinUI;
 
@@ -106,34 +109,75 @@ internal static class WinUiFluentChrome
             b.Style = st;
     }
 
-    public static void SetIconButton(Button b, string label, string glyph)
+    public static void SetIconButton(Button b, string label, string glyph, string? shortcut = null)
     {
-        b.Content = new StackPanel
+        var row = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 8,
-            Children =
-            {
-                new FontIcon
-                {
-                    Glyph = glyph,
-                    FontFamily = new FontFamily("Segoe Fluent Icons"),
-                    FontSize = 14
-                },
-                new TextBlock
-                {
-                    Text = label,
-                    VerticalAlignment = VerticalAlignment.Center
-                }
-            }
         };
+        row.Children.Add(new FontIcon
+        {
+            Glyph = glyph,
+            FontFamily = new FontFamily("Segoe Fluent Icons"),
+            FontSize = 14
+        });
+        row.Children.Add(new TextBlock
+        {
+            Text = label,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        if (!string.IsNullOrWhiteSpace(shortcut))
+        {
+            row.Children.Add(new TextBlock
+            {
+                Text = shortcut,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = TertiaryTextBrush,
+                FontSize = 11,
+                Margin = new Thickness(8, 0, 0, 0)
+            });
+        }
+
+        b.Content = row;
     }
 
-    public static Button AppBarCommand(string label, string glyph, RoutedEventHandler handler)
+    public static void AddShortcut(Button button, VirtualKey key, VirtualKeyModifiers modifiers = VirtualKeyModifiers.None, string? tooltip = null)
+    {
+        button.KeyboardAccelerators.Add(new KeyboardAccelerator
+        {
+            Key = key,
+            Modifiers = modifiers
+        });
+        ToolTipService.SetToolTip(button, tooltip ?? FormatShortcut(key, modifiers));
+    }
+
+    public static string FormatShortcut(VirtualKey key, VirtualKeyModifiers modifiers = VirtualKeyModifiers.None)
+    {
+        var parts = new List<string>();
+        if ((modifiers & VirtualKeyModifiers.Control) != 0)
+            parts.Add("Ctrl");
+        if ((modifiers & VirtualKeyModifiers.Shift) != 0)
+            parts.Add("Shift");
+        if ((modifiers & VirtualKeyModifiers.Menu) != 0)
+            parts.Add("Alt");
+        parts.Add(key switch
+        {
+            VirtualKey.Enter => "Enter",
+            VirtualKey.Escape => "Esc",
+            VirtualKey.Delete => "Del",
+            _ => key.ToString()
+        });
+        return string.Join("+", parts);
+    }
+
+    public static Button AppBarCommand(string label, string glyph, RoutedEventHandler handler, string? shortcut = null, VirtualKey? key = null, VirtualKeyModifiers modifiers = VirtualKeyModifiers.None)
     {
         var command = new Button();
         StyleActionButton(command);
-        SetIconButton(command, label, glyph);
+        SetIconButton(command, label, glyph, shortcut);
+        if (key.HasValue)
+            AddShortcut(command, key.Value, modifiers, shortcut);
         command.Click += handler;
         return command;
     }

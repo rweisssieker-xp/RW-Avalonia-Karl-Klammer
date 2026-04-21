@@ -60,6 +60,18 @@ public sealed partial class MainWindow : Window
         MinWidth = 0,
         VerticalAlignment = VerticalAlignment.Center
     };
+    private readonly GhostOperatorService _ghostOperator = new();
+    private readonly GhostOperatorState _ghostState = new();
+    private readonly Border _ghostPanel = new()
+    {
+        Width = 380,
+        HorizontalAlignment = HorizontalAlignment.Right,
+        VerticalAlignment = VerticalAlignment.Stretch,
+        Visibility = Microsoft.UI.Xaml.Visibility.Collapsed,
+        Margin = new Thickness(0, 0, 18, 18)
+    };
+    private readonly StackPanel _ghostPanelBody = new() { Spacing = 12 };
+    private GhostOperatorSuggestion? _currentGhostSuggestion;
 
     public MainWindow()
     {
@@ -85,7 +97,9 @@ public sealed partial class MainWindow : Window
         _nav.ItemInvoked += NavOnItemInvoked;
         _nav.Loaded += (_, _) =>
         {
-            _nav.SelectedItem = _nav.MenuItems.OfType<NavigationViewItem>().FirstOrDefault();
+            _nav.SelectedItem = _nav.MenuItems.OfType<NavigationViewItem>()
+                .FirstOrDefault(i => i.Tag is Type t && t == typeof(DashboardShellPage))
+                ?? _nav.MenuItems.OfType<NavigationViewItem>().FirstOrDefault();
             this.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
             {
                 if (_nav.SelectedItem is NavigationViewItem first && first.Tag is Type t)
@@ -102,6 +116,7 @@ public sealed partial class MainWindow : Window
         Grid.SetRow(_nav, 1);
 
         RootGrid.Children.Add(root);
+        RootGrid.Children.Add(BuildGhostSidePanel());
 
         RootGrid.SizeChanged += (_, e) =>
         {
@@ -123,6 +138,24 @@ public sealed partial class MainWindow : Window
         };
         paletteAccel.Invoked += OnCommandPaletteAccelerator;
         _nav.KeyboardAccelerators.Add(paletteAccel);
+        var shortcutHelpAccel = new KeyboardAccelerator
+        {
+            Key = VirtualKey.H,
+            Modifiers = Windows.System.VirtualKeyModifiers.Control
+        };
+        shortcutHelpAccel.Invoked += async (_, args) =>
+        {
+            args.Handled = true;
+            await ShowShortcutHelpAsync();
+        };
+        _nav.KeyboardAccelerators.Add(shortcutHelpAccel);
+        var handbookAccel = new KeyboardAccelerator { Key = VirtualKey.F1 };
+        handbookAccel.Invoked += (_, args) =>
+        {
+            args.Handled = true;
+            OnHandbookClick(this, new RoutedEventArgs());
+        };
+        _nav.KeyboardAccelerators.Add(handbookAccel);
 
         RootGrid.Loaded += OnMainShellLoaded;
     }
@@ -180,6 +213,13 @@ public sealed partial class MainWindow : Window
         var handbook = new HyperlinkButton { Content = "Handbook", VerticalAlignment = VerticalAlignment.Center };
         handbook.Click += OnHandbookClick;
         titleBtns.Children.Add(handbook);
+        var shortcuts = new HyperlinkButton { Content = "Shortcuts", VerticalAlignment = VerticalAlignment.Center };
+        shortcuts.Click += async (_, _) => await ShowShortcutHelpAsync();
+        titleBtns.Children.Add(shortcuts);
+        var ghost = new Button { Content = "Ghost", Padding = new Thickness(14, 8, 14, 8), CornerRadius = new CornerRadius(8) };
+        WinUiFluentChrome.AddShortcut(ghost, VirtualKey.G, Windows.System.VirtualKeyModifiers.Control, "Ctrl+G");
+        ghost.Click += (_, _) => ToggleGhostPanel();
+        titleBtns.Children.Add(ghost);
         Grid.SetColumn(titleBtns, 1);
         titleRow.Children.Add(titleBtns);
         stack.Children.Add(titleRow);
@@ -282,6 +322,200 @@ public sealed partial class MainWindow : Window
         };
         WinUiFluentChrome.ApplyCardElevation(b, 3f);
         return b;
+    }
+
+    private Border BuildGhostSidePanel()
+    {
+        _ghostPanel.CornerRadius = new CornerRadius(WinUiFluentChrome.CardCornerRadius);
+        _ghostPanel.BorderThickness = new Thickness(1);
+        _ghostPanel.BorderBrush = WinUiFluentChrome.CardBorderBrush;
+        _ghostPanel.Background = WinUiFluentChrome.LayerChromeBackground;
+        _ghostPanel.Padding = new Thickness(16);
+        WinUiFluentChrome.ApplyCardElevation(_ghostPanel, 12f);
+
+        var scroll = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Content = _ghostPanelBody
+        };
+
+        _ghostPanel.Child = scroll;
+        RenderGhostPanel();
+        return _ghostPanel;
+    }
+
+    private void ToggleGhostPanel()
+    {
+        if (_ghostPanel.Visibility == Microsoft.UI.Xaml.Visibility.Visible)
+        {
+            _ghostPanel.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+            return;
+        }
+
+        RefreshGhostSuggestion(force: true);
+        _ghostPanel.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+    }
+
+    private void RefreshGhostSuggestion(bool force = false)
+    {
+        _currentGhostSuggestion = _ghostOperator.TrySuggest(WinUiShellState.Settings, WinUiShellState.LiveContextLine, _ghostState);
+        if (_currentGhostSuggestion != null)
+            _ghostState.MarkShown(_currentGhostSuggestion);
+        else if (force)
+            _currentGhostSuggestion = new GhostOperatorSuggestion
+            {
+                Title = "No safe action detected",
+                Situation = "Ghost Operator is watching local shell state, live context and safety settings.",
+                ActionLabel = "Simulate",
+                SecondaryLabel = "Open Ask",
+                Why = "There is no confident, safe next action right now. Refresh active app or open Ask to create more context.",
+                Intent = "ghost.empty",
+                Risk = "idle",
+                RequiresApproval = false,
+                Confidence = 0.0
+            };
+
+        RenderGhostPanel();
+    }
+
+    private void RenderGhostPanel()
+    {
+        _ghostPanelBody.Children.Clear();
+
+        var top = new Grid { ColumnSpacing = 10 };
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        top.Children.Add(new StackPanel
+        {
+            Spacing = 4,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "Ghost Operator",
+                    FontSize = 20,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    Foreground = WinUiFluentChrome.PrimaryTextBrush
+                },
+                new TextBlock
+                {
+                    Text = "Small local AI cockpit · no autonomous execution",
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = WinUiFluentChrome.SecondaryTextBrush,
+                    FontSize = 12
+                }
+            }
+        });
+        var close = new Button { Content = "Close", Padding = new Thickness(10, 6, 10, 6), CornerRadius = new CornerRadius(8) };
+        close.Click += (_, _) => _ghostPanel.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+        Grid.SetColumn(close, 1);
+        top.Children.Add(close);
+        _ghostPanelBody.Children.Add(top);
+
+        var refresh = new Button { Content = "Refresh suggestion", HorizontalAlignment = HorizontalAlignment.Stretch };
+        WinUiFluentChrome.StyleActionButton(refresh, accent: true);
+        refresh.Click += (_, _) => RefreshGhostSuggestion(force: true);
+        _ghostPanelBody.Children.Add(refresh);
+
+        _ghostPanelBody.Children.Add(WinUiFluentChrome.StatusTile("Runtime reality", "local side panel", "suggests actions; approve/run stays gated"));
+        _ghostPanelBody.Children.Add(WinUiFluentChrome.StatusTile("Live context", string.IsNullOrWhiteSpace(WinUiShellState.LiveContextLine) ? "not refreshed" : "available", WinUiShellState.LiveContextLine));
+        _ghostPanelBody.Children.Add(BuildGhostEvidenceCard());
+
+        if (_currentGhostSuggestion == null)
+        {
+            _ghostPanelBody.Children.Add(WinUiFluentChrome.EmptyState(
+                "No suggestion loaded",
+                "Open Ghost again or refresh active app to let the local context scorer build a proposal.",
+                "Ctrl+G toggles this panel."));
+            return;
+        }
+
+        var simulate = new Button();
+        var approve = new Button();
+        var dismiss = new Button();
+        var power = new Button();
+        simulate.Click += (_, _) => SimulateGhostAction();
+        approve.Click += (_, _) => ApproveGhostAction();
+        dismiss.Click += (_, _) => DismissGhostAction();
+        power.Click += async (_, _) => await OpenGhostPowerUserTargetAsync();
+
+        _ghostPanelBody.Children.Add(WinUiFluentChrome.GhostOperatorCard(_currentGhostSuggestion, simulate, approve, dismiss, power));
+        _ghostPanelBody.Children.Add(new InfoBar
+        {
+            IsOpen = true,
+            Severity = _currentGhostSuggestion.RequiresApproval ? InfoBarSeverity.Warning : InfoBarSeverity.Informational,
+            Title = _currentGhostSuggestion.RequiresApproval ? "Approval required" : "Safe preview",
+            Message = _currentGhostSuggestion.RequiresApproval
+                ? "This panel never executes risky operations silently. Use the PowerUser page for the full gate."
+                : "Simulation shows the intended next step without touching external apps."
+        });
+    }
+
+    private Border BuildGhostEvidenceCard()
+    {
+        var s = WinUiShellState.Settings;
+        var knowledge = s.UseLocalKnowledge ? "local knowledge enabled" : "local knowledge off";
+        var llm = DotEnvStore.HasProviderKey(s.Provider) ? ".env provider key OK" : ".env provider key missing";
+        var automation = OperatingSystem.IsWindows() &&
+                         string.Equals(s.Safety.Profile, "power-user", StringComparison.OrdinalIgnoreCase)
+            ? "Win32 automation possible after approval"
+            : "simulation / guarded automation";
+        var live = string.IsNullOrWhiteSpace(WinUiShellState.LiveContextLine)
+            ? "no active-app context captured"
+            : WinUiShellState.LiveContextLine;
+
+        var text = new TextBlock
+        {
+            Text =
+                $"AI route: {s.Provider} / {s.Mode}\n" +
+                $"Knowledge: {knowledge}\n" +
+                $"LLM key: {llm}\n" +
+                $"Automation: {automation}\n" +
+                $"Live: {live}",
+            TextWrapping = TextWrapping.Wrap,
+            IsTextSelectionEnabled = true,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush,
+            FontSize = 12
+        };
+        return WinUiFluentChrome.SectionCard("Evidence", "What Ghost used for this suggestion", text);
+    }
+
+    private void SimulateGhostAction()
+    {
+        if (_currentGhostSuggestion == null)
+            return;
+        NexusShell.Log($"Ghost Operator simulate → {_currentGhostSuggestion.Intent}: {_currentGhostSuggestion.ActionLabel}");
+        _statusLine.Text = "Ghost simulation logged.";
+    }
+
+    private void ApproveGhostAction()
+    {
+        if (_currentGhostSuggestion == null)
+            return;
+        NexusShell.Log($"Ghost Operator approve requested → {_currentGhostSuggestion.Intent}. Routed to PowerUser gate, no silent execution.");
+        _statusLine.Text = "Ghost approve routed to gated flow.";
+        _ = OpenGhostPowerUserTargetAsync();
+    }
+
+    private void DismissGhostAction()
+    {
+        _ghostState.MarkIgnored();
+        _currentGhostSuggestion = null;
+        _statusLine.Text = "Ghost suggestion dismissed.";
+        RenderGhostPanel();
+    }
+
+    private async Task OpenGhostPowerUserTargetAsync()
+    {
+        var intent = _currentGhostSuggestion?.Intent ?? "";
+        if (intent.Contains("live", StringComparison.OrdinalIgnoreCase) || intent.Contains("ax", StringComparison.OrdinalIgnoreCase))
+            await NavigateFromPaletteAsync(typeof(LiveContextShellPage));
+        else if (intent.Contains("knowledge", StringComparison.OrdinalIgnoreCase))
+            await NavigateFromPaletteAsync(typeof(KnowledgeShellPage));
+        else if (intent.Contains("flow", StringComparison.OrdinalIgnoreCase) || intent.Contains("ritual", StringComparison.OrdinalIgnoreCase))
+            await NavigateFromPaletteAsync(typeof(RitualsShellPage));
+        else
+            await NavigateFromPaletteAsync(typeof(AskShellPage));
     }
 
     private void RefreshLayoutBadge(double w)
@@ -408,6 +642,109 @@ public sealed partial class MainWindow : Window
         _ = ShowCommandPaletteAsync();
     }
 
+    private async Task ShowShortcutHelpAsync()
+    {
+        var grid = new Grid
+        {
+            ColumnSpacing = 18,
+            RowSpacing = 10,
+            MaxWidth = 900
+        };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var left = BuildShortcutColumn(
+            ("Shell", "Ctrl+P", "Command palette"),
+            ("Shell", "Ctrl+H", "Keyboard shortcuts"),
+            ("Shell", "F1", "Open handbook"),
+            ("Dashboard", "F5", "Refresh now"),
+            ("Knowledge", "Ctrl+F", "Search"),
+            ("Knowledge", "Ctrl+I", "Import"),
+            ("Knowledge", "Del", "Remove selected"),
+            ("Knowledge", "F5", "Reindex"),
+            ("Knowledge", "Ctrl+G", "Suggest flow"));
+        var right = BuildShortcutColumn(
+            ("Ask", "Ctrl+Enter", "Ask now"),
+            ("Ask", "Ctrl+T", "Smoke test"),
+            ("Ask", "Ctrl+I", "Import audio"),
+            ("Voice", "F6", "Start push-to-talk"),
+            ("Voice", "Shift+F6", "Stop + ask"),
+            ("Voice", "Ctrl+Esc", "Cancel recording"),
+            ("Plan", "F9", "Run plan"),
+            ("Plan", "Shift+F9", "Approve + run"),
+            ("Plan", "F10", "Run next step"),
+            ("Plan", "Esc", "Panic stop"),
+            ("Flows", "Ctrl+S", "Save flow"),
+            ("Flows", "F8/F9/F10", "Dry run / Run / Next step"));
+        grid.Children.Add(left);
+        Grid.SetColumn(right, 1);
+        grid.Children.Add(right);
+
+        var note = new TextBlock
+        {
+            Text = "Shortcuts wirken seitenbezogen auf die sichtbaren PowerUser-Buttons. Riskante Aktionen behalten die bestehenden Safety-Gates.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush,
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+        WinUiFluentChrome.ApplyCaptionTextStyle(note);
+
+        var content = new StackPanel { Spacing = 12 };
+        content.Children.Add(grid);
+        content.Children.Add(note);
+
+        var dlg = new ContentDialog
+        {
+            Title = "Keyboard shortcuts",
+            Content = content,
+            CloseButtonText = "Close",
+            XamlRoot = Content.XamlRoot
+        };
+        await dlg.ShowAsync();
+    }
+
+    private static StackPanel BuildShortcutColumn(params (string Area, string Shortcut, string Action)[] rows)
+    {
+        var stack = new StackPanel { Spacing = 6 };
+        string? current = null;
+        foreach (var row in rows)
+        {
+            if (!string.Equals(current, row.Area, StringComparison.Ordinal))
+            {
+                current = row.Area;
+                stack.Children.Add(new TextBlock
+                {
+                    Text = current,
+                    Foreground = WinUiFluentChrome.PrimaryTextBrush,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    Margin = new Thickness(0, 8, 0, 0)
+                });
+            }
+
+            var line = new Grid { ColumnSpacing = 12 };
+            line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+            line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            line.Children.Add(new TextBlock
+            {
+                Text = row.Shortcut,
+                Foreground = WinUiFluentChrome.PrimaryTextBrush,
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 12
+            });
+            var action = new TextBlock
+            {
+                Text = row.Action,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = WinUiFluentChrome.SecondaryTextBrush
+            };
+            Grid.SetColumn(action, 1);
+            line.Children.Add(action);
+            stack.Children.Add(line);
+        }
+
+        return stack;
+    }
+
     private static NavigationViewItem Mk(string content, Type pageType, Symbol symbol) =>
         new()
         {
@@ -476,26 +813,37 @@ public sealed partial class MainWindow : Window
 
     private async Task ShowCommandPaletteAsync()
     {
-        var pages = new (string Label, Type PageType)[]
+        var commands = new PaletteCommand[]
         {
-            ("Ask", typeof(AskShellPage)),
-            ("Dashboard", typeof(DashboardShellPage)),
-            ("Setup", typeof(SetupShellPage)),
-            ("Knowledge", typeof(KnowledgeShellPage)),
-            ("Operator flows", typeof(RitualsShellPage)),
-            ("History", typeof(HistoryShellPage)),
-            ("Diagnostics", typeof(DiagnosticsShellPage)),
-            ("Console", typeof(ConsoleShellPage)),
-            ("Live Context", typeof(LiveContextShellPage)),
-            ("Experiments (Tier C)", typeof(ExperimentsShellPage))
+            new("Open Ask", "Page", () => NavigateFromPaletteAsync(typeof(AskShellPage))),
+            new("Open Dashboard", "Page", () => NavigateFromPaletteAsync(typeof(DashboardShellPage))),
+            new("Open Setup", "Page", () => NavigateFromPaletteAsync(typeof(SetupShellPage))),
+            new("Open Knowledge", "Page", () => NavigateFromPaletteAsync(typeof(KnowledgeShellPage))),
+            new("Open Operator flows", "Page", () => NavigateFromPaletteAsync(typeof(RitualsShellPage))),
+            new("Open History", "Page", () => NavigateFromPaletteAsync(typeof(HistoryShellPage))),
+            new("Open Diagnostics", "Page", () => NavigateFromPaletteAsync(typeof(DiagnosticsShellPage))),
+            new("Open Console", "Page", () => NavigateFromPaletteAsync(typeof(ConsoleShellPage))),
+            new("Open Live Context", "Page", () => NavigateFromPaletteAsync(typeof(LiveContextShellPage))),
+            new("Open Experiments (Tier C)", "Page", () => NavigateFromPaletteAsync(typeof(ExperimentsShellPage))),
+            new("Ask now", "Action", RunAskFromPaletteAsync),
+            new("Run plan", "Action", RunPlanFromPaletteAsync),
+            new("Refresh dashboard", "Action", RefreshDashboardFromPaletteAsync),
+            new("Reindex knowledge", "Action", ReindexFromPaletteAsync),
+            new("Refresh active app", "Action", RefreshActiveAppFromPaletteAsync),
+            new("Run live inspector", "Action", RunLiveInspectorFromPaletteAsync),
+            new("Keyboard shortcuts", "Help", async () => await ShowShortcutHelpAsync())
         };
 
-        var list = new ListView { SelectionMode = ListViewSelectionMode.Single, ItemsSource = pages.Select(p => p.Label).ToList() };
+        var list = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = commands.Select(c => $"{c.Group}  ·  {c.Label}").ToList()
+        };
         var dlg = new ContentDialog
         {
-            Title = "Go to page",
+            Title = "Command palette",
             Content = list,
-            PrimaryButtonText = "Go",
+            PrimaryButtonText = "Run",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = Content.XamlRoot
@@ -504,19 +852,23 @@ public sealed partial class MainWindow : Window
         list.DoubleTapped += async (_, _) =>
         {
             dlg.Hide();
-            await NavigateFromPaletteSelectionAsync(list, pages);
+            await RunPaletteSelectionAsync(list, commands);
         };
 
         var r = await dlg.ShowAsync();
         if (r == ContentDialogResult.Primary)
-            await NavigateFromPaletteSelectionAsync(list, pages);
+            await RunPaletteSelectionAsync(list, commands);
     }
 
-    private Task NavigateFromPaletteSelectionAsync(ListView list, (string Label, Type PageType)[] pages)
+    private Task RunPaletteSelectionAsync(ListView list, PaletteCommand[] commands)
     {
         if (list.SelectedIndex < 0)
             return Task.CompletedTask;
-        var t = pages[list.SelectedIndex].PageType;
+        return commands[list.SelectedIndex].Run();
+    }
+
+    private Task NavigateFromPaletteAsync(Type t)
+    {
         ShowShellPage(t);
         foreach (NavigationViewItem? mi in _nav.MenuItems.OfType<NavigationViewItem>())
         {
@@ -529,4 +881,48 @@ public sealed partial class MainWindow : Window
 
         return Task.CompletedTask;
     }
+
+    private async Task RunAskFromPaletteAsync()
+    {
+        await NavigateFromPaletteAsync(typeof(AskShellPage));
+        if (_frame.Content is AskShellPage ask)
+            await ask.PaletteAskNowAsync();
+    }
+
+    private async Task RunPlanFromPaletteAsync()
+    {
+        await NavigateFromPaletteAsync(typeof(AskShellPage));
+        if (_frame.Content is AskShellPage ask)
+            await ask.PaletteRunPlanAsync();
+    }
+
+    private Task RefreshDashboardFromPaletteAsync()
+    {
+        ShowShellPage(typeof(DashboardShellPage));
+        if (_frame.Content is DashboardShellPage dash)
+            dash.RefreshFull();
+        NexusShell.Log("command palette: dashboard refreshed.");
+        return Task.CompletedTask;
+    }
+
+    private Task ReindexFromPaletteAsync()
+    {
+        OnReindex();
+        return Task.CompletedTask;
+    }
+
+    private Task RefreshActiveAppFromPaletteAsync()
+    {
+        OnRefreshActiveApp();
+        return Task.CompletedTask;
+    }
+
+    private async Task RunLiveInspectorFromPaletteAsync()
+    {
+        await NavigateFromPaletteAsync(typeof(LiveContextShellPage));
+        if (_frame.Content is LiveContextShellPage live)
+            live.PaletteRunInspector();
+    }
+
+    private sealed record PaletteCommand(string Label, string Group, Func<Task> Run);
 }

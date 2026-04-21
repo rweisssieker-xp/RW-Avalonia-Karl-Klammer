@@ -11,6 +11,8 @@ using CarolusNexus.Services;
 using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using VirtualKey = Windows.System.VirtualKey;
+using VirtualKeyModifiers = Windows.System.VirtualKeyModifiers;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
@@ -63,16 +65,16 @@ public sealed class AskShellPage : Page
     private bool _awaitGlobalHotkeyRelease;
     public AskShellPage()
     {
-        var bAsk = WinUiFluentChrome.AppBarCommand("Ask now", "\uE768", async (_, _) => await RunAskAsync());
-        var bSmoke = WinUiFluentChrome.AppBarCommand("Smoke test", "\uE9CE", async (_, _) => await RunSmokeAsync());
-        var bImport = WinUiFluentChrome.AppBarCommand("Import audio + transcribe", "\uE8B5", async (_, _) => await ImportAudioAsync());
-        var bPtt0 = WinUiFluentChrome.AppBarCommand("Start push-to-talk", "\uE720", (_, _) => StartMic("(button)", false));
-        var bPtt1 = WinUiFluentChrome.AppBarCommand("Stop + ask", "\uE71A", async (_, _) => await StopMicTranscribeAndAskAsync());
-        var bCancel = WinUiFluentChrome.AppBarCommand("Cancel recording", "\uE711", (_, _) => CancelMic());
-        var bRun = WinUiFluentChrome.AppBarCommand("Run plan", "\uE768", async (_, _) => await ExecutePlanAsync(false));
-        var bApr = WinUiFluentChrome.AppBarCommand("Approve + run", "\uE73E", async (_, _) => await ExecutePlanAfterConfirmAsync());
-        var bNext = WinUiFluentChrome.AppBarCommand("Run next step", "\uE72A", async (_, _) => await RunNextPlanStepAsync());
-        var bSave = WinUiFluentChrome.AppBarCommand("Save plan as flow", "\uE74E", (_, _) => SavePlanAsRitual());
+        var bAsk = WinUiFluentChrome.AppBarCommand("Ask now", "\uE768", async (_, _) => await RunAskAsync(), "Ctrl+Enter", VirtualKey.Enter, VirtualKeyModifiers.Control);
+        var bSmoke = WinUiFluentChrome.AppBarCommand("Smoke test", "\uE9CE", async (_, _) => await RunSmokeAsync(), "Ctrl+T", VirtualKey.T, VirtualKeyModifiers.Control);
+        var bImport = WinUiFluentChrome.AppBarCommand("Import audio + transcribe", "\uE8B5", async (_, _) => await ImportAudioAsync(), "Ctrl+I", VirtualKey.I, VirtualKeyModifiers.Control);
+        var bPtt0 = WinUiFluentChrome.AppBarCommand("Start push-to-talk", "\uE720", (_, _) => StartMic("(button)", false), "F6", VirtualKey.F6);
+        var bPtt1 = WinUiFluentChrome.AppBarCommand("Stop + ask", "\uE71A", async (_, _) => await StopMicTranscribeAndAskAsync(), "Shift+F6", VirtualKey.F6, VirtualKeyModifiers.Shift);
+        var bCancel = WinUiFluentChrome.AppBarCommand("Cancel recording", "\uE711", (_, _) => CancelMic(), "Ctrl+Esc", VirtualKey.Escape, VirtualKeyModifiers.Control);
+        var bRun = WinUiFluentChrome.AppBarCommand("Run plan", "\uE768", async (_, _) => await ExecutePlanAsync(false), "F9", VirtualKey.F9);
+        var bApr = WinUiFluentChrome.AppBarCommand("Approve + run", "\uE73E", async (_, _) => await ExecutePlanAfterConfirmAsync(), "Shift+F9", VirtualKey.F9, VirtualKeyModifiers.Shift);
+        var bNext = WinUiFluentChrome.AppBarCommand("Run next step", "\uE72A", async (_, _) => await RunNextPlanStepAsync(), "F10", VirtualKey.F10);
+        var bSave = WinUiFluentChrome.AppBarCommand("Save plan as flow", "\uE74E", (_, _) => SavePlanAsRitual(), "Ctrl+S", VirtualKey.S, VirtualKeyModifiers.Control);
         var bClr = WinUiFluentChrome.AppBarCommand("Clear plan", "\uE74D", (_, _) =>
         {
             _planPreview.Text = "";
@@ -82,13 +84,13 @@ public sealed class AskShellPage : Page
             _planTable.ItemsSource = Array.Empty<PlanPreviewRow>();
             _planRisk.Severity = InfoBarSeverity.Informational;
             _planRisk.Message = "No plan yet.";
-        });
+        }, "Ctrl+L", VirtualKey.L, VirtualKeyModifiers.Control);
         var bPanic = WinUiFluentChrome.AppBarCommand("Panic stop", "\uE711", (_, _) =>
         {
             _cts?.Cancel();
             NexusShell.Log("panic stop");
-        });
-        var bSpeak = WinUiFluentChrome.AppBarCommand("Speak response", "\uE995", async (_, _) => await SpeakAsync());
+        }, "Esc", VirtualKey.Escape);
+        var bSpeak = WinUiFluentChrome.AppBarCommand("Speak response", "\uE995", async (_, _) => await SpeakAsync(), "Ctrl+Shift+V", VirtualKey.V, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
 
         var toolInner = new StackPanel { Spacing = 10 };
         toolInner.Children.Add(WinUiFluentChrome.ColumnCaption("Ask, voice, and plans"));
@@ -105,6 +107,7 @@ public sealed class AskShellPage : Page
 
         var top = new StackPanel { Spacing = 12 };
         top.Children.Add(WinUiFluentChrome.PageTitle("Ask"));
+        top.Children.Add(WinUiFluentChrome.StatusTile("Runtime reality", "guarded", "LLM/RAG real when configured; execution stays safety-gated"));
         var sub = new TextBlock
         {
             Text =
@@ -189,16 +192,7 @@ public sealed class AskShellPage : Page
     private void RefreshNextBestAction()
     {
         _nextBestAction = NextBestActionService.Build(WinUiShellState.Settings, WinUiShellState.LiveContextLine);
-        if (_nextBestActionBar == null)
-            return;
-        var parent = _nextBestActionBar.Parent as StackPanel;
-        var index = parent?.Children.IndexOf(_nextBestActionBar) ?? -1;
-        var visible = _nextBestActionBar.Visibility;
-        parent?.Children.Remove(_nextBestActionBar);
-        _nextBestActionBar = WinUiFluentChrome.NextBestActionBar(_nextBestAction, _nbaPrimary, _nbaSecondary, _nbaDismiss);
-        _nextBestActionBar.Visibility = visible == Visibility.Collapsed ? Visibility.Collapsed : Visibility.Visible;
-        if (parent != null && index >= 0)
-            parent.Children.Insert(index, _nextBestActionBar);
+        NexusShell.Log("Ask next action refreshed: " + _nextBestAction.Message);
     }
 
     private void ApplyNextBestActionPrimary()
@@ -644,6 +638,10 @@ public sealed class AskShellPage : Page
             return _planSteps;
         return SimplePlanSimulator.ParsePlanPreviewLines(_planPreview.Text ?? "");
     }
+
+    public Task PaletteAskNowAsync() => RunAskAsync();
+
+    public Task PaletteRunPlanAsync() => ExecutePlanAsync(false);
 
     private void RefreshPlanRiskPreview()
     {

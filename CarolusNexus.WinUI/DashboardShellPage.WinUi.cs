@@ -5,6 +5,8 @@ using CarolusNexus.Services;
 using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using VirtualKey = Windows.System.VirtualKey;
+using VirtualKeyModifiers = Windows.System.VirtualKeyModifiers;
 
 namespace CarolusNexus_WinUI.Pages;
 
@@ -24,14 +26,6 @@ public sealed class DashboardShellPage : Page
     private readonly Button _nbaDismiss = new();
     private Border? _nextBestActionBar;
     private NextBestAction? _nextBestAction;
-    private readonly GhostOperatorService _ghostOperator = new();
-    private readonly GhostOperatorState _ghostState = new();
-    private readonly Button _ghostPrimary = new();
-    private readonly Button _ghostWhy = new();
-    private readonly Button _ghostIgnore = new();
-    private readonly Button _ghostOpenPowerUser = new();
-    private Border? _ghostCard;
-    private GhostOperatorSuggestion? _ghostSuggestion;
     private readonly TextBox _cardEnv = MkCard();
     private readonly TextBox _cardKnow = MkCard();
     private readonly TextBox _cardLive = MkCard();
@@ -55,15 +49,15 @@ public sealed class DashboardShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(dashHint);
         stack.Children.Add(dashHint);
+        stack.Children.Add(WinUiFluentChrome.StatusTile("Runtime reality", "mixed", "live local state; 3D/demo readiness is preview-only; Ghost lives in the shell side panel"));
         stack.Children.Add(BuildDemoHero());
-        // Ghost Operator service stays compiled, but the dashboard card is disabled until startup
-        // stability is confirmed across all PowerUser pages.
         _nextBestActionBar = BuildNextBestActionBar();
         stack.Children.Add(_nextBestActionBar);
         stack.Children.Add(BuildSignalStrip());
         var refresh = new Button { Content = "Refresh now", HorizontalAlignment = HorizontalAlignment.Left };
         WinUiFluentChrome.StyleActionButton(refresh, accent: true);
-        WinUiFluentChrome.SetIconButton(refresh, "Refresh now", "\uE72C");
+        WinUiFluentChrome.SetIconButton(refresh, "Refresh now", "\uE72C", "F5");
+        WinUiFluentChrome.AddShortcut(refresh, VirtualKey.F5, tooltip: "F5");
         refresh.Click += (_, _) => RefreshFull();
         stack.Children.Add(refresh);
 
@@ -165,75 +159,6 @@ public sealed class DashboardShellPage : Page
         RefreshSignalStrip();
         RefreshNextActionCard();
     }
-
-    private Border BuildGhostOperatorCard()
-    {
-        _ghostPrimary.Click += (_, _) => ExecuteGhostSuggestion();
-        _ghostWhy.Click += (_, _) =>
-        {
-            if (_ghostSuggestion != null)
-                NexusShell.Log("Ghost why: " + _ghostSuggestion.Why.Replace("\n", " · "));
-        };
-        _ghostIgnore.Click += (_, _) =>
-        {
-            _ghostState.MarkIgnored();
-            if (_ghostCard != null)
-                _ghostCard.Visibility = Visibility.Collapsed;
-            NexusShell.Log("Ghost Operator ignored.");
-        };
-        _ghostOpenPowerUser.Click += (_, _) =>
-        {
-            if (_ghostSuggestion != null)
-                NexusShell.Log($"Ghost PowerUser route: {_ghostSuggestion.SecondaryLabel} for {_ghostSuggestion.Intent}.");
-        };
-
-        _ghostSuggestion = _ghostOperator.TrySuggest(WinUiShellState.Settings, WinUiShellState.LiveContextLine, _ghostState)
-                           ?? FallbackGhostSuggestion();
-        _ghostState.MarkShown(_ghostSuggestion);
-        return WinUiFluentChrome.GhostOperatorCard(_ghostSuggestion, _ghostPrimary, _ghostWhy, _ghostIgnore, _ghostOpenPowerUser);
-    }
-
-    private void RefreshGhostOperatorCard()
-    {
-        var suggestion = _ghostOperator.TrySuggest(WinUiShellState.Settings, WinUiShellState.LiveContextLine, _ghostState);
-        if (suggestion == null || _ghostCard == null)
-            return;
-
-        _ghostSuggestion = suggestion;
-        _ghostState.MarkShown(suggestion);
-        _ghostCard.Visibility = Visibility.Visible;
-        NexusShell.Log("Ghost Operator refreshed: " + suggestion.Intent);
-    }
-
-    private void ExecuteGhostSuggestion()
-    {
-        if (_ghostSuggestion == null)
-            return;
-
-        var action = _ghostSuggestion.Intent switch
-        {
-            "ask.mail_summary" => "Prepare Ask: summarize active mail and draft a safe reply. Do not send.",
-            "live.ax_context" => "Prepare Live Context: run read-first AX inspection. No write/post actions.",
-            "rituals.promote_watch" => "Prepare Rituals: promote repeated watch session into a guarded local flow.",
-            "ask.knowledge" => "Prepare Ask: answer current task with local knowledge and citations.",
-            "setup.provider" => "Prepare Setup: configure missing provider key before AI execution.",
-            _ => "Prepare Ask: propose the safest next action from current desktop context."
-        };
-        WinUiShellState.SetStatus("Ghost Operator: " + action);
-        NexusShell.Log("Ghost Operator do-it: " + action);
-    }
-
-    private static GhostOperatorSuggestion FallbackGhostSuggestion() =>
-        new()
-        {
-            Situation = "PowerUser pages remain available. Ghost Operator will surface only high-value local actions when context confidence is sufficient.",
-            ActionLabel = "Refresh context",
-            SecondaryLabel = "Use PowerUser pages",
-            Why = "This keeps the radical no-prompt layer optional while preserving Ask, Live Context, Knowledge, Rituals, History, and Setup.",
-            Intent = "ghost.idle",
-            Risk = "idle",
-            Confidence = 0.50
-        };
 
     private Border BuildNextBestActionBar()
     {

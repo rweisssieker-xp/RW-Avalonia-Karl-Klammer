@@ -10,6 +10,8 @@ using CarolusNexus.Services;
 using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using VirtualKey = Windows.System.VirtualKey;
+using VirtualKeyModifiers = Windows.System.VirtualKeyModifiers;
 
 namespace CarolusNexus_WinUI.Pages;
 
@@ -69,6 +71,10 @@ public sealed class RitualsShellPage : Page
     {
         WinUiFluentChrome.StyleActionButton(_btnAiSuggest, compact: true);
         WinUiFluentChrome.StyleActionButton(_btnPromoteWatch);
+        WinUiFluentChrome.SetIconButton(_btnAiSuggest, "AI short title", "\uE9CE", "Ctrl+T");
+        WinUiFluentChrome.AddShortcut(_btnAiSuggest, VirtualKey.T, VirtualKeyModifiers.Control, "Ctrl+T");
+        WinUiFluentChrome.SetIconButton(_btnPromoteWatch, "Promote from watch", "\uE72A", "Ctrl+W");
+        WinUiFluentChrome.AddShortcut(_btnPromoteWatch, VirtualKey.W, VirtualKeyModifiers.Control, "Ctrl+W");
         foreach (var x in new[] { "manual", "auto" })
             _approvalMode.Items.Add(x);
         foreach (var x in new[] { "low", "medium", "high" })
@@ -87,6 +93,7 @@ public sealed class RitualsShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(flowHint);
         _libraryPane.Children.Add(flowHint);
+        _libraryPane.Children.Add(WinUiFluentChrome.StatusTile("Runtime reality", "simulation/guarded", "flow editing is real; run path is safety-gated and may simulate"));
         _nextBestActionBar = BuildNextBestActionBar();
         _libraryPane.Children.Add(_nextBestActionBar);
         _libraryPane.Children.Add(_flowStatus);
@@ -114,27 +121,27 @@ public sealed class RitualsShellPage : Page
         _builderPane.Children.Add(_maxAutonomySteps);
 
         _builderPane.Children.Add(MkRow(
-            MkBtn("Save", async (_, _) => await TrySaveCurrentAsync()),
-            MkBtn("Delete", (_, _) => DeleteCurrent()),
+            MkBtn("Save", async (_, _) => await TrySaveCurrentAsync(), shortcut: "Ctrl+S", key: VirtualKey.S, modifiers: VirtualKeyModifiers.Control),
+            MkBtn("Delete", (_, _) => DeleteCurrent(), shortcut: "Del", key: VirtualKey.Delete),
             MkBtn("Clone", (_, _) => CloneCurrent()),
             MkBtn("Archive", async (_, _) => await ArchiveCurrentAsync()),
             MkBtn("Publish", async (_, _) => await PublishCurrentAsync())));
         _builderPane.Children.Add(MkRow(
-            MkBtn("Queue for run", async (_, _) => await QueueCurrentForRunAsync()),
-            MkBtn("Approve next job", async (_, _) => await ApproveNextJobAsync())));
+            MkBtn("Queue for run", async (_, _) => await QueueCurrentForRunAsync(), shortcut: "Ctrl+Q", key: VirtualKey.Q, modifiers: VirtualKeyModifiers.Control),
+            MkBtn("Approve next job", async (_, _) => await ApproveNextJobAsync(), shortcut: "Ctrl+Enter", key: VirtualKey.Enter, modifiers: VirtualKeyModifiers.Control)));
         _builderPane.Children.Add(MkRow(
-            MkBtn("Dry run", async (_, _) => await RunSelectedAsync(true)),
-            MkBtn("Run", async (_, _) => await RunSelectedAsync(false), accent: true),
-            MkBtn("Next step", async (_, _) => await RunNextStepAsync()),
+            MkBtn("Dry run", async (_, _) => await RunSelectedAsync(true), shortcut: "F8", key: VirtualKey.F8),
+            MkBtn("Run", async (_, _) => await RunSelectedAsync(false), accent: true, shortcut: "F9", key: VirtualKey.F9),
+            MkBtn("Next step", async (_, _) => await RunNextStepAsync(), shortcut: "F10", key: VirtualKey.F10),
             MkBtn("Resume", async (_, _) => await RunSelectedAsync(false))));
         _builderPane.Children.Add(MkRow(
             MkBtn("Promote from history", (_, _) => PromoteFromHistory()),
             _btnPromoteWatch));
         _btnPromoteWatch.Click += async (_, _) => await PromoteFromWatchAsync();
         _builderPane.Children.Add(MkRow(
-            MkBtn("Teach: start", (_, _) => StartTeach()),
+            MkBtn("Teach: start", (_, _) => StartTeach(), shortcut: "Ctrl+Shift+T", key: VirtualKey.T, modifiers: VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift),
             MkBtn("Teach: capture FG", (_, _) => CaptureForegroundTeachStep()),
-            MkBtn("Teach: stop", (_, _) => StopTeach())));
+            MkBtn("Teach: stop", (_, _) => StopTeach(), shortcut: "Ctrl+Shift+X", key: VirtualKey.X, modifiers: VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift)));
 
         _queueStatusLine.Foreground = WinUiFluentChrome.SecondaryTextBrush;
         WinUiFluentChrome.ApplyCaptionTextStyle(_queueStatusLine);
@@ -169,10 +176,12 @@ public sealed class RitualsShellPage : Page
         return sp;
     }
 
-    private static Button MkBtn(string content, RoutedEventHandler click, bool accent = false)
+    private static Button MkBtn(string content, RoutedEventHandler click, bool accent = false, string? shortcut = null, VirtualKey? key = null, VirtualKeyModifiers modifiers = VirtualKeyModifiers.None)
     {
-        var b = new Button { Content = content };
+        var b = new Button { Content = string.IsNullOrWhiteSpace(shortcut) ? content : $"{content}  {shortcut}" };
         WinUiFluentChrome.StyleActionButton(b, accent);
+        if (key.HasValue)
+            WinUiFluentChrome.AddShortcut(b, key.Value, modifiers, shortcut);
         b.Click += click;
         return b;
     }
@@ -352,16 +361,7 @@ public sealed class RitualsShellPage : Page
     private void RefreshNextBestActionBar()
     {
         _nextBestAction = NextBestActionService.Build(WinUiShellState.Settings, WinUiShellState.LiveContextLine);
-        if (_nextBestActionBar == null)
-            return;
-        var parent = _nextBestActionBar.Parent as StackPanel;
-        var index = parent?.Children.IndexOf(_nextBestActionBar) ?? -1;
-        var visible = _nextBestActionBar.Visibility;
-        parent?.Children.Remove(_nextBestActionBar);
-        _nextBestActionBar = WinUiFluentChrome.NextBestActionBar(_nextBestAction, _nbaPrimary, _nbaSecondary, _nbaDismiss);
-        _nextBestActionBar.Visibility = visible == Visibility.Collapsed ? Visibility.Collapsed : Visibility.Visible;
-        if (parent != null && index >= 0)
-            parent.Children.Insert(index, _nextBestActionBar);
+        NexusShell.Log("Rituals next action refreshed: " + _nextBestAction.Message);
     }
 
     private List<RecipeStep> ParseStepsEditor()
