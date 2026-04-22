@@ -6,10 +6,10 @@
 - **Prioritäten technische Lücken (Adapter/AX/Distribution/WinUI-Parität):** [docs/Implementierungs-Prioritaeten.md](docs/Implementierungs-Prioritaeten.md)
 - **KI / RAG Umgebung (`.env`):** [docs/Ki-und-RAG-Umgebung.md](docs/Ki-und-RAG-Umgebung.md) · **Automation-Ausführungskette:** [docs/Ausfuehrungskette-Automation.md](docs/Ausfuehrungskette-Automation.md) · **Token-Arbeitspakete:** [docs/Token-Runtime-Arbeitspakete.md](docs/Token-Runtime-Arbeitspakete.md)
 - **Persona-Referenz:** [SOUL.md](SOUL.md)
-- **Solution:** [KarlKlammer.slnx](KarlKlammer.slnx) · Projekt `CarolusNexus/CarolusNexus.csproj` · Ziel `net10.0-windows`
+- **Solution:** [CarolusNexus.slnx](CarolusNexus.slnx) · Projekt `CarolusNexus.WinUI/CarolusNexus.WinUI.csproj` · Ziel `net9.0-windows10.0.26100.0` (per Projekttarget)
 - **Datenpfade:** [CarolusNexus/AppPaths.cs](CarolusNexus/AppPaths.cs) — erwartet Ordner `windows/` unter der Repository-Wurzel (für `DiscoverRepoRoot` beim Start aus `bin/`)
 
-Build/Start aus dem Repo-Root: `Build-Avalonia.cmd` / `Start-Avalonia.cmd` oder `dotnet build` / `dotnet run` wie im Handbuch §3.
+Build/Start aus dem Repo-Root: `Build-Avalonia.cmd` / `Start-Avalonia.cmd` oder `dotnet build CarolusNexus.WinUI/CarolusNexus.WinUI.csproj` / `dotnet run --project CarolusNexus.WinUI/CarolusNexus.WinUI.csproj -p:WindowsAppSDKSelfContained=false`.
 
 ## Zusammenarbeit mit dem Agenten (Repo-weite Präferenz)
 
@@ -38,9 +38,8 @@ Build/Start aus dem Repo-Root: `Build-Avalonia.cmd` / `Start-Avalonia.cmd` oder 
   4. `dotnet run` (entsprechendes Projekt)  
   5. Kurzer Ergebnisbericht mit Risiken
 - **Automatische Standardbefehle:**
-  - `dotnet build CarolusNexus/CarolusNexus.csproj -c Debug`
-  - `dotnet run --project CarolusNexus/CarolusNexus.csproj -c Debug`
-  - bei WinUI-Anpassungen zusätzlich: `dotnet run --project CarolusNexus.WinUI/CarolusNexus.WinUI.csproj -c Debug -p:WindowsAppSDKSelfContained=false`
+  - `dotnet build CarolusNexus.WinUI/CarolusNexus.WinUI.csproj -c Debug -p:WindowsAppSDKSelfContained=false`
+  - `dotnet run --project CarolusNexus.WinUI/CarolusNexus.WinUI.csproj -c Debug -p:WindowsAppSDKSelfContained=false`
 - **Scope- und Schutzregeln:** Nicht verändern ohne Grund `obj/`, `bin/`, `artifacts/`, Logs, temporäre Dateien.
 - **Build-Gates:** Wenn Build fehl schlägt, Fehlerursache beheben und weiterführen; Abbruch nur bei externen Blockern (fehlende Credentials, nicht verfügbare Umgebung).
 - **Nachfragen nur bei echten Blockaden:**  

@@ -13,6 +13,7 @@ using CarolusNexus.Services;
 using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace CarolusNexus_WinUI.Pages;
 
@@ -25,6 +26,11 @@ public sealed class SetupShellPage : Page
     private readonly CheckBox _speak = new() { Content = "speak responses" };
     private readonly CheckBox _useKnow = new() { Content = "use local knowledge", IsChecked = true };
     private readonly CheckBox _suggestAuto = new() { Content = "suggest automations" };
+    private readonly CheckBox _cliRoutes = new() { Content = "Enable CLI ask routes (use codex / use claude code / use openclaw)" };
+    private readonly CheckBox _missionRoutes = new() { Content = "Enable mission/autonomy routes (autonomy, predictive, orbit)" };
+    private readonly CheckBox _radicalAutoRoutes = new() { Content = "Enable radical auto routes (radical-auto + radical run)" };
+    private readonly CheckBox _radicalIdeaRoutes = new() { Content = "Enable radical idea blueprint routes (radical ...)" };
+    private readonly CheckBox _missionFallback = new() { Content = "Fallback mission mode for plain ask prompts" };
     private readonly CheckBox _uia = new() { Content = "Ask: UIA snapshot of foreground window (Windows)" };
     private readonly CheckBox _mem = new() { Content = "Conversation memory" };
     private readonly TextBox _memChars = new() { Header = "Memory max chars" };
@@ -147,7 +153,7 @@ public sealed class SetupShellPage : Page
         sp.Children.Add(MkExp("Routing & appearance", true,
             _provider, _mode, _model, _uiTheme));
         sp.Children.Add(MkExp("Behavior", true,
-            _speak, _useKnow, _suggestAuto, _uia, _mem, _memChars));
+            _speak, _useKnow, _suggestAuto, _cliRoutes, _missionRoutes, _radicalAutoRoutes, _radicalIdeaRoutes, _missionFallback, _uia, _mem, _memChars));
         sp.Children.Add(MkExp("Safety & governance", true,
             _hi, _safety, _neverSend, _neverPost, _panic, _denylist));
         sp.Children.Add(MkExp("Watch & tool host", true,
@@ -196,12 +202,17 @@ public sealed class SetupShellPage : Page
         _mode.SelectedItem = s.Mode;
         _model.Text = s.Model;
         _uiTheme.SelectedItem = string.IsNullOrWhiteSpace(s.UiTheme) ? "Dark" : s.UiTheme;
-        _speak.IsChecked = s.SpeakResponses;
-        _useKnow.IsChecked = s.UseLocalKnowledge;
-        _suggestAuto.IsChecked = s.SuggestAutomations;
-        _uia.IsChecked = s.IncludeUiaContextInAsk;
-        _mem.IsChecked = s.ConversationMemoryEnabled;
-        _memChars.Text = s.ConversationMemoryMaxChars.ToString();
+            _speak.IsChecked = s.SpeakResponses;
+            _useKnow.IsChecked = s.UseLocalKnowledge;
+            _suggestAuto.IsChecked = s.SuggestAutomations;
+            _cliRoutes.IsChecked = s.EnableCliHandoffRoutes;
+            _missionRoutes.IsChecked = s.EnableMissionPromptRoutes;
+            _radicalAutoRoutes.IsChecked = s.EnableRadicalAutoRoutes;
+            _radicalIdeaRoutes.IsChecked = s.EnableRadicalIdeaBlueprint;
+            _missionFallback.IsChecked = s.FallbackMissionModeWhenAsk;
+            _uia.IsChecked = s.IncludeUiaContextInAsk;
+            _mem.IsChecked = s.ConversationMemoryEnabled;
+            _memChars.Text = s.ConversationMemoryMaxChars.ToString();
         _hi.IsChecked = s.HighRiskSecondConfirm;
         _safety.SelectedItem = s.Safety.Profile;
         _neverSend.IsChecked = s.Safety.NeverAutoSend;
@@ -255,6 +266,11 @@ public sealed class SetupShellPage : Page
             SpeakResponses = _speak.IsChecked == true,
             UseLocalKnowledge = _useKnow.IsChecked == true,
             SuggestAutomations = _suggestAuto.IsChecked == true,
+            EnableCliHandoffRoutes = _cliRoutes.IsChecked == true,
+            EnableMissionPromptRoutes = _missionRoutes.IsChecked == true,
+            EnableRadicalAutoRoutes = _radicalAutoRoutes.IsChecked == true,
+            EnableRadicalIdeaBlueprint = _radicalIdeaRoutes.IsChecked == true,
+            FallbackMissionModeWhenAsk = _missionFallback.IsChecked == true,
             IncludeUiaContextInAsk = _uia.IsChecked == true,
             ConversationMemoryEnabled = _mem.IsChecked == true,
             ConversationMemoryMaxChars = Pi(_memChars.Text, 8000, 2000, 32000),
@@ -290,6 +306,8 @@ public sealed class SetupShellPage : Page
 public sealed class ExperimentsShellPage : Page
 {
     private readonly TextBlock _observeStatus = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly Button _runDryRun = new() { Content = "Run sample plan (dry-run)" };
+    private readonly Button _runExecute = new() { Content = "Run sample plan (execute)" };
     private readonly TextBox _observeOutput = new()
     {
         IsReadOnly = true,
@@ -319,7 +337,7 @@ public sealed class ExperimentsShellPage : Page
         };
         WinUiFluentChrome.ApplyBodyTextStyle(body);
         sp.Children.Add(WinUiFluentChrome.WrapCard(body));
-        sp.Children.Add(WinUiFluentChrome.StatusTile("Computer-use reality", "observe-only", "foreground + adapter + UIA + risk; no clicks or writes"));
+        sp.Children.Add(WinUiFluentChrome.StatusTile("Computer-use reality", "sim + guarded execute", "foreground + adapter + UIA + optional execution behind power-user"));
 
         _observeStatus.Foreground = WinUiFluentChrome.SecondaryTextBrush;
         WinUiFluentChrome.ApplyCaptionTextStyle(_observeStatus);
@@ -328,6 +346,12 @@ public sealed class ExperimentsShellPage : Page
         var observe = new Button { Content = "Observe foreground only" };
         WinUiFluentChrome.StyleActionButton(observe, accent: true);
         observe.Click += (_, _) => RunObserveOnly();
+
+        WinUiFluentChrome.StyleActionButton(_runDryRun);
+        _runDryRun.Click += async (_, _) => await RunSamplePlanAsync(dryRun: true);
+
+        WinUiFluentChrome.StyleActionButton(_runExecute, accent: true);
+        _runExecute.Click += async (_, _) => await RunSamplePlanAsync(dryRun: false);
 
         var promote = new Button { Content = "Copy summary to log" };
         WinUiFluentChrome.StyleActionButton(promote);
@@ -346,7 +370,7 @@ public sealed class ExperimentsShellPage : Page
                 {
                     Orientation = Orientation.Horizontal,
                     Spacing = 8,
-                    Children = { observe, promote }
+                    Children = { observe, _runDryRun, _runExecute, promote }
                 },
                 _observeStatus,
                 _observeOutput
@@ -368,6 +392,36 @@ public sealed class ExperimentsShellPage : Page
             _observeStatus.Text = "Observe-only failed: " + ex.Message;
             _observeOutput.Text = ex.ToString();
             NexusShell.Log("computer-use observe-only failed: " + ex.Message);
+        }
+    }
+
+    private async Task RunSamplePlanAsync(bool dryRun)
+    {
+        try
+        {
+            _observeStatus.Text = dryRun
+                ? "Running dry-run simulation through computer-use sample steps..."
+                : "Running sample plan through guarded execution path...";
+            _observeOutput.Text = "";
+            var log = await ComputerUseLoopService.RunThroughSimulatorAsync(
+                ComputerUseLoopService.SampleTierCPlanSteps(),
+                maxSteps: 3,
+                dryRun: dryRun,
+                settings: WinUiShellState.Settings);
+            _observeOutput.Text = log;
+            _observeStatus.Text = dryRun
+                ? "Dry-run completed. Switch to execute only with safety profile “power-user”."
+                : "Execution path completed (or blocked by guards/safety).";
+            NexusShell.Log(
+                dryRun
+                    ? "computer-use sample dry-run completed."
+                    : "computer-use sample execute attempt completed.");
+        }
+        catch (Exception ex)
+        {
+            _observeStatus.Text = (dryRun ? "Dry-run" : "Execute") + " failed: " + ex.Message;
+            _observeOutput.Text = ex.ToString();
+            NexusShell.Log("computer-use sample run failed: " + ex.Message);
         }
     }
 }

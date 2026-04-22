@@ -5,9 +5,9 @@ namespace CarolusNexus.Services;
 /// <summary>Wählt UI-, Script- oder API-Ausführung für einen Ritual-Schritt.</summary>
 public static class AutomationToolRouter
 {
-    public static string Execute(RecipeStep step, NexusSettings settings)
+    public static string Execute(RecipeStep step, NexusSettings settings, string? forceChannel = null)
     {
-        var ch = (step.Channel ?? "ui").Trim().ToLowerInvariant();
+        var ch = (forceChannel ?? step.Channel ?? "ui").Trim().ToLowerInvariant();
         return ch switch
         {
             "script" => ScriptHookRunner.TryRun(step, settings),

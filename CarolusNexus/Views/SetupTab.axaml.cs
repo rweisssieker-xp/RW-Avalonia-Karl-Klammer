@@ -27,6 +27,11 @@ public partial class SetupTab : UserControl
         SpeakResponses.IsChecked = s.SpeakResponses;
         UseLocalKnowledge.IsChecked = s.UseLocalKnowledge;
         SuggestAutomations.IsChecked = s.SuggestAutomations;
+        EnableCliRoutes.IsChecked = s.EnableCliHandoffRoutes;
+        EnableMissionRoutes.IsChecked = s.EnableMissionPromptRoutes;
+        EnableRadicalAuto.IsChecked = s.EnableRadicalAutoRoutes;
+        EnableRadicalIdeas.IsChecked = s.EnableRadicalIdeaBlueprint;
+        MissionFallbackMode.IsChecked = s.FallbackMissionModeWhenAsk;
         IncludeUiaInAsk.IsChecked = s.IncludeUiaContextInAsk;
         ConversationMemory.IsChecked = s.ConversationMemoryEnabled;
         MemoryMaxCharsBox.Text = s.ConversationMemoryMaxChars.ToString();
@@ -69,6 +74,11 @@ public partial class SetupTab : UserControl
             SpeakResponses = SpeakResponses.IsChecked == true,
             UseLocalKnowledge = UseLocalKnowledge.IsChecked == true,
             SuggestAutomations = SuggestAutomations.IsChecked == true,
+            EnableCliHandoffRoutes = EnableCliRoutes.IsChecked == true,
+            EnableMissionPromptRoutes = EnableMissionRoutes.IsChecked == true,
+            EnableRadicalAutoRoutes = EnableRadicalAuto.IsChecked == true,
+            EnableRadicalIdeaBlueprint = EnableRadicalIdeas.IsChecked == true,
+            FallbackMissionModeWhenAsk = MissionFallbackMode.IsChecked == true,
             IncludeUiaContextInAsk = IncludeUiaInAsk.IsChecked == true,
             ConversationMemoryEnabled = ConversationMemory.IsChecked == true,
             ConversationMemoryMaxChars = ParseInt(MemoryMaxCharsBox.Text, 8000, 2000, 32000),

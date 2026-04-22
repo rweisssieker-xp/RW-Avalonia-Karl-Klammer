@@ -79,6 +79,8 @@ public sealed class AskShellPage : Page
     private WindowsMicRecorder? _mic;
     private bool _isRecording;
     private bool _awaitGlobalHotkeyRelease;
+    private RadicalPlan? _lastRadicalPlan;
+    private RadicalExecutionReport? _lastRadicalRun;
     public AskShellPage()
     {
         var bAsk = WinUiFluentChrome.AppBarCommand("Ask now", "\uE768", async (_, _) => await RunAskAsync(), "Ctrl+Enter", VirtualKey.Enter, VirtualKeyModifiers.Control);
@@ -552,8 +554,37 @@ public sealed class AskShellPage : Page
 
             if (AskPromptRouter.TryParseCliRoute(prompt, out var route) && route != null)
             {
+                if (!WinUiShellState.Settings.EnableCliHandoffRoutes)
+                {
+                    _assistant.Text = "CLI handoff is disabled in settings. Enable it in Setup.";
+                    _retrieval.Text = "CLI route blocked by settings.";
+                    return;
+                }
                 await RunCliAsync(s, route, ct).ConfigureAwait(true);
                 return;
+            }
+
+            if (AskPromptRouter.TryParseRadicalAutoRoute(prompt, out var radicalAuto) && radicalAuto != null)
+            {
+                if (!WinUiShellState.Settings.EnableRadicalAutoRoutes)
+                {
+                    _assistant.Text = "radical-auto is disabled in settings. Enable it in Setup.";
+                    _retrieval.Text = "radical-auto route blocked by settings.";
+                    return;
+                }
+                await RunRadicalAutoFromGoalAsync(s, radicalAuto.Goal, ct).ConfigureAwait(true);
+                return;
+            }
+
+            if (AskPromptRouter.TryParseRadicalRoute(prompt, out var radical) && radical != null)
+            {
+                if (!WinUiShellState.Settings.EnableRadicalIdeaBlueprint)
+                {
+                    _assistant.Text = "radical ideas are disabled in settings. Enable them in Setup.";
+                    _retrieval.Text = "radical ideas route blocked by settings.";
+                    return;
+                }
+                prompt = BuildRadicalIdeasPrompt(radical.Goal);
             }
 
             var shots = _shots.IsChecked == true;
@@ -635,6 +666,99 @@ public sealed class AskShellPage : Page
         _assistant.Text = excerpt + "\n\n— Log —\n" + logPath;
         _planSteps.Clear();
         _planPreview.Text = "(CLI)";
+    }
+
+    private async Task RunRadicalAutoFromGoalAsync(NexusSettings s, string goal, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(goal))
+        {
+            _assistant.Text = "Please provide a radical mission goal.";
+            return;
+        }
+
+        SetBusyBar(true);
+        _planSteps.Clear();
+        _lastRadicalPlan = null;
+        _lastRadicalRun = null;
+        CompanionHub.Publish(CompanionVisualState.Thinking);
+        try
+        {
+            _cts = new CancellationTokenSource();
+            ct = _cts.Token;
+            var plan = await GoalOrchestrator.GeneratePlanAsync(s, goal, ct).ConfigureAwait(true);
+            _lastRadicalPlan = plan;
+            _planPreview.Text = plan.Markdown;
+            _assistant.Text = plan.Markdown;
+            _planExec.Text = $"radical plan persisted: {plan.PlanFilePath}";
+            _planSteps.Clear();
+            _planSteps.AddRange(plan.Steps);
+            _planStepIndex = 0;
+
+            var dryRun = string.IsNullOrWhiteSpace(plan.RiskLevel)
+                          || !string.Equals(s.Safety.Profile, "power-user", StringComparison.OrdinalIgnoreCase)
+                          || plan.RiskLevel.Equals("high", StringComparison.OrdinalIgnoreCase);
+            if (dryRun || plan.RequiresApproval)
+            {
+                _planExec.Text = plan.RequiresApproval
+                    ? "High-risk plan created: approval gate required before execution."
+                    : "Plan generated in dry-run mode. Use “Run plan” to execute manually.";
+                RefreshPlanTable();
+                RefreshPlanRiskPreview();
+                return;
+            }
+
+            var run = await AutoExecutor.RunAsync(plan, s, dryRun: false, ct).ConfigureAwait(true);
+            _lastRadicalRun = run;
+            _planExec.Text = BuildRadicalDigestText(plan, run);
+            _assistant.Text = run.Summary;
+            SetExecutionState(run.Completed ? "completed" : "partial", "real-run", run.ExecutedSteps, run.ExecutedSteps + run.FailedSteps);
+            SetExecutionLastStep(run.Completed ? "Run completed." : "Run partial.");
+            RefreshPlanTable();
+            RefreshPlanRiskPreview();
+        }
+        catch (OperationCanceledException)
+        {
+            _assistant.Text = "radical run cancelled.";
+            SetExecutionState("cancelled", "radical", _planStepIndex, _planSteps.Count);
+            SetExecutionLastStep("cancelled");
+        }
+        catch (Exception ex)
+        {
+            _assistant.Text = "radical error: " + ex.Message;
+            _planExec.Text = "radical error: " + ex.Message;
+            NexusShell.Log("radical run error: " + ex.Message);
+            CompanionHub.Publish(CompanionVisualState.Error);
+            SetExecutionState("failed", "radical", _planStepIndex, _planSteps.Count, ex.Message);
+            SetExecutionLastStep("failed");
+        }
+        finally
+        {
+            SetBusyBar(false);
+            CompanionHub.Publish(CompanionVisualState.Ready);
+        }
+    }
+
+    private static string BuildRadicalDigestText(RadicalPlan plan, RadicalExecutionReport run)
+    {
+        var scope = string.Join(", ",
+            run.StepSummaries.Take(3)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+        return
+            $"Captain Digest\nGoal: {plan.GoalText}\nRisk: {plan.RiskLevel}\nMode: {(run.DryRun ? "dry-run" : "real")}\nStatus: {(run.Completed ? "completed" : "partial")}\nSummary: {run.Summary}\nTop: {(string.IsNullOrWhiteSpace(scope) ? "(no steps)" : scope)}";
+    }
+
+    private static string BuildRadicalIdeasPrompt(string goal)
+    {
+        return
+            "Du bist ein Radical AI Product Innovator und Vibe Coding Builder.\n" +
+            "Erzeuge 5 radikale, disruptive KI-/AI-Features für diese App.\n\n" +
+            "1) Gib zuerst ein kurzes Breakdown der aktuellen App.\n" +
+            "2) Gib danach genau 5 Ideen, jede: komplette Interaktion ersetzt, mindestens 10x Verbesserung, AI-zentrale Entscheidung, bestehende UI vereinfacht oder eliminiert.\n" +
+            "3) Wähle die beste Idee und beschreibe sie als sofort baubares MVP (Komponentenstruktur, minimal notwendige Screens, AI-Core, UX-Flow, Build-Schritte).\n" +
+            "4) Erkläre kurz, warum das 10x besser ist, was ersetzt wird und warum schwer zu kopieren.\n\n" +
+            "Starte ohne konservative Feature-Add-ons, bitte komplett neu denken unter dem Stichwort: User macht wenig, System entscheidet.\n\n" +
+            $"Zielbereich der App: {goal}";
     }
 
     private async Task ExecutePlanAsync(bool dryRun)

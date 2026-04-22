@@ -25,6 +25,10 @@ public partial class AskTab : Avalonia.Controls.UserControl
     private CancellationTokenSource? _cts;
     private List<RecipeStep> _planSteps = new();
     private int _planStepIndex;
+    private bool _missionPaused;
+    private bool _missionAutoRunning;
+    private RadicalPlan? _lastRadicalPlan;
+    private RadicalExecutionReport? _lastRadicalRun;
     private WindowsMicRecorder? _mic;
     private bool _isRecording;
     private bool _operationBusy;
@@ -180,6 +184,23 @@ public partial class AskTab : Avalonia.Controls.UserControl
     private void Wire()
     {
         BtnAskNow.Click += async (_, _) => await RunAskAsync();
+        BtnMissionRun.Click += async (_, _) => await RunAutonomyFromPromptAsync();
+        BtnMissionPredictive.Click += async (_, _) =>
+        {
+            PromptBox.Text = "predictive " + (PromptBox.Text?.Trim() ?? string.Empty);
+            await RunAutonomyFromPromptAsync();
+        };
+        BtnMissionPause.Click += (_, _) =>
+        {
+            _missionPaused = !_missionPaused;
+            BtnMissionPause.Content = _missionPaused ? "Resume mission" : "Pause mission";
+            NexusShell.Log(_missionPaused ? "Mission paused." : "Mission resumed.");
+        };
+        BtnMissionAbort.Click += (_, _) =>
+        {
+            _missionAutoRunning = false;
+            RequestPanicStop();
+        };
         BtnSmoke.Click += async (_, _) => await RunSmokeAsync();
         BtnImportAudio.Click += async (_, _) => await ImportAudioAndTranscribeAsync();
         BtnPttStart.Click += (_, _) =>
@@ -935,12 +956,13 @@ public partial class AskTab : Avalonia.Controls.UserControl
 
     private async Task RunAskAsync()
     {
-        var prompt = PromptBox.Text?.Trim();
-        if (string.IsNullOrEmpty(prompt))
-        {
-            AssistantOut.Text = "Please enter a prompt.";
-            return;
-        }
+            var prompt = PromptBox.Text?.Trim();
+            var wasRadicalPrompt = false;
+            if (string.IsNullOrEmpty(prompt))
+            {
+                AssistantOut.Text = "Please enter a prompt.";
+                return;
+            }
 
         SetBusy(true);
         CompanionHub.Publish(CompanionVisualState.Thinking);
@@ -960,68 +982,156 @@ public partial class AskTab : Avalonia.Controls.UserControl
                 return;
             }
 
+            if (AskPromptRouter.TryParseAutonomyRoute(prompt, out var explicitAutonomy))
+            {
+                if (explicitAutonomy == null)
+                    return;
+                if (!s.EnableMissionPromptRoutes)
+                {
+                    AssistantOut.Text = "autonomy route is disabled in settings. Enable mission routes in Setup.";
+                    RetrievalOut.Text = "autonomy route blocked by settings.";
+                    return;
+                }
+                await RunMissionFromGoalAsync(s, explicitAutonomy.Goal, explicitAutonomy.RealRun, ct).ConfigureAwait(true);
+                return;
+            }
+
+            if (AskPromptRouter.TryParseOrbitalRoute(prompt, out var orbital))
+            {
+                if (orbital == null)
+                    return;
+                if (!s.EnableMissionPromptRoutes)
+                {
+                    AssistantOut.Text = "orbital route is disabled in settings. Enable mission routes in Setup.";
+                    RetrievalOut.Text = "orbital route blocked by settings.";
+                    return;
+                }
+                await RunMissionFromGoalAsync(s, $"orbit {orbital.Goal}", orbital.RealRun, ct).ConfigureAwait(true);
+                return;
+            }
+
+            if (AskPromptRouter.TryParsePredictiveAutonomyRoute(prompt, out var predictive))
+            {
+                if (predictive == null)
+                    return;
+                if (!s.EnableMissionPromptRoutes)
+                {
+                    AssistantOut.Text = "predictive route is disabled in settings. Enable mission routes in Setup.";
+                    RetrievalOut.Text = "predictive route blocked by settings.";
+                    return;
+                }
+                await RunMissionFromGoalAsync(s, $"predictive {predictive.Goal}", predictive.RealRun, ct).ConfigureAwait(true);
+                return;
+            }
+
             if (AskPromptRouter.TryParseCliRoute(prompt, out var route) && route != null)
             {
+                if (!s.EnableCliHandoffRoutes)
+                {
+                    AssistantOut.Text = "CLI handoff is disabled in settings. Enable it in Setup.";
+                    RetrievalOut.Text = "CLI route blocked by settings.";
+                    return;
+                }
                 await RunCliHandoffFromAskAsync(s, route, ct).ConfigureAwait(true);
                 return;
             }
 
-            var shots = IncludeScreenshots.IsChecked == true;
-            var know = UseKnowledgeInAsk.IsChecked == true;
-
-            string? knowledgeOverride = null;
-            if (know)
+            if (AskPromptRouter.TryParseRadicalAutoRoute(prompt, out var radicalAuto))
             {
-                var aug = KnowledgeSnippetService.BuildAugmentationResult(prompt, 6000);
-                knowledgeOverride = aug.Bundle.ContextText;
-                RetrievalOut.Text = KnowledgeSnippetService.FormatAugmentationForAskPanel(aug);
-                RenderRetrievalSources(aug.Bundle.Sources);
+                if (radicalAuto == null)
+                    return;
+                if (!s.EnableRadicalAutoRoutes)
+                {
+                    AssistantOut.Text = "radical-auto is disabled in settings. Enable it in Setup.";
+                    RetrievalOut.Text = "radical-auto route blocked by settings.";
+                    return;
+                }
+                await RunRadicalFromGoalAsync(s, radicalAuto.Goal, ct, radicalAuto.RealRun).ConfigureAwait(true);
+                return;
+            }
+
+            if (AskPromptRouter.TryParseRadicalRoute(prompt, out var radical))
+            {
+                if (radical == null)
+                    return;
+                if (!s.EnableRadicalIdeaBlueprint)
+                {
+                    AssistantOut.Text = "radical ideas are disabled in settings. Enable them in Setup.";
+                    RetrievalOut.Text = "radical ideas route blocked by settings.";
+                    return;
+                }
+                prompt = BuildRadicalIdeasPrompt(radical.Goal);
+                wasRadicalPrompt = true;
+            }
+
+            var useMissionMode = (MissionMode?.IsChecked == true) || (s.FallbackMissionModeWhenAsk && !wasRadicalPrompt);
+            if (!s.EnableMissionPromptRoutes)
+                useMissionMode = false;
+
+            if (useMissionMode && !wasRadicalPrompt)
+            {
+                await RunMissionFromGoalAsync(s, prompt, true, ct).ConfigureAwait(true);
+                return;
             }
             else
             {
-                RetrievalOut.Text = "(local knowledge not included)";
-                ClearRetrievalSources();
+                var shots = IncludeScreenshots.IsChecked == true;
+                var know = UseKnowledgeInAsk.IsChecked == true;
+
+                string? knowledgeOverride = null;
+                if (know)
+                {
+                    var aug = KnowledgeSnippetService.BuildAugmentationResult(prompt, 6000);
+                    knowledgeOverride = aug.Bundle.ContextText;
+                    RetrievalOut.Text = KnowledgeSnippetService.FormatAugmentationForAskPanel(aug);
+                    RenderRetrievalSources(aug.Bundle.Sources);
+                }
+                else
+                {
+                    RetrievalOut.Text = "(local knowledge not included)";
+                    ClearRetrievalSources();
+                }
+
+                var fusion = UiAutomationVisionFusion.BuildAskAugmentation(s, shots);
+                var adapt = OperatorAdapterRegistry.TryEnrichForegroundContext();
+                if (!string.IsNullOrWhiteSpace(adapt))
+                    fusion = string.IsNullOrWhiteSpace(fusion) ? adapt : fusion + "\n\n" + adapt;
+                var effectivePrompt = string.IsNullOrWhiteSpace(fusion)
+                    ? prompt
+                    : fusion + "\n\n---\n" + prompt;
+
+                NexusShell.Log($"ask now · screenshots={shots}, knowledge={know}, uia+fusion={s.IncludeUiaContextInAsk || shots}");
+                var text = await LlmChatService
+                    .CompleteAsync(s, effectivePrompt, shots, know, ct, knowledgeContextOverride: know ? knowledgeOverride : null)
+                    .ConfigureAwait(true);
+                AssistantOut.Text = text;
+
+                var tokens = ActionPlanExtractor.Extract(text);
+                var fromRegex = ActionPlanExtractor.ToRecipeSteps(tokens);
+                _planSteps = fromRegex;
+                if (_planSteps.Count == 0 && PlanJsonParser.TryParseRecipeStepsFromText(text, out var jsonSteps) &&
+                    jsonSteps.Count > 0)
+                    _planSteps = jsonSteps;
+                _planStepIndex = 0;
+                PlanPreview.Text = fromRegex.Count > 0
+                    ? ActionPlanExtractor.FormatPreview(tokens)
+                    : (_planSteps.Count > 0
+                        ? FormatStepsForPreview(_planSteps)
+                        : ActionPlanExtractor.FormatPreview(tokens));
+                PlanExec.Text = $"({_planSteps.Count} steps detected — „run plan“ or „run next step“)";
+
+                await MaybeAppendAutomationSuggestionsAsync(s, text, ct).ConfigureAwait(true);
+
+                if (s.SpeakResponses)
+                {
+                    CompanionHub.Publish(CompanionVisualState.Speaking);
+                    var ttsErr = await TextToSpeechService.SpeakAsync(text, ct).ConfigureAwait(true);
+                    if (!string.IsNullOrEmpty(ttsErr))
+                        NexusShell.Log("TTS (auto): " + ttsErr);
+                }
+
+                NexusShell.Log("ask now finished.");
             }
-
-            var fusion = UiAutomationVisionFusion.BuildAskAugmentation(s, shots);
-            var adapt = OperatorAdapterRegistry.TryEnrichForegroundContext();
-            if (!string.IsNullOrWhiteSpace(adapt))
-                fusion = string.IsNullOrWhiteSpace(fusion) ? adapt : fusion + "\n\n" + adapt;
-            var effectivePrompt = string.IsNullOrWhiteSpace(fusion)
-                ? prompt
-                : fusion + "\n\n---\n" + prompt;
-
-            NexusShell.Log($"ask now · screenshots={shots}, knowledge={know}, uia+fusion={s.IncludeUiaContextInAsk || shots}");
-            var text = await LlmChatService
-                .CompleteAsync(s, effectivePrompt, shots, know, ct, knowledgeContextOverride: know ? knowledgeOverride : null)
-                .ConfigureAwait(true);
-            AssistantOut.Text = text;
-
-            var tokens = ActionPlanExtractor.Extract(text);
-            var fromRegex = ActionPlanExtractor.ToRecipeSteps(tokens);
-            _planSteps = fromRegex;
-            if (_planSteps.Count == 0 && PlanJsonParser.TryParseRecipeStepsFromText(text, out var jsonSteps) &&
-                jsonSteps.Count > 0)
-                _planSteps = jsonSteps;
-            _planStepIndex = 0;
-            PlanPreview.Text = fromRegex.Count > 0
-                ? ActionPlanExtractor.FormatPreview(tokens)
-                : (_planSteps.Count > 0
-                    ? FormatStepsForPreview(_planSteps)
-                    : ActionPlanExtractor.FormatPreview(tokens));
-            PlanExec.Text = $"({_planSteps.Count} steps detected — „run plan“ or „run next step“)";
-
-            await MaybeAppendAutomationSuggestionsAsync(s, text, ct).ConfigureAwait(true);
-
-            if (s.SpeakResponses)
-            {
-                CompanionHub.Publish(CompanionVisualState.Speaking);
-                var ttsErr = await TextToSpeechService.SpeakAsync(text, ct).ConfigureAwait(true);
-                if (!string.IsNullOrEmpty(ttsErr))
-                    NexusShell.Log("TTS (auto): " + ttsErr);
-            }
-
-            NexusShell.Log("ask now finished.");
         }
         catch (OperationCanceledException)
         {
@@ -1084,6 +1194,267 @@ public partial class AskTab : Avalonia.Controls.UserControl
         _planStepIndex = 0;
     }
 
+    private async Task RunAutonomyFromPromptAsync()
+    {
+        if (!_getSettings().EnableMissionPromptRoutes)
+        {
+            AssistantOut.Text = "Mission routing is disabled in settings.";
+            RetrievalOut.Text = "enable mission routes in Setup to use autonomy mode.";
+            return;
+        }
+
+        var prompt = PromptBox.Text?.Trim();
+        if (string.IsNullOrEmpty(prompt))
+        {
+            AssistantOut.Text = "Please enter a mission goal.";
+            return;
+        }
+
+        _cts = new CancellationTokenSource();
+        await RunMissionFromGoalAsync(_getSettings(), prompt, true, _cts.Token).ConfigureAwait(true);
+    }
+
+    private async Task RunRadicalFromGoalAsync(
+        NexusSettings s,
+        string goal,
+        CancellationToken ct,
+        bool allowRealRun)
+    {
+        if (string.IsNullOrWhiteSpace(goal))
+        {
+            AssistantOut.Text = "Please enter a radical mission goal.";
+            return;
+        }
+
+        SetBusy(true);
+        _missionAutoRunning = true;
+        _missionPaused = false;
+        _lastRadicalPlan = null;
+        _lastRadicalRun = null;
+        CompanionHub.Publish(CompanionVisualState.Thinking);
+        try
+        {
+            _cts = new CancellationTokenSource();
+            ct = _cts.Token;
+
+            var plan = await GoalOrchestrator.GeneratePlanAsync(s, goal, ct).ConfigureAwait(true);
+            _lastRadicalPlan = plan;
+
+            PlanPreview.Text = plan.Markdown;
+            AssistantOut.Text = plan.Markdown;
+            RetrievalOut.Text = $"radical plan persisted: {plan.PlanFilePath}";
+            _planSteps = plan.Steps.ToList();
+            _planStepIndex = 0;
+
+            var dryRun = !allowRealRun
+                          || plan.RiskLevel.Equals("high", StringComparison.OrdinalIgnoreCase)
+                          || !string.Equals(s.Safety.Profile, "power-user", StringComparison.OrdinalIgnoreCase);
+            ShowRadicalDigest(plan, dryRun);
+
+            if (dryRun || plan.RequiresApproval)
+            {
+                PlanExec.Text = plan.RequiresApproval
+                    ? "High-risk plan created: ask for approval by running again with `radical run`."
+                    : "Plan generated in dry-run mode. Use “Run Plan” for manual execution.";
+                return;
+            }
+
+            var run = await AutoExecutor.RunAsync(plan, s, dryRun: false, ct).ConfigureAwait(true);
+            _lastRadicalRun = run;
+            PlanExec.Text = BuildRadicalDigestText(plan, run);
+            if (run.Completed)
+                MissionRibbonStatus.Text = "Mission status: completed";
+            else
+                MissionRibbonStatus.Text = "Mission status: partial";
+            NexusShell.Log("radical run complete");
+        }
+        catch (OperationCanceledException)
+        {
+            PlanExec.Text = "radical plan cancelled.";
+        }
+        catch (Exception ex)
+        {
+            AssistantOut.Text = "radical error: " + ex.Message;
+            NexusShell.Log("radical run error: " + ex.Message);
+            CompanionHub.Publish(CompanionVisualState.Error);
+        }
+        finally
+        {
+            _missionAutoRunning = false;
+            SetBusy(false);
+            CompanionHub.Publish(CompanionVisualState.Ready);
+        }
+    }
+
+    private static string BuildRadicalDigestText(RadicalPlan plan, RadicalExecutionReport run)
+    {
+        var scope = string.Join(", ",
+            run.StepSummaries.Take(3)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+        return
+            $"Captain Digest\nGoal: {plan.GoalText}\nRisk: {plan.RiskLevel}\nMode: {(run.DryRun ? "dry-run" : "real")}\nStatus: {(run.Completed ? "completed" : "partial")}\nSummary: {run.Summary}\nTop: {(string.IsNullOrWhiteSpace(scope) ? "(no steps)" : scope)}";
+    }
+
+    private static string BuildRadicalIdeasPrompt(string goal)
+    {
+        return
+            "Du bist ein Radical AI Product Innovator und Vibe Coding Builder.\n" +
+            "Erzeuge 5 radikale, disruptive KI-/AI-Features für diese App.\n\n" +
+            "1) Gib zuerst ein kurzes Breakdown der aktuellen App.\n" +
+            "2) Gib danach genau 5 Ideen, jede: komplette Interaktion ersetzt, mindestens 10x Verbesserung, AI-zentrale Entscheidung, bestehende UI vereinfacht oder eliminiert.\n" +
+            "3) Wähle die beste Idee und beschreibe sie als sofort baubares MVP (Komponentenstruktur, minimal notwendige Screens, AI-Core, UX-Flow, Build-Schritte).\n" +
+            "4) Erkläre kurz, warum das 10x besser ist, was ersetzt wird und warum schwer zu kopieren.\n\n" +
+            "Starte ohne konservative Feature-Add-ons, bitte komplett neu denken unter dem Stichwort: User macht wenig, System entscheidet.\n\n" +
+            $"Zielbereich der App: {goal}";
+    }
+
+    private void ShowRadicalDigest(RadicalPlan plan, bool dryRun)
+    {
+        var mode = dryRun ? "dry-run" : "auto-exec";
+        PlanExec.Text = $"Captain Digest\nStatus: plan ready\nMode: {mode}\nRisk: {plan.RiskLevel}\nSteps: {plan.Steps.Count}\nPath: {plan.PlanFilePath}\n\nUse “Run Plan” for execution.";
+        TranscriptOut.Text = $"Auto-Captain: {plan.GoalText}";
+        SafetyOut.Text = plan.RequiresApproval
+            ? "High-risk gate: requires approval token before real execution."
+            : "Default: dry-run first unless safe-mode + explicit run is enabled.";
+    }
+
+    private async Task RunMissionFromGoalAsync(
+        NexusSettings s,
+        string goal,
+        bool allowRealRun,
+        CancellationToken ct)
+    {
+        if (ct == default)
+            ct = _cts?.Token ?? CancellationToken.None;
+
+        SetBusy(true);
+        CompanionHub.Publish(CompanionVisualState.Thinking);
+        try
+        {
+            _cts = new CancellationTokenSource();
+            ct = _cts.Token;
+            _missionAutoRunning = true;
+            _missionPaused = false;
+            BtnMissionPause.IsEnabled = true;
+            MissionRecoveryEngine.IsPaused = () => _missionPaused;
+            MissionRibbonStatus.Text = "Mission status: building";
+
+            if (!string.IsNullOrWhiteSpace(goal))
+                NexusShell.Log($"autonomy run · goal: {goal}");
+            else
+                NexusShell.Log("autonomy run · using default goal text.");
+
+            var mission = await MissionOrchestrator.BuildAsync(s, goal, ct).ConfigureAwait(true);
+            SafetyOut.Text = string.Join("\n", mission.GuardHints);
+            RetrievalOut.Text = $"Mission plan persisted: {mission.FilePath}";
+            AssistantOut.Text = mission.PlanText;
+            PlanPreview.Text = mission.PlanText;
+            _planSteps = mission.Steps.ToList();
+            _planStepIndex = 0;
+            var decision = MissionDecisionGuard.Evaluate(s, mission);
+            if (mission.GuardHints.Count > 0)
+                TranscriptOut.Text = "Mission guard: " + string.Join(" | ", decision.Reasons);
+
+            if (decision.Reasons.Count > 0)
+            {
+                SafetyOut.Text = string.Join("\n", decision.Reasons);
+                PlanExec.Text = "Mission blocked by DecisionGuard.";
+                MissionRibbonStatus.Text = "Mission status: blocked";
+                return;
+            }
+
+                if (!_missionAutoRunning)
+                {
+                    PlanExec.Text = "Mission aborted before run.";
+                    MissionRibbonStatus.Text = "Mission status: aborted";
+                    return;
+                }
+
+            if (_planSteps.Count > 0)
+            {
+                var needsApproval = mission.RiskLevel.Equals("high", StringComparison.OrdinalIgnoreCase)
+                                   && mission.RequiresManualApproval
+                                   && !MissionAutoApproveHighRisk.IsChecked.GetValueOrDefault();
+
+                if (needsApproval)
+                {
+                    if (OperatingSystem.IsWindows())
+                    {
+                        var ok = System.Windows.Forms.MessageBox.Show(
+                            $"High-risk mission detected ({mission.RiskLevel.ToUpperInvariant()}). Approve autonomous execution?",
+                            "Carolus Nexus — mission high risk gate",
+                            System.Windows.Forms.MessageBoxButtons.OKCancel,
+                            System.Windows.Forms.MessageBoxIcon.Warning);
+                        if (ok != System.Windows.Forms.DialogResult.OK)
+                        {
+                            NexusShell.Log("Mission high-risk not approved.");
+                            PlanExec.Text = "Mission waiting on approval.";
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        NexusShell.Log("Mission high-risk: no Windows dialog available.");
+                    }
+                }
+
+                var dryRun = !allowRealRun || !string.Equals(s.Safety.Profile, "power-user", StringComparison.OrdinalIgnoreCase);
+                var report = await MissionRecoveryEngine.RunAsync(
+                        _planSteps,
+                        s,
+                        dryRun,
+                        ct)
+                    .ConfigureAwait(true);
+                PlanExec.Text = MissionNarrator.Summarize(mission, report);
+                var compliance = MissionComplianceService.Evaluate(mission, s, report);
+                SafetyOut.Text = $"Compliance: {compliance.Decision} (report: {compliance.FilePath})";
+                TranscriptOut.Text = report.Transcript;
+                MissionRibbonStatus.Text = report.Completed ? "Mission status: completed" : "Mission status: partial";
+            }
+            else
+            {
+                PlanExec.Text = "(Mission generated no executable steps.)";
+                MissionRibbonStatus.Text = "Mission status: noop";
+            }
+
+            NexusShell.Log($"autonomy plan created: {mission.FilePath}");
+            if (s.SpeakResponses)
+            {
+                CompanionHub.Publish(CompanionVisualState.Speaking);
+                var ttsErr =
+                    await TextToSpeechService.SpeakAsync("Mission generated, decision and transcript are ready.", ct)
+                        .ConfigureAwait(true);
+                if (!string.IsNullOrEmpty(ttsErr))
+                    NexusShell.Log("TTS (auto): " + ttsErr);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            AssistantOut.Text = "Mission canceled.";
+            PlanExec.Text = "Mission canceled.";
+        }
+        catch (Exception ex)
+        {
+            AssistantOut.Text = "Mission error: " + ex.Message;
+            NexusShell.Log("autonomy run error: " + ex.Message);
+            CompanionHub.Publish(CompanionVisualState.Error);
+        }
+        finally
+        {
+            SetBusy(false);
+            CompanionHub.Publish(CompanionVisualState.Ready);
+            _missionAutoRunning = false;
+            MissionRecoveryEngine.IsPaused = null;
+            BtnMissionPause.IsEnabled = false;
+            BtnMissionPause.Content = "Pause mission";
+            if (_missionPaused)
+                MissionRibbonStatus.Text = "Mission status: paused";
+            else if (!(_missionAutoRunning))
+                MissionRibbonStatus.Text = "Mission status: idle";
+        }
+    }
+
     private async Task ExecutePlanAsync(bool dryRun)
     {
         var steps = ActivePlanSteps();
@@ -1094,6 +1465,23 @@ public partial class AskTab : Avalonia.Controls.UserControl
         }
 
         _cts = new CancellationTokenSource();
+        if (_lastRadicalPlan != null)
+        {
+            var effectiveDryRun = dryRun;
+            if (!effectiveDryRun && _lastRadicalPlan.RequiresApproval
+                && !_lastRadicalPlan.RiskLevel.Equals("safe", StringComparison.OrdinalIgnoreCase))
+            {
+                PlanExec.Text = "Captain denied: high-risk plan requires approval before real execution.";
+                return;
+            }
+
+            var s = _getSettings();
+            var run = await AutoExecutor.RunAsync(_lastRadicalPlan, s, effectiveDryRun, _cts.Token).ConfigureAwait(true);
+            _lastRadicalRun = run;
+            PlanExec.Text = BuildRadicalDigestText(_lastRadicalPlan, run);
+            return;
+        }
+
         PlanExec.Text = await SimplePlanSimulator.RunAsync(steps, dryRun, _getSettings(), null, _cts.Token).ConfigureAwait(true);
         _planStepIndex = 0;
     }
@@ -1154,8 +1542,14 @@ public partial class AskTab : Avalonia.Controls.UserControl
         ActivityStatusHub.SetAskBusy(busy);
         AskBusyBar.IsVisible = busy;
         BtnAskNow.IsEnabled = !busy;
+        BtnMissionRun.IsEnabled = !busy;
+        BtnMissionPredictive.IsEnabled = !busy;
+        BtnMissionPause.IsEnabled = !busy ? _missionAutoRunning : false;
+        BtnMissionAbort.IsEnabled = busy && _missionAutoRunning;
         BtnSmoke.IsEnabled = !busy;
         BtnImportAudio.IsEnabled = !busy;
+        MissionMode.IsEnabled = !busy;
+        MissionAutoApproveHighRisk.IsEnabled = !busy;
         BtnSpeak.IsEnabled = !busy;
         BtnCopyAnswer.IsEnabled = !busy;
         BtnInsertKnowledge.IsEnabled = !busy;

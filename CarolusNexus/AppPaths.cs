@@ -22,6 +22,8 @@ public static class AppPaths
     public static string KnowledgeFtsDb => Path.Combine(DataDir, "knowledge-fts.db");
     public static string KnowledgeEmbeddings => Path.Combine(DataDir, "knowledge-embeddings.json");
     public static string AutomationRecipes => Path.Combine(DataDir, "automation-recipes.json");
+    public static string RadicalPlansDir => Path.Combine(RepoRoot, "docs", "radical-plans");
+    public static string RadicalRunsDir => Path.Combine(RepoRoot, "docs", "radical-runs");
     public static string RitualJobQueue => Path.Combine(DataDir, "ritual-job-queue.json");
     public static string ActionHistory => Path.Combine(DataDir, "action-history.json");
     public static string WatchSessions => Path.Combine(DataDir, "watch-sessions.json");

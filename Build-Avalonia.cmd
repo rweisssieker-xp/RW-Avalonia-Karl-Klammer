@@ -1,5 +1,5 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-dotnet build CarolusNexus\CarolusNexus.csproj -c Release
+dotnet build CarolusNexus.WinUI\CarolusNexus.WinUI.csproj -c Release -p:WindowsAppSDKSelfContained=false
 exit /b %ERRORLEVEL%

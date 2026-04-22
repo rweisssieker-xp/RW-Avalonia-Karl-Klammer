@@ -9,13 +9,23 @@
         <CheckBox x:Name="IncludeScreenshots" Content="Include screenshots" IsChecked="True" />
         <CheckBox x:Name="UseKnowledgeInAsk" Content="Use local knowledge in Ask" IsChecked="True"
                   ToolTip.Tip="UIA context is controlled in Setup (Ask: UIA snapshot)." />
+        <CheckBox x:Name="MissionMode" Content="Autonomy mode" IsChecked="True" />
+        <CheckBox x:Name="MissionAutoApproveHighRisk" Content="Auto-approve high risk" IsChecked="False"
+                  ToolTip.Tip="Only use if policy accepts automated high-risk execution." />
       </StackPanel>
+      <TextBlock x:Name="MissionRibbonStatus" Text="Mission status: idle" FontSize="11"
+                 Foreground="{DynamicResource NexusMutedForegroundBrush}" />
       <WrapPanel Orientation="Horizontal">
         <Button x:Name="BtnAskNow" Classes="nexus-primary" Content="Ask now" Margin="0,0,6,6" Padding="12,7" />
         <Button x:Name="BtnApproveRun" Classes="nexus-primary" Content="Approve + run" Margin="0,0,6,6" Padding="12,7"
                 ToolTip.Tip="Confirmation dialog — explicit gate before execution." />
+        <Button x:Name="BtnMissionRun" Classes="nexus-primary" Content="Autonomy run" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnMissionPredictive" Classes="nexus-primary" Content="Predictive next action" Margin="0,0,6,6" Padding="10,6"
+                ToolTip.Tip="Creates predictive mission suggestion, dry-run only." />
         <Button x:Name="BtnRunPlan" Content="Run plan" Margin="0,0,6,6" Padding="10,6"
                 ToolTip.Tip="Runs the detected plan without an extra confirmation dialog." />
+        <Button x:Name="BtnMissionPause" Content="Pause mission" Margin="0,0,6,6" Padding="10,6" />
+        <Button x:Name="BtnMissionAbort" Classes="nexus-danger" Content="Abort mission" Margin="0,0,6,6" Padding="10,6" />
         <Button x:Name="BtnPanic" Classes="nexus-danger" Content="Panic stop" Margin="0,0,6,6" Padding="10,6" />
       </WrapPanel>
       <Expander Header="More: voice, tests, plan steps, copy…" IsExpanded="False">

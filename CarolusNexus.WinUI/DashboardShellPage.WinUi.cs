@@ -1,16 +1,18 @@
 using System;
+using System.IO;
 using System.Linq;
 using CarolusNexus;
 using CarolusNexus.Services;
 using CarolusNexus_WinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Imaging;
 using VirtualKey = Windows.System.VirtualKey;
 using VirtualKeyModifiers = Windows.System.VirtualKeyModifiers;
 
 namespace CarolusNexus_WinUI.Pages;
 
-/// <summary>Seven summary cards + 3D placeholder — aligned with Avalonia <c>DashboardTab</c>.</summary>
+/// <summary>Seven summary cards + watch scene preview — aligned with Avalonia <c>DashboardTab</c>.</summary>
 public sealed class DashboardShellPage : Page
 {
     private readonly TextBlock _heroHeadline = new() { TextWrapping = TextWrapping.Wrap };
@@ -35,6 +37,13 @@ public sealed class DashboardShellPage : Page
     private readonly TextBox _cardWatch = MkCard();
     private readonly TextBox _cardUsp = MkCard();
     private readonly TextBox _cardNext = MkCard();
+    private readonly Image _sceneImage = new() { Height = 136 };
+    private readonly TextBlock _sceneMeta = new()
+    {
+        FontSize = 11,
+        TextWrapping = TextWrapping.Wrap,
+        Foreground = WinUiFluentChrome.SecondaryTextBrush
+    };
 
     public DashboardShellPage()
     {
@@ -49,7 +58,7 @@ public sealed class DashboardShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(dashHint);
         stack.Children.Add(dashHint);
-        stack.Children.Add(WinUiFluentChrome.StatusTile("Runtime reality", "mixed", "live local state; 3D/demo readiness is preview-only; Ghost lives in the shell side panel"));
+        stack.Children.Add(WinUiFluentChrome.StatusTile("Runtime reality", "mixed", "live local state; scene preview from latest watch snapshot; Ghost lives in the shell side panel"));
         stack.Children.Add(BuildDemoHero());
         _nextBestActionBar = BuildNextBestActionBar();
         stack.Children.Add(_nextBestActionBar);
@@ -61,16 +70,20 @@ public sealed class DashboardShellPage : Page
         refresh.Click += (_, _) => RefreshFull();
         stack.Children.Add(refresh);
 
-        stack.Children.Add(WinUiFluentChrome.ColumnCaption("3D preview"));
-        var previewInner = new TextBlock
+        stack.Children.Add(WinUiFluentChrome.ColumnCaption("Watch scene preview"));
+        _sceneImage.Width = Double.NaN;
+        _sceneImage.Stretch = Microsoft.UI.Xaml.Media.Stretch.UniformToFill;
+        _sceneImage.HorizontalAlignment = HorizontalAlignment.Stretch;
+        _sceneImage.VerticalAlignment = VerticalAlignment.Stretch;
+
+        var previewScene = new StackPanel
         {
-            Text =
-                "OfficeScene3D (OpenGL) ships in the Avalonia build.\n" +
-                "WinUI uses the same dashboard data (incl. watch snapshots + proactive LLM in watch mode) in the cards below.",
-            Margin = new Thickness(16, 14, 16, 14),
-            TextWrapping = TextWrapping.Wrap,
-            VerticalAlignment = VerticalAlignment.Center,
-            Foreground = WinUiFluentChrome.SecondaryTextBrush
+            Spacing = 8,
+            Children =
+            {
+                _sceneImage,
+                _sceneMeta
+            }
         };
         var previewBox = new Border
         {
@@ -79,7 +92,7 @@ public sealed class DashboardShellPage : Page
             BorderThickness = new Thickness(1),
             BorderBrush = WinUiFluentChrome.CardBorderBrush,
             Background = WinUiFluentChrome.CardSurfaceBackground,
-            Child = previewInner
+            Child = previewScene
         };
         WinUiFluentChrome.ApplyCardElevation(previewBox, 2f);
         stack.Children.Add(previewBox);
@@ -158,6 +171,7 @@ public sealed class DashboardShellPage : Page
         RefreshNextBestActionBar();
         RefreshSignalStrip();
         RefreshNextActionCard();
+        RefreshScenePreview();
     }
 
     private Border BuildNextBestActionBar()
@@ -317,6 +331,52 @@ public sealed class DashboardShellPage : Page
             $"Risky action: {insight.RiskyAction}\n" +
             $"Recommended flow: {insight.RecommendedFlow}\n" +
             $"Posture: {insight.OperatorPosture}";
+    }
+
+    private void RefreshScenePreview()
+    {
+        try
+        {
+            var doc = WatchSessionService.LoadOrEmpty();
+            var latest = doc.Entries.LastOrDefault();
+            if (latest == null)
+            {
+                _sceneImage.Source = null;
+                _sceneImage.MinWidth = 0;
+                _sceneMeta.Text =
+                    "No watch snapshot yet. Start watch mode and wait for first thumb capture.";
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(latest.ThumbnailPath))
+            {
+                var abs = Path.Combine(AppPaths.DataDir, latest.ThumbnailPath);
+                if (File.Exists(abs))
+                {
+                    _sceneImage.Source = new BitmapImage(new Uri(abs));
+                }
+                else
+                {
+                    _sceneImage.Source = null;
+                    _sceneImage.MinWidth = 0;
+                }
+            }
+            else
+            {
+                _sceneImage.Source = null;
+                _sceneImage.MinWidth = 0;
+            }
+
+            _sceneMeta.Text =
+                $"Latest watch frame: {latest.ProcessName ?? "unknown"} · {latest.AdapterFamily ?? "generic"} · hash " +
+                $"{(string.IsNullOrWhiteSpace(latest.ScreenHash) ? "?" : latest.ScreenHash[..Math.Min(8, latest.ScreenHash.Length)])}";
+        }
+        catch (Exception ex)
+        {
+            _sceneImage.Source = null;
+            _sceneMeta.Text = "Scene preview failed: " + ex.Message;
+            NexusShell.Log("dashboard scene preview failed: " + ex.Message);
+        }
     }
 
     private static TextBox MkCard() =>

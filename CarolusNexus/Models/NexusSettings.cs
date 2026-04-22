@@ -88,6 +88,26 @@ public sealed class NexusSettings
     [JsonPropertyName("axIntegrationEnabled")]
     public bool AxIntegrationEnabled { get; set; } = true;
 
+    /// <summary>Aktiviert textbasierte „use codex / use claude code / use openclaw“-CLI-Routen.</summary>
+    [JsonPropertyName("enableCliHandoffRoutes")]
+    public bool EnableCliHandoffRoutes { get; set; } = true;
+
+    /// <summary>Aktiviert textbasierte Mission-/Autonomy-Routen (autonomy, predictive, orbit, explicit Mission-Flow).</summary>
+    [JsonPropertyName("enableMissionPromptRoutes")]
+    public bool EnableMissionPromptRoutes { get; set; } = true;
+
+    /// <summary>Erlaubt direkte `radical-auto` Ausführung statt nur „Plan generiert“-Ausgabe.</summary>
+    [JsonPropertyName("enableRadicalAutoRoutes")]
+    public bool EnableRadicalAutoRoutes { get; set; } = true;
+
+    /// <summary>Ermöglicht `radical` als Ideen-Blueprint (statt normaler Ask-Antwort).</summary>
+    [JsonPropertyName("enableRadicalIdeaBlueprint")]
+    public bool EnableRadicalIdeaBlueprint { get; set; } = true;
+
+    /// <summary>Kann `mission mode` auch dann automatisch auslösen, wenn der Ask-Modus nicht explizit darauf setzt.</summary>
+    [JsonPropertyName("fallbackMissionModeWhenAsk")]
+    public bool FallbackMissionModeWhenAsk { get; set; } = false;
+
     /// <summary>Freitext nur für Logs/Kontext (z. B. Testmandant) — kein Secret.</summary>
     [JsonPropertyName("axTestTenantLabel")]
     public string AxTestTenantLabel { get; set; } = "";
