@@ -9,6 +9,8 @@
       <Button x:Name="BtnClear" Content="clear logs" Margin="0,0,8,8" />
       <Button x:Name="BtnAudit" Content="flow audit" Margin="0,0,8,8"
               ToolTip.Tip="Loads the latest lines from ritual-step-audit.jsonl (operator-flow step log)." />
+      <Button x:Name="BtnRuntimeReport" Content="runtime report" Margin="0,0,8,8" />
+      <Button x:Name="BtnAuditPackage" Content="audit package" Margin="0,0,8,8" />
     </WrapPanel>
     <TextBox x:Name="DiagLog" AcceptsReturn="True" IsReadOnly="True" FontFamily="Consolas,Courier New,monospace"
              TextWrapping="Wrap" />

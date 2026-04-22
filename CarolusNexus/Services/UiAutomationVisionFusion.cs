@@ -21,6 +21,13 @@ public static class UiAutomationVisionFusion
                 sb.AppendLine("[Foreground UI structure (UIA, truncated — depth/node/char caps in UiAutomationSnapshot)]");
                 sb.AppendLine(uia.TrimEnd());
             }
+
+            var deep = ForegroundUiAutomationContext.BuildDeepSelectionSummary(settings);
+            if (!string.IsNullOrWhiteSpace(deep))
+            {
+                sb.AppendLine("[Foreground UI details]");
+                sb.AppendLine(deep.Trim());
+            }
         }
 
         if (visionScreenshotsRequested && OperatingSystem.IsWindows())

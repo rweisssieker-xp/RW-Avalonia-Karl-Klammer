@@ -9,7 +9,7 @@
 - **Solution:** [CarolusNexus.slnx](CarolusNexus.slnx) · Projekt `CarolusNexus.WinUI/CarolusNexus.WinUI.csproj` · Ziel `net9.0-windows10.0.26100.0` (per Projekttarget)
 - **Datenpfade:** [CarolusNexus/AppPaths.cs](CarolusNexus/AppPaths.cs) — erwartet Ordner `windows/` unter der Repository-Wurzel (für `DiscoverRepoRoot` beim Start aus `bin/`)
 
-Build/Start aus dem Repo-Root: `Build-Avalonia.cmd` / `Start-Avalonia.cmd` oder `dotnet build CarolusNexus.WinUI/CarolusNexus.WinUI.csproj` / `dotnet run --project CarolusNexus.WinUI/CarolusNexus.WinUI.csproj -p:WindowsAppSDKSelfContained=false`.
+Build/Start aus dem Repo-Root: `Build-WinUI.cmd` / `Start-WinUI.cmd` oder `dotnet build CarolusNexus.WinUI/CarolusNexus.WinUI.csproj` / `dotnet run --project CarolusNexus.WinUI/CarolusNexus.WinUI.csproj -p:WindowsAppSDKSelfContained=false`.
 
 ## Zusammenarbeit mit dem Agenten (Repo-weite Präferenz)
 

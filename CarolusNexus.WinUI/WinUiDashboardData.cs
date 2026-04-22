@@ -91,7 +91,7 @@ public static class WinUiDashboardData
         setLive(string.IsNullOrWhiteSpace(tileLiveText) ? "—" : tileLiveText);
         setProactive(proactive);
         setGov(
-            $"Profile: {settings.Safety.Profile}\nPanic: {settings.Safety.PanicStopEnabled}\nneverAutoSend: {settings.Safety.NeverAutoSend}\n\n— Flow jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}");
+            $"Profile: {settings.Safety.Profile}\nPanic: {settings.Safety.PanicStopEnabled}\nneverAutoSend: {settings.Safety.NeverAutoSend}\n\n— Flow jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}\n\n— Resume —\n{FlowResumeStore.FormatSummary()}");
         setRituals(FormatRitualsDashboardCard());
         setWatch(WatchSessionService.FormatDashboardSummary());
         setUsp(FormatAiGuiUspRadar(settings, knowCount));
@@ -264,6 +264,7 @@ public static class WinUiDashboardData
 
     private static string FormatAiGuiUspRadar(NexusSettings settings, int knowCount)
     {
+        var operatorRadar = OperatorUspPackService.BuildUspRadar(settings);
         var keyOk = DotEnvStore.HasProviderKey(settings.Provider);
         var hasKnowledge = knowCount > 0 || File.Exists(AppPaths.KnowledgeIndex) || File.Exists(AppPaths.KnowledgeChunks);
         var hasLiveContext = OperatingSystem.IsWindows();
@@ -284,6 +285,9 @@ public static class WinUiDashboardData
             : "USP candidate: privacy-aware AI desktop assistant that turns local knowledge and foreground context into governed operator flows.";
 
         var sb = new StringBuilder();
+        sb.AppendLine(operatorRadar);
+        sb.AppendLine();
+        sb.AppendLine("Legacy readiness:");
         sb.AppendLine($"Readiness: {ready}/6");
         sb.AppendLine($"AI provider key: {(keyOk ? "ready" : "missing")} ({settings.Provider})");
         sb.AppendLine($"Local knowledge: {(hasKnowledge ? "ready" : "empty")}");

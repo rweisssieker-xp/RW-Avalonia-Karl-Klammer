@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using CarolusNexus;
+using CarolusNexus.Services;
 
 namespace CarolusNexus.Views;
 
@@ -16,6 +17,8 @@ public partial class DiagnosticsTab : UserControl
         BtnCopy.Click += async (_, _) => await CopyAllToClipboardAsync();
         BtnClear.Click += (_, _) => { DiagLog.Text = ""; NexusShell.Log("Logs cleared (local)."); };
         BtnAudit.Click += (_, _) => LoadRitualAuditTail();
+        BtnRuntimeReport.Click += (_, _) => LoadRuntimeReport();
+        BtnAuditPackage.Click += (_, _) => ExportAuditPackage();
     }
 
     private void LoadRitualAuditTail()
@@ -51,6 +54,22 @@ public partial class DiagnosticsTab : UserControl
         var header = AppBuildInfo.Summary + Environment.NewLine + new string('=', 60) + Environment.NewLine;
         File.WriteAllText(name, header + (DiagLog.Text ?? ""));
         NexusShell.Log($"export diagnostics → {name}");
+    }
+
+    private void LoadRuntimeReport()
+    {
+        var settings = NexusContext.GetSettings?.Invoke() ?? new CarolusNexus.Models.NexusSettings();
+        DiagLog.Text = RuntimeDiagnosticsService.BuildReport(settings);
+        var path = RuntimeDiagnosticsService.SaveReport(settings);
+        NexusShell.Log("Diagnostics runtime report → " + path);
+    }
+
+    private void ExportAuditPackage()
+    {
+        var settings = NexusContext.GetSettings?.Invoke() ?? new CarolusNexus.Models.NexusSettings();
+        var path = AuditExportPackageService.Export(null, settings);
+        NexusShell.Log("Audit package → " + path);
+        DiagLog.Text = "Audit package exported:\n" + path + "\n\n" + RuntimeDiagnosticsService.BuildReport(settings);
     }
 
     private async Task CopyAllToClipboardAsync()

@@ -26,8 +26,11 @@ public static class SimplePlanSimulator
 
         var runId = Guid.NewGuid().ToString("n");
         AgentRunStateStore.BeginRun(runId, recipe?.Name ?? "(plan)", steps.Count);
+        FlowResumeStore.Begin(recipe, steps.Count);
         var maxAutonomy = recipe?.MaxAutonomySteps ?? 0;
         var autonomyStreak = 0;
+        var completed = steps.Count == 0;
+        var finalResult = "";
 
         try
         {
@@ -89,6 +92,15 @@ public static class SimplePlanSimulator
                     stepResult = "[DRY-RUN]";
                     sb.AppendLine("  → " + stepResult);
                 }
+                else if (executeReal && safety != null && ExecutionReliabilityGate.IsOpen(s, out var blockReason, out var blockFor))
+                {
+                    var wait = blockFor > TimeSpan.Zero
+                        ? $" ({Math.Max(0, (int)Math.Ceiling(blockFor.TotalSeconds))}s remaining)"
+                        : "";
+                    stepResult = "[BLOCKED] reliability-gate open: " + blockReason + wait;
+                    sb.AppendLine("  → " + stepResult);
+                    NexusShell.Log("  → " + stepResult);
+                }
                 else if (executeReal && safety != null)
                 {
                     if (!PlanGuard.IsAllowed(safety, s.ActionArgument))
@@ -137,6 +149,8 @@ public static class SimplePlanSimulator
                 }
 
                 RitualStepAudit.Append(i + 1, steps.Count, s, dryRun, stepResult);
+                FlowResumeStore.RecordStep(recipe, i, steps.Count, stepResult);
+                finalResult = stepResult;
 
                 if (s.WaitMs > 0)
                     await Task.Delay(s.WaitMs, ct).ConfigureAwait(false);
@@ -147,6 +161,7 @@ public static class SimplePlanSimulator
 
                 if (!dryRun && executeReal && safety != null)
                 {
+                    ExecutionReliabilityGate.RecordResult(s, stepResult);
                     if (s.Checkpoint)
                         autonomyStreak = 0;
                     else if (!failed && !stepResult.StartsWith("[SKIP]", StringComparison.Ordinal))
@@ -161,10 +176,12 @@ public static class SimplePlanSimulator
                 }
 
                 i = NextIndexAfterSuccess(i, s, steps.Count);
+                completed = i >= steps.Count;
             }
         }
         finally
         {
+            FlowResumeStore.Finish(recipe, completed, finalResult);
             AgentRunStateStore.EndRun();
         }
 

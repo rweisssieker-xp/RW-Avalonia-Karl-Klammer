@@ -50,75 +50,24 @@ public static class AxClientAutomationService
                 return true;
             }
 
-            if (lower == "ax.aif.ping")
+            if (IsAxReadToken(lower))
             {
-                var u = (settings.AxAifServiceBaseUrl ?? "").Trim();
-                message = string.IsNullOrEmpty(u)
-                    ? "[SKIP] AxAifServiceBaseUrl empty — set AIF/SOAP base in Setup"
-                    : Ax2012ODataClient.GetAbsoluteSync(settings, u);
-                return true;
+                return TryExecuteAxReadToken(arg, settings, lower, out message);
             }
 
-            if (arg.StartsWith("ax.odata.get:", StringComparison.OrdinalIgnoreCase))
+            if (lower is "ax.read_context" or "ax.snapshot" or "ax.form_summary")
             {
-                var path = arg["ax.odata.get:".Length..].Trim();
-                message = Ax2012ODataClient.GetStringSync(settings, path);
-                return true;
+                return TryExecuteAxReadToken(arg, settings, lower, out message);
+            }
+
+            if (IsAxWriteToken(lower))
+            {
+                return TryExecuteAxWriteToken(arg, settings, out message);
             }
 
             if (lower == "ax.com.logon")
             {
                 message = Ax2012ComBusinessConnectorRuntime.TryLogonProbe(settings);
-                return true;
-            }
-
-            if (lower is "ax.read_context" or "ax.snapshot" or "ax.form_summary")
-            {
-                var d = ForegroundWindowInfo.TryReadDetail();
-                var fam = d == null
-                    ? "?"
-                    : OperatorAdapterRegistry.ResolveFamily(d.Value.ProcessName, d.Value.Title);
-                var sb = new System.Text.StringBuilder();
-                sb.AppendLine("[AX] foreground · family=" + fam);
-                sb.AppendLine("Integration backend (settings): " + (settings.AxIntegrationBackend ?? "foreground_uia"));
-                if (!string.IsNullOrWhiteSpace(settings.AxDataAreaId))
-                    sb.AppendLine("DataAreaId (test): " + settings.AxDataAreaId);
-                if (d != null)
-                {
-                    sb.AppendLine($"Process={d.Value.ProcessName} · “{d.Value.Title}”");
-                    if (!string.IsNullOrWhiteSpace(settings.AxTestTenantLabel))
-                        sb.AppendLine("Tenant hint (settings): " + settings.AxTestTenantLabel);
-                }
-
-                var detail = lower.Contains("form_summary", StringComparison.Ordinal)
-                    ? ForegroundUiAutomationContext.BuildFormSummary(settings, 32, 10)
-                    : ForegroundUiAutomationContext.BuildFormSummary(settings, 56, 14);
-                sb.AppendLine("--- UIA ---");
-                sb.AppendLine(detail);
-                var sel = ForegroundUiAutomationContext.TryReadSelectionHint(settings);
-                if (!string.IsNullOrEmpty(sel))
-                {
-                    sb.AppendLine("---");
-                    sb.AppendLine(sel);
-                }
-
-                message = TruncateForLog(sb.ToString());
-                return true;
-            }
-
-            if (lower.StartsWith("ax.invoke:", StringComparison.Ordinal)
-                || lower.StartsWith("ax.setvalue:", StringComparison.Ordinal)
-                || lower.StartsWith("ax.expand:", StringComparison.Ordinal))
-            {
-                // ax.foo → uia.foo (gleiche Payload-Syntax)
-                var uia = "uia" + arg[2..];
-                if (UiAutomationActions.TryParseAndExecute(uia, settings, out var uiaMsg))
-                {
-                    message = uiaMsg.StartsWith("[", StringComparison.Ordinal) ? uiaMsg : "[OK] ax→" + uiaMsg;
-                    return true;
-                }
-
-                message = "[ERR] ax delegation to UIA failed";
                 return true;
             }
 
@@ -159,5 +108,81 @@ public static class AxClientAutomationService
             "axBcLanguage: " + Show(s.AxBcLanguage),
             "Secrets: use windows/.env → AX_HTTP_USER / AX_HTTP_PASSWORD (Basic) or Windows-integrated."
         });
+    }
+
+    private static bool IsAxReadToken(string lower) =>
+        lower == "ax.aif.ping" || lower.StartsWith("ax.odata.get:", StringComparison.Ordinal);
+
+    private static bool IsAxWriteToken(string lower) =>
+        lower.StartsWith("ax.invoke:", StringComparison.Ordinal)
+        || lower.StartsWith("ax.setvalue:", StringComparison.Ordinal)
+        || lower.StartsWith("ax.expand:", StringComparison.Ordinal);
+
+    private static bool TryExecuteAxReadToken(string arg, NexusSettings settings, string lower, out string message)
+    {
+        if (lower == "ax.aif.ping")
+        {
+            var u = (settings.AxAifServiceBaseUrl ?? "").Trim();
+            message = string.IsNullOrEmpty(u)
+                ? "[SKIP] AxAifServiceBaseUrl empty — set AIF/SOAP base in Setup"
+                : Ax2012ODataClient.GetAbsoluteSync(settings, u);
+            return true;
+        }
+
+        if (lower.StartsWith("ax.odata.get:", StringComparison.Ordinal))
+        {
+            var path = arg["ax.odata.get:".Length..].Trim();
+            message = Ax2012ODataClient.GetStringSync(settings, path);
+            return true;
+        }
+
+        var d = ForegroundWindowInfo.TryReadDetail();
+        var fam = d == null ? "?" : OperatorAdapterRegistry.ResolveFamily(d.Value.ProcessName, d.Value.Title);
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[AX][read] foreground · family=" + fam);
+        sb.AppendLine("Integration backend (settings): " + (settings.AxIntegrationBackend ?? "foreground_uia"));
+        if (!string.IsNullOrWhiteSpace(settings.AxDataAreaId))
+            sb.AppendLine("DataAreaId (test): " + settings.AxDataAreaId);
+        if (d != null)
+        {
+            sb.AppendLine($"Process={d.Value.ProcessName} · “{d.Value.Title}”");
+            if (!string.IsNullOrWhiteSpace(settings.AxTestTenantLabel))
+                sb.AppendLine("Tenant hint (settings): " + settings.AxTestTenantLabel);
+        }
+
+        var detail = lower.Contains("form_summary", StringComparison.Ordinal)
+            ? ForegroundUiAutomationContext.BuildFormSummary(settings, 32, 10)
+            : ForegroundUiAutomationContext.BuildFormSummary(settings, 56, 14);
+        sb.AppendLine("--- UIA ---");
+        sb.AppendLine(detail);
+        var sel = ForegroundUiAutomationContext.TryReadSelectionHint(settings);
+        if (!string.IsNullOrEmpty(sel))
+        {
+            sb.AppendLine("---");
+            sb.AppendLine(sel);
+        }
+
+        var deep = ForegroundUiAutomationContext.BuildDeepSelectionSummary(settings);
+        if (!string.IsNullOrWhiteSpace(deep))
+        {
+            sb.AppendLine("---");
+            sb.AppendLine(deep);
+        }
+
+        message = TruncateForLog(sb.ToString());
+        return true;
+    }
+
+    private static bool TryExecuteAxWriteToken(string arg, NexusSettings settings, out string message)
+    {
+        var uia = "uia" + arg[2..];
+        if (UiAutomationActions.TryParseAndExecute(uia, settings, out var uiaMsg))
+        {
+            message = uiaMsg.StartsWith("[", StringComparison.Ordinal) ? uiaMsg : "[OK] ax→" + uiaMsg;
+            return true;
+        }
+
+        message = "[ERR] ax delegation to UIA failed";
+        return true;
     }
 }

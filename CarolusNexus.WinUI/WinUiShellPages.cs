@@ -476,8 +476,42 @@ public sealed class DiagnosticsShellPage : Page
                 NexusShell.Log("export diagnostics failed: " + ex.Message);
             }
         };
+        var report = new Button { Content = "Runtime report" };
+        WinUiFluentChrome.StyleActionButton(report);
+        report.Click += (_, _) =>
+        {
+            try
+            {
+                var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+                _log.Text = RuntimeDiagnosticsService.BuildReport(settings);
+                var path = RuntimeDiagnosticsService.SaveReport(settings);
+                NexusShell.Log("Diagnostics runtime report → " + path);
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("runtime report failed: " + ex.Message);
+            }
+        };
+        var audit = new Button { Content = "Audit package" };
+        WinUiFluentChrome.StyleActionButton(audit);
+        audit.Click += (_, _) =>
+        {
+            try
+            {
+                var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+                var path = AuditExportPackageService.Export(null, settings);
+                _log.Text = "Audit package exported:\n" + path + "\n\n" + RuntimeDiagnosticsService.BuildReport(settings);
+                NexusShell.Log("Audit package → " + path);
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("audit package failed: " + ex.Message);
+            }
+        };
         row.Children.Add(clear);
         row.Children.Add(export);
+        row.Children.Add(report);
+        row.Children.Add(audit);
         sp.Children.Add(WinUiFluentChrome.WrapCard(row, new Thickness(16, 12, 16, 12)));
         sp.Children.Add(WinUiFluentChrome.WrapCard(_log, new Thickness(12, 10, 12, 10)));
         Content = new ScrollViewer { Content = sp };

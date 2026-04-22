@@ -241,12 +241,78 @@ public partial class AskTab : Avalonia.Controls.UserControl
         BtnParseJsonPlan.Click += (_, _) => ApplyJsonPlanFromAssistant();
         BtnLlmJsonPlan.Click += async (_, _) => await ExtractStructuredPlanWithLlmAsync().ConfigureAwait(true);
         BtnExplainPlan.Click += async (_, _) => await ExplainCurrentPlanAsync().ConfigureAwait(true);
+        BtnAiPromptPack.Click += (_, _) => BuildAiPromptPack();
+        BtnAiOpportunityFlow.Click += (_, _) => CreateAiOpportunityFlow();
+        BtnAiUspBrief.Click += (_, _) => ExportAiUspBrief();
+        BtnAiRagGap.Click += (_, _) => BuildAiRagGapReport();
+        BtnAiExecutiveOnePager.Click += (_, _) => ExportAiExecutiveOnePager();
+        BtnAiDemoFlow.Click += (_, _) => CreateAiDemoFlow();
         BtnChipSummary.Click += (_, _) => AppendPromptLine("Summarize the key points briefly in clear language.");
         BtnChipNext.Click += (_, _) =>
             AppendPromptLine("What concrete next steps do you recommend? Number them and make them actionable.");
         BtnChipRisks.Click += (_, _) =>
             AppendPromptLine("What risks do you see — and how can we mitigate them?");
         BtnChipExplain.Click += (_, _) => AppendPromptLine("Explain this in plain language for someone without domain jargon.");
+    }
+
+    private void BuildAiPromptPack()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        var prompt = PromptBox.Text?.Trim() ?? "";
+        var pack = AiUspCommandService.BuildPromptPack(settings, prompt);
+        AssistantOut.Text = pack;
+        PromptBox.Text = AiUspCommandService.BuildBestPrompt(settings, prompt);
+        RetrievalOut.Text = "AI USP prompt pack generated from provider/RAG/live context readiness.";
+        NexusShell.Log("AI USP prompt pack generated.");
+    }
+
+    private void CreateAiOpportunityFlow()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        var recipe = AiUspCommandService.CreateAiOpportunityFlow(settings, PromptBox.Text);
+        PlanPreview.Text = "AI opportunity flow created\n"
+            + $"Name: {recipe.Name}\n"
+            + $"Adapter: {recipe.AdapterAffinity}\n"
+            + $"Risk: {recipe.RiskLevel}\n"
+            + $"Steps: {recipe.Steps.Count}\n\n"
+            + "Open Rituals to review/publish/queue.";
+        NexusShell.Log("AI opportunity flow created: " + recipe.Name);
+    }
+
+    private void ExportAiUspBrief()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        var path = AiUspCommandService.ExportAiBrief(settings, PromptBox.Text);
+        AssistantOut.Text = "AI USP brief exported\n" + path + "\n\n" + AiUspCommandService.BuildPromptPack(settings, PromptBox.Text);
+        NexusShell.Log("AI USP brief exported: " + path);
+    }
+
+    private void BuildAiRagGapReport()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        RetrievalOut.Text = AiUspCommandService.BuildRagGapReport(settings, PromptBox.Text);
+        NexusShell.Log("AI/RAG gap report generated.");
+    }
+
+    private void ExportAiExecutiveOnePager()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        var path = AiUspCommandService.ExportExecutiveOnePager(settings, PromptBox.Text);
+        AssistantOut.Text = "Executive AI one-pager exported\n" + path + "\n\n" + AiUspCommandService.BuildExecutiveOnePager(settings, PromptBox.Text);
+        NexusShell.Log("Executive AI one-pager exported: " + path);
+    }
+
+    private void CreateAiDemoFlow()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        var recipe = AiUspCommandService.CreateAiDemoScriptFlow(settings, PromptBox.Text);
+        PlanPreview.Text = "AI demo flow created\n"
+            + $"Name: {recipe.Name}\n"
+            + $"Adapter: {recipe.AdapterAffinity}\n"
+            + $"Risk: {recipe.RiskLevel}\n"
+            + $"Steps: {recipe.Steps.Count}\n\n"
+            + "Open Rituals to review/publish/queue.";
+        NexusShell.Log("AI demo flow created: " + recipe.Name);
     }
 
     /// <summary>Cancel in-flight ask/plan work (same as Panic button).</summary>
@@ -1530,10 +1596,34 @@ public partial class AskTab : Avalonia.Controls.UserControl
         {
             Name = title,
             Description = "From Ask tab / plan extraction",
+            AdapterAffinity = InferAdapterAffinity(steps),
+            ConfidenceSource = "Ask tab · LLM extraction",
             Steps = steps.ToList()
         };
         RitualRecipeStore.AppendRecipe(recipe);
         NexusShell.Log($"Saved as flow: {recipe.Name}");
+    }
+
+    private static string InferAdapterAffinity(IReadOnlyList<RecipeStep> steps)
+    {
+        if (steps.Any(s => (s.ActionArgument ?? "").Contains("ax.", StringComparison.OrdinalIgnoreCase) ||
+                           (s.ActionArgument ?? "").Contains("ax|", StringComparison.OrdinalIgnoreCase)))
+            return "ax2012";
+        if (steps.Any(s => s.ActionArgument.Contains("browser.open", StringComparison.OrdinalIgnoreCase) ||
+                           s.ActionArgument.Contains("chrome.", StringComparison.OrdinalIgnoreCase) ||
+                           s.ActionArgument.Contains("msedge.", StringComparison.OrdinalIgnoreCase)))
+            return "browser";
+        if (steps.Any(s => s.ActionArgument.Contains("explorer.open_path", StringComparison.OrdinalIgnoreCase)))
+            return "explorer";
+        if (steps.Any(s => s.ActionArgument.Contains("mailto:", StringComparison.OrdinalIgnoreCase) ||
+                           s.ActionArgument.Contains("mail", StringComparison.OrdinalIgnoreCase)))
+            return "mail";
+        if (steps.Any(s =>
+                s.ActionArgument.Contains("uia.", StringComparison.OrdinalIgnoreCase) ||
+                s.ActionArgument.Contains("app|", StringComparison.OrdinalIgnoreCase)))
+            return "generic";
+
+        return "generic";
     }
 
     private void SetBusy(bool busy)

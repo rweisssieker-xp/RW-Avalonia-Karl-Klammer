@@ -149,8 +149,11 @@ public sealed class RitualsShellPage : Page
             MkBtn("Dry run", async (_, _) => await RunSelectedAsync(true), shortcut: "F8", key: VirtualKey.F8),
             MkBtn("Run", async (_, _) => await RunSelectedAsync(false), accent: true, shortcut: "F9", key: VirtualKey.F9),
             MkBtn("Next step", async (_, _) => await RunNextStepAsync(), shortcut: "F10", key: VirtualKey.F10),
-            MkBtn("Resume", async (_, _) => await RunSelectedAsync(false))));
+            MkBtn("Resume", async (_, _) => await ResumeSelectedAsync()),
+            MkBtn("Test report", (_, _) => SaveFlowTestReport()),
+            MkBtn("Audit export", (_, _) => ExportSelectedAuditPackage())));
         _builderPane.Children.Add(MkRow(
+            MkBtn("Install templates", (_, _) => InstallTemplates()),
             MkBtn("Promote from history", (_, _) => PromoteFromHistory()),
             _btnPromoteWatch));
         _btnPromoteWatch.Click += async (_, _) => await PromoteFromWatchAsync();
@@ -765,6 +768,103 @@ public sealed class RitualsShellPage : Page
             SetExecutionLastStep(ex.Message);
             NexusShell.Log("Run failed: " + ex.Message);
         }
+    }
+
+    private async Task ResumeSelectedAsync()
+    {
+        var recipe = _selected;
+        var steps = recipe != null ? recipe.Steps : ParseStepsEditor();
+        if (steps.Count == 0)
+        {
+            NexusShell.Log("Resume: no steps.");
+            SetExecutionState("blocked", "resume", 0, 0, "No steps");
+            return;
+        }
+
+        var start = 0;
+        if (recipe != null)
+        {
+            var state = FlowResumeStore.Get(recipe.Id);
+            if (state != null)
+                start = Math.Clamp(state.NextStepIndex, 0, steps.Count);
+        }
+
+        if (start >= steps.Count)
+        {
+            NexusShell.Log("Resume: flow already completed.");
+            SetExecutionState("completed", "resume", steps.Count, steps.Count);
+            return;
+        }
+
+        _runCts = new CancellationTokenSource();
+        _stepCursor = start;
+        var remaining = steps.Skip(start).ToList();
+        NexusShell.Log($"Resume: starting at step {start + 1}/{steps.Count}.");
+        SetExecutionState("running", "resume", start, steps.Count);
+        try
+        {
+            var log = await SimplePlanSimulator.RunAsync(remaining, false, Settings(), recipe, _runCts.Token)
+                .ConfigureAwait(true);
+            _stepCursor = steps.Count;
+            SetExecutionLastStep(LastResultFromSimulator(log));
+            SetExecutionState("completed", "resume", steps.Count, steps.Count);
+        }
+        catch (OperationCanceledException)
+        {
+            SetExecutionState("cancelled", "resume", _stepCursor, steps.Count);
+            SetExecutionLastStep("cancelled");
+        }
+        catch (Exception ex)
+        {
+            SetExecutionState("failed", "resume", _stepCursor, steps.Count, ex.Message);
+            SetExecutionLastStep(ex.Message);
+        }
+    }
+
+    private AutomationRecipe CurrentRecipeSnapshot()
+    {
+        return _selected ?? new AutomationRecipe
+        {
+            Name = _ritualName.Text?.Trim() ?? "Unsaved Flow",
+            Description = _ritualDesc.Text ?? "",
+            ApprovalMode = _approvalMode.SelectedItem?.ToString()?.Trim() ?? "manual",
+            RiskLevel = _riskLevel.SelectedItem?.ToString()?.Trim() ?? "medium",
+            AdapterAffinity = _adapterAffinity.Text?.Trim() ?? "",
+            ConfidenceSource = _confidenceSource.Text?.Trim() ?? "",
+            Steps = ParseStepsEditor()
+        };
+    }
+
+    private void SaveFlowTestReport()
+    {
+        var recipe = CurrentRecipeSnapshot();
+        if (recipe.Steps.Count == 0)
+        {
+            NexusShell.Log("Flow test: no steps.");
+            SetExecutionState("blocked", "test", 0, 0, "No steps");
+            return;
+        }
+
+        var path = FlowTestStudioService.SaveReport(recipe, Settings());
+        NexusShell.Log("Flow test report → " + path);
+        SetExecutionState("tested", "flow test", recipe.Steps.Count, recipe.Steps.Count);
+        SetExecutionLastStep(path);
+    }
+
+    private void ExportSelectedAuditPackage()
+    {
+        var recipe = CurrentRecipeSnapshot();
+        var path = AuditExportPackageService.Export(recipe.Steps.Count == 0 ? null : recipe, Settings());
+        NexusShell.Log("Audit export → " + path);
+        SetExecutionState("exported", "audit", recipe.Steps.Count, recipe.Steps.Count);
+        SetExecutionLastStep(path);
+    }
+
+    private void InstallTemplates()
+    {
+        var added = FlowTemplateCatalogService.EnsureDefaultTemplates();
+        NexusShell.Log($"Templates installed: {added} new.");
+        ReloadLibrary();
     }
 
     private async Task RunNextStepAsync()

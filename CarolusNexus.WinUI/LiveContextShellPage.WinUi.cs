@@ -96,6 +96,17 @@ public sealed class LiveContextShellPage : Page
         inspectorRow.Children.Add(run);
         root.Children.Add(inspectorRow);
 
+        var uspRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        var createFlow = new Button { Content = "Context -> Flow" };
+        WinUiFluentChrome.StyleActionButton(createFlow, accent: true);
+        createFlow.Click += (_, _) => CreateFlowFromContext();
+        var proofPack = new Button { Content = "Export USP Proof Pack" };
+        WinUiFluentChrome.StyleActionButton(proofPack);
+        proofPack.Click += (_, _) => ExportUspPack();
+        uspRow.Children.Add(createFlow);
+        uspRow.Children.Add(proofPack);
+        root.Children.Add(uspRow);
+
         root.Children.Add(WinUiFluentChrome.ColumnCaption("Snapshots"));
         var pivot = new Pivot();
         pivot.Items.Add(new PivotItem { Header = "Active Window", Content = _snapActive });
@@ -319,6 +330,42 @@ public sealed class LiveContextShellPage : Page
         }
     }
 
+    private void CreateFlowFromContext()
+    {
+        try
+        {
+            var recipe = OperatorUspPackService.CreateFlowFromForeground(WinUiShellState.Settings);
+            _snapCross.Text = "Context-to-Flow created\n"
+                + $"Name: {recipe.Name}\n"
+                + $"Adapter: {recipe.AdapterAffinity}\n"
+                + $"Risk: {recipe.RiskLevel}\n"
+                + $"Approval: {recipe.ApprovalMode}\n"
+                + $"Steps: {recipe.Steps.Count}\n\n"
+                + "Open Rituals to review, publish, queue, or run it.";
+            NexusShell.Log("Live Context: context flow created: " + recipe.Name);
+        }
+        catch (Exception ex)
+        {
+            _snapCross.Text = "Context-to-Flow failed: " + ex.Message;
+            NexusShell.Log("Live Context: context flow failed: " + ex.Message);
+        }
+    }
+
+    private void ExportUspPack()
+    {
+        try
+        {
+            var path = OperatorUspPackService.ExportProofPack(WinUiShellState.Settings);
+            _snapCross.Text = "USP Proof Pack exported\n" + path + "\n\n" + OperatorUspPackService.BuildUspRadar(WinUiShellState.Settings);
+            NexusShell.Log("Live Context: USP proof pack exported: " + path);
+        }
+        catch (Exception ex)
+        {
+            _snapCross.Text = "USP Proof Pack export failed: " + ex.Message;
+            NexusShell.Log("Live Context: USP proof pack failed: " + ex.Message);
+        }
+    }
+
     private void RefreshActiveSnapshot()
     {
         RefreshNextBestActionBar();
@@ -381,9 +428,21 @@ public sealed class LiveContextShellPage : Page
         }
         else
         {
-            _snapAx.Text =
+            _snapAx.Text = 
                 $"No AX window in the foreground (current: {fam}).\r\n" +
                 "Switch to the AX client or use the AX button for context hints.";
+        }
+
+        if (fam == "ax2012")
+        {
+            var deep = ForegroundUiAutomationContext.BuildDeepSelectionSummary(WinUiShellState.Settings);
+            var form = ForegroundUiAutomationContext.BuildFormSummary(WinUiShellState.Settings, 56, 14);
+            if (!string.IsNullOrWhiteSpace(form))
+            {
+                _snapAx.Text = $"[AX] Deep UIA snapshot\r\n{form}";
+                if (!string.IsNullOrWhiteSpace(deep))
+                    _snapAx.Text += "\r\n---\r\n" + deep;
+            }
         }
     }
 

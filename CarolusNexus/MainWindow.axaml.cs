@@ -787,7 +787,7 @@ public partial class MainWindow : Window
             live: TileLive.Text ?? "—",
             proactive,
             gov:
-            $"Profile: {_settings.Safety.Profile}\nPanic: {_settings.Safety.PanicStopEnabled}\nneverAutoSend: {_settings.Safety.NeverAutoSend}\n\n— Flow jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}",
+            $"Profile: {_settings.Safety.Profile}\nPanic: {_settings.Safety.PanicStopEnabled}\nneverAutoSend: {_settings.Safety.NeverAutoSend}\n\n— Flow jobs —\n{RitualJobQueueStore.FormatDashboardSummary()}\n\n— Resume —\n{FlowResumeStore.FormatSummary()}",
             rituals: FormatRitualsDashboardCard(),
             watch: WatchSessionService.FormatDashboardSummary()
         );

@@ -111,12 +111,19 @@ public sealed class AskShellPage : Page
             NexusShell.Log("panic stop");
         }, "Esc", VirtualKey.Escape);
         var bSpeak = WinUiFluentChrome.AppBarCommand("Speak response", "\uE995", async (_, _) => await SpeakAsync(), "Ctrl+Shift+V", VirtualKey.V, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
+        var bAiPack = WinUiFluentChrome.AppBarCommand("AI USP prompts", "\uE8D4", (_, _) => BuildAiPromptPack(), "Ctrl+Shift+P", VirtualKey.P, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
+        var bAiFlow = WinUiFluentChrome.AppBarCommand("AI opportunity flow", "\uE8A5", (_, _) => CreateAiOpportunityFlow(), "Ctrl+Shift+F", VirtualKey.F, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
+        var bAiBrief = WinUiFluentChrome.AppBarCommand("Export AI brief", "\uE8A7", (_, _) => ExportAiUspBrief(), "Ctrl+Shift+B", VirtualKey.B, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
+        var bAiGap = WinUiFluentChrome.AppBarCommand("RAG gap", "\uE9D9", (_, _) => BuildAiRagGapReport());
+        var bAiOne = WinUiFluentChrome.AppBarCommand("Executive one-pager", "\uE8A7", (_, _) => ExportAiExecutiveOnePager());
+        var bAiDemo = WinUiFluentChrome.AppBarCommand("AI demo flow", "\uE8FD", (_, _) => CreateAiDemoFlow());
 
         var toolInner = new StackPanel { Spacing = 10 };
         toolInner.Children.Add(WinUiFluentChrome.ColumnCaption("Ask, voice, and plans"));
         toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Ask", bAsk, bSmoke));
         toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Voice", bPtt0, bPtt1, bCancel, bImport, bSpeak));
         toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Plan", bSave, bClr));
+        toolInner.Children.Add(WinUiFluentChrome.CommandSurface("AI USP", bAiPack, bAiFlow, bAiBrief, bAiGap, bAiOne, bAiDemo));
         toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Execution", bRun, bApr, bNext));
         toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Safety", bPanic));
         var opts = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
@@ -257,6 +264,62 @@ public sealed class AskShellPage : Page
             _ => "Use the current desktop context to propose the safest next action. Do not execute anything."
         };
         NexusShell.Log("Next action: secondary prompt prepared.");
+    }
+
+    private void BuildAiPromptPack()
+    {
+        var prompt = _prompt.Text?.Trim() ?? "";
+        var pack = AiUspCommandService.BuildPromptPack(WinUiShellState.Settings, prompt);
+        _assistant.Text = pack;
+        _prompt.Text = AiUspCommandService.BuildBestPrompt(WinUiShellState.Settings, prompt);
+        _retrieval.Text = "AI USP prompt pack generated from provider/RAG/live context readiness.";
+        NexusShell.Log("AI USP prompt pack generated.");
+    }
+
+    private void CreateAiOpportunityFlow()
+    {
+        var recipe = AiUspCommandService.CreateAiOpportunityFlow(WinUiShellState.Settings, _prompt.Text);
+        _planPreview.Visibility = Visibility.Visible;
+        _planPreview.Text = "AI opportunity flow created\n"
+            + $"Name: {recipe.Name}\n"
+            + $"Adapter: {recipe.AdapterAffinity}\n"
+            + $"Risk: {recipe.RiskLevel}\n"
+            + $"Steps: {recipe.Steps.Count}\n\n"
+            + "Open Rituals to review/publish/queue.";
+        NexusShell.Log("AI opportunity flow created: " + recipe.Name);
+    }
+
+    private void ExportAiUspBrief()
+    {
+        var path = AiUspCommandService.ExportAiBrief(WinUiShellState.Settings, _prompt.Text);
+        _assistant.Text = "AI USP brief exported\n" + path + "\n\n" + AiUspCommandService.BuildPromptPack(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("AI USP brief exported: " + path);
+    }
+
+    private void BuildAiRagGapReport()
+    {
+        _retrieval.Text = AiUspCommandService.BuildRagGapReport(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("AI/RAG gap report generated.");
+    }
+
+    private void ExportAiExecutiveOnePager()
+    {
+        var path = AiUspCommandService.ExportExecutiveOnePager(WinUiShellState.Settings, _prompt.Text);
+        _assistant.Text = "Executive AI one-pager exported\n" + path + "\n\n" + AiUspCommandService.BuildExecutiveOnePager(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("Executive AI one-pager exported: " + path);
+    }
+
+    private void CreateAiDemoFlow()
+    {
+        var recipe = AiUspCommandService.CreateAiDemoScriptFlow(WinUiShellState.Settings, _prompt.Text);
+        _planPreview.Visibility = Visibility.Visible;
+        _planPreview.Text = "AI demo flow created\n"
+            + $"Name: {recipe.Name}\n"
+            + $"Adapter: {recipe.AdapterAffinity}\n"
+            + $"Risk: {recipe.RiskLevel}\n"
+            + $"Steps: {recipe.Steps.Count}\n\n"
+            + "Open Rituals to review/publish/queue.";
+        NexusShell.Log("AI demo flow created: " + recipe.Name);
     }
 
     private UIElement BuildCommandCenter()
@@ -929,10 +992,34 @@ public sealed class AskShellPage : Page
             Id = Guid.NewGuid().ToString("n"),
             Name = title,
             Description = "From WinUI Ask / plan",
+            AdapterAffinity = InferAdapterAffinity(steps),
+            ConfidenceSource = "WinUI Ask / LLM extraction",
             Steps = steps.ToList()
         };
         RitualRecipeStore.AppendRecipe(recipe);
         NexusShell.Log("Saved flow: " + recipe.Name);
+    }
+
+    private static string InferAdapterAffinity(IReadOnlyList<RecipeStep> steps)
+    {
+        if (steps.Any(s => (s.ActionArgument ?? "").Contains("ax.", StringComparison.OrdinalIgnoreCase) ||
+                           (s.ActionArgument ?? "").Contains("ax|", StringComparison.OrdinalIgnoreCase)))
+            return "ax2012";
+        if (steps.Any(s => s.ActionArgument.Contains("browser.open", StringComparison.OrdinalIgnoreCase) ||
+                           s.ActionArgument.Contains("chrome.", StringComparison.OrdinalIgnoreCase) ||
+                           s.ActionArgument.Contains("msedge.", StringComparison.OrdinalIgnoreCase)))
+            return "browser";
+        if (steps.Any(s => s.ActionArgument.Contains("explorer.open_path", StringComparison.OrdinalIgnoreCase)))
+            return "explorer";
+        if (steps.Any(s => s.ActionArgument.Contains("mailto:", StringComparison.OrdinalIgnoreCase) ||
+                           s.ActionArgument.Contains("mail", StringComparison.OrdinalIgnoreCase)))
+            return "mail";
+        if (steps.Any(s =>
+                s.ActionArgument.Contains("uia.", StringComparison.OrdinalIgnoreCase) ||
+                s.ActionArgument.Contains("app|", StringComparison.OrdinalIgnoreCase)))
+            return "generic";
+
+        return "generic";
     }
 
     private async Task SpeakAsync()

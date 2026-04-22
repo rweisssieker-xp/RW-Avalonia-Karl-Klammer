@@ -22,6 +22,10 @@
       <TextBox x:Name="InspectorAction" Watermark="InspectorAction / custom action (e.g. ax.read_context)" />
       <Button x:Name="BtnRunInspector" Grid.Column="1" Content="run" Margin="8,0,0,0" Padding="12,6" />
     </Grid>
+    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+      <Button x:Name="BtnCreateFlowFromContext" Content="Context -> Flow" Margin="0,0,6,6" Padding="10,5" />
+      <Button x:Name="BtnExportUspPack" Content="Export USP Proof Pack" Margin="0,0,6,6" Padding="10,5" />
+    </WrapPanel>
     <TabControl>
       <TabItem Header="Active Window">
         <TextBox x:Name="SnapActive" AcceptsReturn="True" IsReadOnly="True" FontFamily="Consolas,Courier New,monospace" />

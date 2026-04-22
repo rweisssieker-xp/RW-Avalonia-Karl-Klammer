@@ -33,10 +33,13 @@ public static class ForegroundUiAutomationContext
             var lines = new List<string>(maxItems + 8);
             lines.Add($"Window: “{root.Current.Name}” · class hint · depth≤{maxDepth}");
 
-            var acc = new List<string>(maxItems);
-            Walk(root, 0, maxDepth, maxItems, acc);
-            foreach (var line in acc)
-                lines.Add(line);
+                var acc = new List<string>(maxItems);
+                Walk(root, 0, maxDepth, maxItems, acc);
+                var focus = TryBuildFocusedControl(settings, root);
+                if (!string.IsNullOrWhiteSpace(focus))
+                    lines.Add("Focused control: " + focus);
+                foreach (var line in acc)
+                    lines.Add(line);
 
             var sb = new StringBuilder();
             foreach (var line in lines)
@@ -55,6 +58,37 @@ public static class ForegroundUiAutomationContext
         catch (Exception ex)
         {
             return "(UIA summary error: " + ex.Message + ")";
+        }
+    }
+
+    public static string? BuildDeepSelectionSummary(NexusSettings settings)
+    {
+        if (!OperatingSystem.IsWindows())
+            return null;
+        if (!string.Equals(settings.Safety.Profile, "power-user", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        try
+        {
+            var root = AutomationElement.FromHandle(UiAutomationSnapshotHelpers.GetForegroundWindow());
+            if (root == null)
+                return null;
+
+            var sb = new StringBuilder();
+            var gridHints = new List<string>(6);
+            CollectSelectionFromGrid(root, gridHints, 4);
+            if (gridHints.Count > 0)
+            {
+                sb.AppendLine("Grid/list selection:");
+                foreach (var g in gridHints)
+                    sb.AppendLine("  - " + g);
+            }
+
+            return sb.ToString().Trim();
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -153,6 +187,127 @@ public static class ForegroundUiAutomationContext
             {
                 break;
             }
+        }
+    }
+
+    private static string? TryBuildFocusedControl(NexusSettings settings, AutomationElement root)
+    {
+        if (!string.Equals(settings.Safety.Profile, "power-user", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        try
+        {
+            var focused = AutomationElement.FocusedElement;
+            if (focused == null)
+                return null;
+            if (focused.Current.ProcessId != root.Current.ProcessId)
+                return null;
+            var name = focused.Current.Name ?? "(unnamed)";
+            var type = focused.Current.ControlType?.LocalizedControlType ?? "control";
+            var aid = focused.Current.AutomationId ?? "";
+            return $"{type} · id={aid} · name={Truncate(name, 120)}";
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void CollectSelectionFromGrid(
+        AutomationElement root,
+        List<string> entries,
+        int maxGrids,
+        int maxItemsPerGrid = 5)
+    {
+        if (entries.Count >= maxGrids)
+            return;
+        AutomationElement? node = null;
+        try
+        {
+            node = TreeWalker.RawViewWalker.GetFirstChild(root);
+        }
+        catch
+        {
+            return;
+        }
+
+        while (node != null && entries.Count < maxGrids)
+        {
+            try
+            {
+                var ct = node.Current.ControlType;
+                if (ct == ControlType.DataGrid || ct == ControlType.Table)
+                {
+                    var name = node.Current.Name ?? "(unnamed grid)";
+                    var selected = TryReadSelectedNames(node, maxItemsPerGrid);
+                    if (!string.IsNullOrWhiteSpace(selected))
+                        entries.Add($"{name}: {selected}");
+                }
+                else if (ct == ControlType.List || ct == ControlType.ListItem)
+                {
+                    var name = node.Current.Name ?? "(unnamed list)";
+                    var selected = TryReadSelectedNames(node, maxItemsPerGrid);
+                    if (!string.IsNullOrWhiteSpace(selected))
+                        entries.Add($"{name}: {selected}");
+                }
+            }
+            catch
+            {
+                // ignore transient UIA
+            }
+
+            if (entries.Count >= maxGrids)
+                break;
+
+            AutomationElement? child;
+            try
+            {
+                child = node.FindFirst(TreeScope.Children, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Table));
+            }
+            catch
+            {
+                child = null;
+            }
+
+            if (child != null && entries.Count < maxGrids)
+                CollectSelectionFromGrid(child, entries, maxGrids, maxItemsPerGrid);
+
+            try
+            {
+                node = TreeWalker.RawViewWalker.GetNextSibling(node);
+            }
+            catch
+            {
+                break;
+            }
+        }
+    }
+
+    private static string? TryReadSelectedNames(AutomationElement host, int maxItems)
+    {
+        try
+        {
+            if (!host.TryGetCurrentPattern(SelectionPattern.Pattern, out var p) || p is not SelectionPattern sp)
+                return null;
+            var sel = sp.Current.GetSelection();
+            if (sel == null || sel.Length == 0)
+                return null;
+
+            var names = new List<string>(Math.Min(sel.Length, maxItems));
+            foreach (AutomationElement a in sel)
+            {
+                names.Add(string.IsNullOrWhiteSpace(a.Current.Name) ? "(unnamed)" : a.Current.Name);
+                if (names.Count >= maxItems)
+                    break;
+            }
+
+            if (names.Count == 0)
+                return null;
+            return string.Join(" · ", names);
+        }
+        catch
+        {
+            return null;
         }
     }
 

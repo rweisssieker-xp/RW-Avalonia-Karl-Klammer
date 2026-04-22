@@ -66,9 +66,12 @@
             <Button x:Name="BtnRunRitual" Content="run flow" Margin="0,0,6,6" />
             <Button x:Name="BtnRunNextStep" Content="run next step" Margin="0,0,6,6" />
             <Button x:Name="BtnResume" Content="resume flow" Margin="0,0,6,6" />
+            <Button x:Name="BtnFlowTest" Content="test report" Margin="0,0,6,6" />
+            <Button x:Name="BtnAuditExport" Content="audit export" Margin="0,0,6,6" />
           </WrapPanel>
           <TextBlock Text="Teach" FontWeight="SemiBold" />
           <WrapPanel>
+            <Button x:Name="BtnInstallTemplates" Content="install templates" Margin="0,0,6,6" />
             <Button x:Name="BtnPromoteHist" Content="promote from history" Margin="0,0,6,6" />
             <Button x:Name="BtnPromoteWatch" Content="promote from watch" Margin="0,0,6,6" />
             <Button x:Name="BtnTeachStart" Content="start teach" Margin="0,0,6,6" />

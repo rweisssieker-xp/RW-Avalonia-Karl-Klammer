@@ -58,6 +58,18 @@
                     ToolTip.Tip="Second LLM call: extract steps as JSON." />
             <Button x:Name="BtnExplainPlan" Content="Explain plan / risk" Margin="0,0,6,6" Padding="10,6"
                     ToolTip.Tip="Short LLM explanation of current plan steps (dry-run companion text)." />
+            <Button x:Name="BtnAiPromptPack" Content="AI USP prompt pack" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Builds a demo-ready prompt pack from provider/RAG/live context readiness." />
+            <Button x:Name="BtnAiOpportunityFlow" Content="AI opportunity flow" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Creates a governed draft flow from the current AI task and foreground context." />
+            <Button x:Name="BtnAiUspBrief" Content="Export AI USP brief" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Exports a markdown proof brief for demos and pilots." />
+            <Button x:Name="BtnAiRagGap" Content="AI/RAG gap report" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Shows which provider/RAG/live-context signals are missing for a strong AI demo." />
+            <Button x:Name="BtnAiExecutiveOnePager" Content="Executive AI one-pager" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Exports a pilot/sales-ready one-pager." />
+            <Button x:Name="BtnAiDemoFlow" Content="AI demo flow" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Creates a low-risk demo flow with RAG proof, executive one-pager and checkpoint." />
           </WrapPanel>
           <TextBlock Text="Quick prompts" FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}" />
           <WrapPanel Orientation="Horizontal">

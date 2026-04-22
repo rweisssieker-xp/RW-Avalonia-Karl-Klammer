@@ -27,6 +27,8 @@ public partial class LiveContextTab : UserControl
         BEditor.Click += (_, _) => OnAdapterClick("editor");
         BAx.Click += (_, _) => OnAdapterClick("ax2012");
         BtnRunInspector.Click += (_, _) => RunInspectorCustom();
+        BtnCreateFlowFromContext.Click += (_, _) => CreateFlowFromContext();
+        BtnExportUspPack.Click += (_, _) => ExportUspPack();
 
         _refreshTimer.Tick += (_, _) => RefreshActiveSnapshot();
         Loaded += (_, _) => _refreshTimer.Start();
@@ -118,6 +120,44 @@ public partial class LiveContextTab : UserControl
         }
     }
 
+    private void CreateFlowFromContext()
+    {
+        try
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? new NexusSettings();
+            var recipe = OperatorUspPackService.CreateFlowFromForeground(settings);
+            SnapCross.Text = "Context-to-Flow created\n"
+                + $"Name: {recipe.Name}\n"
+                + $"Adapter: {recipe.AdapterAffinity}\n"
+                + $"Risk: {recipe.RiskLevel}\n"
+                + $"Approval: {recipe.ApprovalMode}\n"
+                + $"Steps: {recipe.Steps.Count}\n\n"
+                + "Open Rituals to review, publish, queue, or run it.";
+            NexusShell.Log("Live Context: context flow created: " + recipe.Name);
+        }
+        catch (Exception ex)
+        {
+            SnapCross.Text = "Context-to-Flow failed: " + ex.Message;
+            NexusShell.Log("Live Context: context flow failed: " + ex.Message);
+        }
+    }
+
+    private void ExportUspPack()
+    {
+        try
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? new NexusSettings();
+            var path = OperatorUspPackService.ExportProofPack(settings);
+            SnapCross.Text = "USP Proof Pack exported\n" + path + "\n\n" + OperatorUspPackService.BuildUspRadar(settings);
+            NexusShell.Log("Live Context: USP proof pack exported: " + path);
+        }
+        catch (Exception ex)
+        {
+            SnapCross.Text = "USP Proof Pack export failed: " + ex.Message;
+            NexusShell.Log("Live Context: USP proof pack failed: " + ex.Message);
+        }
+    }
+
     private void RefreshActiveSnapshot()
     {
         if (!OperatingSystem.IsWindows())
@@ -163,10 +203,12 @@ public partial class LiveContextTab : UserControl
 
         if (fam == "ax2012")
         {
+            var form = ForegroundUiAutomationContext.BuildFormSummary(settings, 56, 14);
+            var deep = ForegroundUiAutomationContext.BuildDeepSelectionSummary(settings);
             SnapAx.Text =
-                "AX / Dynamics fat client detected (title/process heuristic).\r\n" +
-                "Golden path: foreground context above; deep form/grid UI automation is roadmap — use Vision+Plan on the Ask tab.\r\n" +
-                $"Snapshot: “{d.Value.Title}” · {d.Value.ProcessName}";
+                "[AX] Deep UIA snapshot\r\n" +
+                (string.IsNullOrWhiteSpace(form) ? "(no form summary)" : form) +
+                (string.IsNullOrWhiteSpace(deep) ? "" : "\r\n---\r\n" + deep);
         }
         else
         {
