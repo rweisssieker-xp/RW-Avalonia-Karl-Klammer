@@ -12,6 +12,71 @@ namespace CarolusNexus.Services;
 public static class ComputerUseLoopService
 {
     public sealed record StepResult(int Index, string Observation, string ModelReply, string ActionSummary);
+    public sealed record ObserveOnlySnapshot(
+        DateTimeOffset CapturedAt,
+        string ForegroundTitle,
+        string ForegroundProcess,
+        string AdapterFamily,
+        string Risk,
+        string SuggestedAction,
+        string Why,
+        string UiaSnapshot);
+
+    public static ObserveOnlySnapshot ObserveOnly(NexusSettings? settings)
+    {
+        settings ??= new NexusSettings();
+        if (!OperatingSystem.IsWindows())
+        {
+            return new ObserveOnlySnapshot(
+                DateTimeOffset.Now,
+                "Windows only",
+                "unknown",
+                "generic",
+                "observe-only",
+                "No action",
+                "Computer-use observe mode requires Windows foreground-window APIs.",
+                "");
+        }
+
+        var detail = ForegroundWindowInfo.TryReadDetail();
+        var title = detail?.Title ?? "(no foreground window)";
+        var process = detail?.ProcessName ?? "unknown";
+        var adapter = detail == null
+            ? "generic"
+            : OperatorAdapterRegistry.ResolveFamily(detail.Value.ProcessName, detail.Value.Title);
+        var uia = UiAutomationSnapshot.TryBuildForForeground(maxDepth: 3, maxNodes: 48, maxChars: 5000);
+        var insight = OperatorInsightService.BuildSnapshot(settings);
+        var risk = string.Equals(settings.Safety.Profile, "power-user", StringComparison.OrdinalIgnoreCase)
+            ? "guarded"
+            : "observe-only";
+        var suggested = string.IsNullOrWhiteSpace(insight.SafeNextAction) ? "No safe action" : insight.SafeNextAction;
+        var why =
+            $"{insight.LikelyTask}\n" +
+            $"Recommended flow: {insight.RecommendedFlow}\n" +
+            $"Risky action: {insight.RiskyAction}\n" +
+            "Mode: observe-only. No click, typing, send, post, booking or file write is executed.";
+
+        NexusShell.Log($"[computer-use] observe-only: {process} · {adapter} · risk={risk}");
+        return new ObserveOnlySnapshot(DateTimeOffset.Now, title, process, adapter, risk, suggested, why, uia);
+    }
+
+    public static string FormatObserveOnly(ObserveOnlySnapshot snapshot)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("[Computer-use observe-only]");
+        sb.AppendLine($"captured: {snapshot.CapturedAt:O}");
+        sb.AppendLine($"foreground: {snapshot.ForegroundProcess} · {snapshot.ForegroundTitle}");
+        sb.AppendLine($"adapter: {snapshot.AdapterFamily}");
+        sb.AppendLine($"risk: {snapshot.Risk}");
+        sb.AppendLine($"suggested action: {snapshot.SuggestedAction}");
+        sb.AppendLine();
+        sb.AppendLine("why:");
+        sb.AppendLine(snapshot.Why);
+        sb.AppendLine();
+        sb.AppendLine("uia:");
+        sb.AppendLine(string.IsNullOrWhiteSpace(snapshot.UiaSnapshot) ? "(no UIA snapshot)" : snapshot.UiaSnapshot);
+        return sb.ToString().TrimEnd();
+    }
 
     /// <summary>Harmless sample steps — in dry-run they only produce <see cref="SimplePlanSimulator"/> log + <see cref="RitualStepAudit"/> lines.</summary>
     public static IReadOnlyList<RecipeStep> SampleTierCPlanSteps() =>

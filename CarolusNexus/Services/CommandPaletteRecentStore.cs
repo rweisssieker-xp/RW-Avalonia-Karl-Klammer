@@ -55,4 +55,18 @@ public static class CommandPaletteRecentStore
             /* ignore */
         }
     }
+
+    public static void Clear()
+    {
+        try
+        {
+            var path = AppPaths.CommandPaletteRecent;
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, JsonSerializer.Serialize(new RecentDoc { Recent = new List<string>() }, JsonOpts));
+        }
+        catch
+        {
+            /* ignore */
+        }
+    }
 }

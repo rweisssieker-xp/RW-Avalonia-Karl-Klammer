@@ -99,14 +99,79 @@ internal static class WinUiFluentChrome
             FontSize = 13
         };
 
+    public static Border CreateStatusPill(string text, bool compact = true)
+    {
+        var pill = new Border
+        {
+            Child = new TextBlock
+            {
+                Text = text,
+                FontSize = compact ? 11 : 12,
+                Foreground = SecondaryTextBrush
+            },
+            Padding = compact ? new Thickness(12, 7, 12, 7) : new Thickness(14, 8, 14, 8)
+        };
+
+        if (Application.Current?.Resources.TryGetValue("StatusPillStyle", out var style) == true && style is Style st)
+            pill.Style = st;
+        else
+        {
+            pill.CornerRadius = new CornerRadius(PillCornerRadius);
+            pill.BorderBrush = CardBorderBrush;
+            pill.BorderThickness = new Thickness(1);
+            pill.Background = BadgeBackground;
+        }
+
+        return pill;
+    }
+
+    public static Button MakeCommandChip(string label, string glyph, RoutedEventHandler onClick)
+    {
+        var b = new Button { Content = string.Empty };
+        StyleActionButton(b, compact: true);
+        WinUiFluentChrome.SetIconButton(b, label, glyph);
+        b.Click += onClick;
+        if (Application.Current?.Resources.TryGetValue("ModernCommandChipStyle", out var style) == true && style is Style chipStyle)
+            b.Style = chipStyle;
+        return b;
+    }
+
     public static void StyleActionButton(Button b, bool accent = false, bool compact = false)
     {
         b.Padding = compact
             ? new Thickness(12, 8, 12, 8)
             : new Thickness(16, 10, 16, 10);
         b.CornerRadius = new CornerRadius(ActionButtonCornerRadius);
+        b.FontWeight = Microsoft.UI.Text.FontWeights.Medium;
         if (accent && Application.Current?.Resources.TryGetValue("AccentButtonStyle", out var o) == true && o is Style st)
             b.Style = st;
+
+        if (Application.Current?.Resources.TryGetValue("ModernCommandButtonStyle", out var style) == true && style is Style st2)
+            b.Style = st2;
+        else
+        {
+            b.Background = TryThemeBrush("ControlFillColorDefaultBrush") ?? BadgeBackground;
+            b.BorderBrush = TryThemeBrush("ControlStrokeColorDefaultBrush") ?? CardBorderBrush;
+            b.BorderThickness = new Thickness(1);
+            b.Foreground = PrimaryTextBrush;
+        }
+
+        if (accent && b.Style is null)
+            b.Background = TryThemeBrush("AccentFillColorDefaultBrush") ?? b.Background;
+
+        ApplyInteractionStates(b);
+    }
+
+    private static void ApplyInteractionStates(Button b)
+    {
+        var normal = b.Background;
+        var hover = TryThemeBrush("SubtleFillColorSecondaryBrush") ?? BadgeBackground;
+        var pressed = TryThemeBrush("ControlStrongFillColorDefaultBrush") ?? TryThemeBrush("SubtleFillColorTertiaryBrush") ?? hover;
+
+        b.PointerEntered += (_, __) => b.Background = hover;
+        b.PointerExited += (_, __) => b.Background = normal;
+        b.PointerPressed += (_, __) => b.Background = pressed;
+        b.PointerReleased += (_, __) => b.Background = hover;
     }
 
     public static void SetIconButton(Button b, string label, string glyph, string? shortcut = null)
@@ -304,6 +369,43 @@ internal static class WinUiFluentChrome
         }
 
         return WrapCard(inner, new Thickness(14, 12, 14, 12));
+    }
+
+    public static Border BusyState(string title, string message)
+    {
+        var spinner = new ProgressRing { IsActive = true, Width = 18, Height = 18, Margin = new Thickness(0, 0, 8, 0) };
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+            Spacing = 8,
+            Children =
+            {
+                spinner,
+                new TextBlock
+                {
+                    Text = message,
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = PrimaryTextBrush,
+                    FontSize = 13
+                }
+            }
+        };
+
+        var cap = new TextBlock
+        {
+            Text = title,
+            TextWrapping = TextWrapping.Wrap,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = SecondaryTextBrush,
+            FontSize = 12
+        };
+        ApplyCaptionTextStyle(cap);
+
+        var panel = new StackPanel { Spacing = 8 };
+        panel.Children.Add(cap);
+        panel.Children.Add(row);
+        return WrapCard(panel, new Thickness(14, 12, 14, 12));
     }
 
     public static InfoBar RiskGateCard(string title, string message, InfoBarSeverity severity)

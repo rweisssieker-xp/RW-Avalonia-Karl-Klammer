@@ -38,6 +38,16 @@ public sealed class AskShellPage : Page
     private readonly TextBox _planPreview = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 80, FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas") };
     private readonly ListView _planTable = new() { MinHeight = 160, SelectionMode = ListViewSelectionMode.None };
     private readonly TextBox _planExec = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 100, FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas") };
+    private readonly TextBlock _executionStatusLine = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBox _executionDetail = new()
+    {
+        IsReadOnly = true,
+        AcceptsReturn = true,
+        MinHeight = 84,
+        TextWrapping = TextWrapping.Wrap,
+        FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+        FontSize = 11
+    };
     private readonly CheckBox _shots = new() { Content = "Include screenshots", IsChecked = true };
     private readonly CheckBox _know = new() { Content = "Use local knowledge", IsChecked = true };
     private readonly InfoBar _busy = new() { IsOpen = false, Title = "Working" };
@@ -60,6 +70,12 @@ public sealed class AskShellPage : Page
     private CancellationTokenSource? _cts;
     private readonly List<RecipeStep> _planSteps = new();
     private int _planStepIndex;
+    private string _executionState = "idle";
+    private string _executionMode = "none";
+    private string _executionError = "";
+    private int _executionDoneSteps;
+    private int _executionTotalSteps;
+    private string _executionLastStep = "";
     private WindowsMicRecorder? _mic;
     private bool _isRecording;
     private bool _awaitGlobalHotkeyRelease;
@@ -84,6 +100,8 @@ public sealed class AskShellPage : Page
             _planTable.ItemsSource = Array.Empty<PlanPreviewRow>();
             _planRisk.Severity = InfoBarSeverity.Informational;
             _planRisk.Message = "No plan yet.";
+            SetExecutionState("idle", "none", 0, 0, "");
+            SetExecutionLastStep(null);
         }, "Ctrl+L", VirtualKey.L, VirtualKeyModifiers.Control);
         var bPanic = WinUiFluentChrome.AppBarCommand("Panic stop", "\uE711", (_, _) =>
         {
@@ -121,6 +139,13 @@ public sealed class AskShellPage : Page
         _nextBestActionBar = BuildNextBestActionBar();
         top.Children.Add(_nextBestActionBar);
         top.Children.Add(toolCard);
+        _executionStatusLine.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        WinUiFluentChrome.ApplyCaptionTextStyle(_executionStatusLine);
+        top.Children.Add(WinUiFluentChrome.SectionCard("Execution state", "Dry-run/run guard and step state", new StackPanel
+        {
+            Spacing = 8,
+            Children = { _executionStatusLine, _executionDetail }
+        }));
         top.Children.Add(_planRisk);
         var mid = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = top };
 
@@ -172,6 +197,7 @@ public sealed class AskShellPage : Page
             WinUiShellState.OnPttReleasedAsync = StopMicTranscribeAndAskAsync;
             ActivityStatusHub.RefreshFromStores();
             RefreshCommandCenter();
+            RefreshExecutionStatus();
             RefreshNextBestAction();
         };
     }
@@ -280,6 +306,36 @@ public sealed class AskShellPage : Page
         _safetyGate.Text =
             $"Risky: {insight.RiskyAction}\n" +
             $"Gate: plan execution stays behind PlanGuard, approval, and Panic Stop.";
+    }
+
+    private void SetExecutionState(string state, string mode, int doneSteps, int totalSteps, string? error = null)
+    {
+        _executionState = state;
+        _executionMode = mode;
+        _executionDoneSteps = Math.Max(0, doneSteps);
+        _executionTotalSteps = Math.Max(0, totalSteps);
+        _executionError = error ?? "";
+        RefreshExecutionStatus();
+    }
+
+    private void SetExecutionLastStep(string? lastStep)
+    {
+        _executionLastStep = (lastStep ?? "").Trim();
+        RefreshExecutionStatus();
+    }
+
+    private void RefreshExecutionStatus()
+    {
+        _executionStatusLine.Text =
+            $"State: {_executionState} · Mode: {_executionMode} · Steps: {_executionDoneSteps}/{_executionTotalSteps}";
+        _executionDetail.Text =
+            $"flow state: {_executionState}\n" +
+            $"mode: {_executionMode}\n" +
+            $"plan steps: {_executionDoneSteps}/{_executionTotalSteps}\n" +
+            $"cursor: {_planStepIndex}\n" +
+            (_executionError.Length == 0 ? "error: none" : $"error: {_executionError}") +
+            "\n" +
+            $"last step: {(_executionLastStep.Length == 0 ? "none" : _executionLastStep)}";
     }
 
     private void SetBusyBar(bool busy)
@@ -533,6 +589,8 @@ public sealed class AskShellPage : Page
                 : FormatStepsForPreview(_planSteps);
             RefreshPlanTable();
             _planExec.Text = $"({_planSteps.Count} steps — run plan / run next)";
+            SetExecutionState("ready", "parsed", _planSteps.Count, _planSteps.Count);
+            SetExecutionLastStep(_planSteps.Count == 0 ? "No executable plan detected." : $"Parsed {_planSteps.Count} step(s).");
             RefreshPlanRiskPreview();
 
             if (s.SpeakResponses)
@@ -585,13 +643,42 @@ public sealed class AskShellPage : Page
         if (steps.Count == 0)
         {
             _planExec.Text = "No steps — run ask first.";
+            SetExecutionState("blocked", dryRun ? "dry-run" : "run", 0, 0, "No steps");
+            SetExecutionLastStep("No steps");
             return;
         }
 
         _cts = new CancellationTokenSource();
-        _planExec.Text = await SimplePlanSimulator.RunAsync(steps, dryRun, WinUiShellState.Settings, null, _cts.Token)
-            .ConfigureAwait(true);
         _planStepIndex = 0;
+        SetExecutionState("running", dryRun ? "dry-run" : "run", 0, steps.Count);
+        try
+        {
+            var log = await SimplePlanSimulator.RunAsync(steps, dryRun, WinUiShellState.Settings, null, _cts.Token)
+                .ConfigureAwait(true);
+            _planExec.Text = log;
+            SetExecutionLastStep(LastResultFromSimulator(log));
+            _planStepIndex = steps.Count;
+            SetExecutionState("completed", dryRun ? "dry-run" : "run", steps.Count, steps.Count);
+        }
+        catch (OperationCanceledException)
+        {
+            SetExecutionState("cancelled", dryRun ? "dry-run" : "run", _planStepIndex, steps.Count);
+            SetExecutionLastStep("");
+            _planExec.Text += "\n[execution cancelled]";
+            NexusShell.Log("Plan run cancelled.");
+        }
+        catch (Exception ex)
+        {
+            SetExecutionState("failed", dryRun ? "dry-run" : "run", _planStepIndex, steps.Count, ex.Message);
+            SetExecutionLastStep(ex.Message);
+            _planExec.Text += "\n" + ex.Message;
+            NexusShell.Log("Plan run failed: " + ex.Message);
+        }
+        finally
+        {
+            if (_planExec.Text.Length > 14000)
+                _planExec.Text = _planExec.Text[^14000..];
+        }
     }
 
     private async Task ExecutePlanAfterConfirmAsync()
@@ -621,15 +708,40 @@ public sealed class AskShellPage : Page
         if (steps.Count == 0 || _planStepIndex >= steps.Count)
         {
             NexusShell.Log("No next step.");
+            SetExecutionState("completed", "next-step", _planStepIndex, steps.Count);
+            SetExecutionLastStep("No next step");
             return;
         }
 
         _cts ??= new CancellationTokenSource();
         var slice = new List<RecipeStep> { steps[_planStepIndex] };
-        var line = await SimplePlanSimulator.RunAsync(slice, false, WinUiShellState.Settings, null, _cts.Token)
-            .ConfigureAwait(true);
-        _planExec.Text += "\n" + line;
-        _planStepIndex++;
+        SetExecutionState("running", "next-step", _planStepIndex, steps.Count);
+        try
+        {
+            var line = await SimplePlanSimulator.RunAsync(slice, false, WinUiShellState.Settings, null, _cts.Token)
+                .ConfigureAwait(true);
+            _planExec.Text += "\n" + line;
+            SetExecutionLastStep(LastResultFromSimulator(line));
+            _planStepIndex++;
+            SetExecutionState(_planStepIndex >= steps.Count ? "completed" : "paused", "next-step", _planStepIndex, steps.Count);
+        }
+        catch (OperationCanceledException)
+        {
+            SetExecutionState("cancelled", "next-step", _planStepIndex, steps.Count);
+            SetExecutionLastStep("cancelled");
+            _planExec.Text += "\n[next step cancelled]";
+            NexusShell.Log("Plan next step cancelled.");
+        }
+        catch (Exception ex)
+        {
+            SetExecutionState("failed", "next-step", _planStepIndex, steps.Count, ex.Message);
+            SetExecutionLastStep(ex.Message);
+            _planExec.Text += "\n[next step failed] " + ex.Message;
+            NexusShell.Log("Plan next step failed: " + ex.Message);
+        }
+
+        if (_planExec.Text.Length > 14000)
+            _planExec.Text = _planExec.Text[^14000..];
     }
 
     private List<RecipeStep> ActivePlanSteps()
@@ -852,5 +964,23 @@ public sealed class AskShellPage : Page
     {
         value = value.Replace("\r", " ").Replace("\n", " ").Trim();
         return value.Length <= max ? value : value[..max] + "...";
+    }
+
+    private static string LastResultFromSimulator(string? logText)
+    {
+        if (string.IsNullOrWhiteSpace(logText))
+            return "";
+
+        var lines = logText.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        for (var i = lines.Length - 1; i >= 0; i--)
+        {
+            var line = lines[i].Trim();
+            if (line.Length == 0)
+                continue;
+            if (line.StartsWith("→", StringComparison.Ordinal) || line.Contains("→", StringComparison.Ordinal))
+                return line;
+        }
+
+        return lines.Length > 0 ? lines[^1].Trim() : "";
     }
 }

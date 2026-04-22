@@ -33,7 +33,7 @@ public partial class App
         AppPaths.DiscoverRepoRoot();
         AppPaths.EnsureDataTree();
         WinUiShellState.Settings = WinUiShellState.SettingsStore.LoadOrDefault();
-        WinUiThemeApplier.Apply(WinUiShellState.Settings.UiTheme);
+        WinUiThemeApplier.Apply(WinUiShellState.Settings.UiThemeMode, WinUiShellState.Settings.UiTheme);
         var dq = DispatcherQueue.GetForCurrentThread();
         if (dq != null)
             WinUiShellState.ApplyNexusContext(dq);

@@ -39,12 +39,15 @@ public sealed class KnowledgeShellPage : Page
         FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas")
     };
     private readonly TextBlock _editState = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
+    private readonly Border _knowledgeBusyState = WinUiFluentChrome.BusyState("Knowledge", "Checking documents and index state...");
     private string? _editingPath;
     private string[] _allFiles = Array.Empty<string>();
     private bool? _narrow;
 
     public KnowledgeShellPage()
     {
+        _knowledgeBusyState.Visibility = Visibility.Collapsed;
+
         var search = WinUiFluentChrome.AppBarCommand("Search", "\uE721", (_, _) => ApplySearch(), "Ctrl+F", VirtualKey.F, VirtualKeyModifiers.Control);
         var import = WinUiFluentChrome.AppBarCommand("Import", "\uE8B5", async (_, _) => await ImportAsync(), "Ctrl+I", VirtualKey.I, VirtualKeyModifiers.Control);
         var remove = WinUiFluentChrome.AppBarCommand("Remove", "\uE74D", (_, _) => RemoveSelected(), "Del", VirtualKey.Delete);
@@ -63,20 +66,26 @@ public sealed class KnowledgeShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(knowHint);
         _leftPane.Children.Add(knowHint);
-        _leftPane.Children.Add(WinUiFluentChrome.StatusTile("Runtime reality", "real local files", "semantic RAG optional; editor supports text formats"));
-        _leftPane.Children.Add(WinUiFluentChrome.CommandSurface("Knowledge actions", search, import, remove, reindex, suggest));
-        _leftPane.Children.Add(WinUiFluentChrome.CommandSurface("Editor", edit, save, cancel));
+        _leftPane.Children.Add(WinUiFluentChrome.WrapCard(_knowledgeStatus, new Thickness(12, 10, 12, 10)));
+        _leftPane.Children.Add(_knowledgeBusyState);
+        var knowledgeActionRow = new StackPanel { Spacing = 8 };
+        knowledgeActionRow.Children.Add(WinUiFluentChrome.CommandSurface("Knowledge actions", search, import, remove, reindex, suggest));
+        _leftPane.Children.Add(WinUiFluentChrome.SectionCard("Knowledge actions", "Search, import, remove, reindex, suggest", knowledgeActionRow));
+
+        var editorActionRow = new StackPanel { Spacing = 8 };
+        editorActionRow.Children.Add(WinUiFluentChrome.CommandSurface("Editor", edit, save, cancel));
+        _leftPane.Children.Add(WinUiFluentChrome.SectionCard("Editor actions", "Toggle local edit mode for supported text formats", editorActionRow));
+        _leftPane.Children.Add(WinUiFluentChrome.SectionCard("Document browser", "Search and select local corpus files", _search));
+        _leftPane.Children.Add(WinUiFluentChrome.SectionCard("Files", "Current local knowledge entries", _docList));
         _nextBestActionBar = BuildNextBestActionBar();
         _leftPane.Children.Add(_nextBestActionBar);
-        _leftPane.Children.Add(_knowledgeStatus);
-        _leftPane.Children.Add(_search);
-        _leftPane.Children.Add(_docList);
 
-        _rightPane.Children.Add(WinUiFluentChrome.ColumnCaption("Preview"));
+        var previewSection = new StackPanel { Spacing = 6 };
         _editState.Foreground = WinUiFluentChrome.SecondaryTextBrush;
         WinUiFluentChrome.ApplyCaptionTextStyle(_editState);
-        _rightPane.Children.Add(_editState);
-        _rightPane.Children.Add(_preview);
+        previewSection.Children.Add(_editState);
+        previewSection.Children.Add(_preview);
+        _rightPane.Children.Add(WinUiFluentChrome.SectionCard("Preview", "Selected file content and editor output", previewSection));
 
         _docList.SelectionChanged += OnSel;
 
@@ -130,11 +139,13 @@ public sealed class KnowledgeShellPage : Page
 
     public void RefreshList()
     {
+        _knowledgeBusyState.Visibility = Visibility.Visible;
         Directory.CreateDirectory(AppPaths.KnowledgeDir);
         _allFiles = Directory.GetFiles(AppPaths.KnowledgeDir, "*.*", SearchOption.TopDirectoryOnly)
             .Select(Path.GetFileName).Where(f => f != null).Select(f => f!).ToArray();
         RefreshKnowledgeStatus();
         ApplySearch();
+        _knowledgeBusyState.Visibility = Visibility.Collapsed;
     }
 
     private void RefreshKnowledgeStatus()
@@ -175,15 +186,27 @@ public sealed class KnowledgeShellPage : Page
         var src = string.IsNullOrEmpty(q)
             ? _allFiles
             : _allFiles.Where(f => f.Contains(q, StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (src.Length == 0)
+        {
+            _docList.Items.Clear();
+            _docList.Items.Add(new ListViewItem
+            {
+                Content = WinUiFluentChrome.EmptyState("No documents", "No files match the current filter.", "Import files or change the search term."),
+                IsHitTestVisible = false
+            });
+            return;
+        }
         _docList.ItemsSource = src;
     }
 
     private async Task ImportAsync()
     {
+        _knowledgeBusyState.Visibility = Visibility.Visible;
         var w = WinUiShellState.MainWindowRef;
         if (w == null)
         {
             NexusShell.Log("Import: no main window handle.");
+            _knowledgeBusyState.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -221,36 +244,52 @@ public sealed class KnowledgeShellPage : Page
 
         RefreshList();
         NexusShell.Log($"Import done ({files.Count} files).");
+        _knowledgeBusyState.Visibility = Visibility.Collapsed;
     }
 
     private void RemoveSelected()
     {
+        _knowledgeBusyState.Visibility = Visibility.Visible;
         if (_docList.SelectedItem is not string name)
+        {
+            _knowledgeBusyState.Visibility = Visibility.Collapsed;
             return;
-        var path = Path.Combine(AppPaths.KnowledgeDir, name);
+        }
         try
         {
+            var path = Path.Combine(AppPaths.KnowledgeDir, name);
             if (File.Exists(path))
                 File.Delete(path);
             NexusShell.Log("Removed: " + name);
+            RefreshList();
+            _preview.Text = "";
+            _editingPath = null;
+            UpdateEditState();
         }
         catch (Exception ex)
         {
             NexusShell.Log("Delete error: " + ex.Message);
         }
-
-        RefreshList();
-        _preview.Text = "";
-        _editingPath = null;
-        UpdateEditState();
+        finally
+        {
+            _knowledgeBusyState.Visibility = Visibility.Collapsed;
+        }
     }
 
     private void OnReindex()
     {
-        KnowledgeIndexService.Rebuild();
-        RefreshList();
-        _ = EmbeddingRagService.RebuildIfConfiguredAsync(default);
-        NexusShell.Log("Knowledge reindex → index + chunks; embeddings in background (if configured).");
+        _knowledgeBusyState.Visibility = Visibility.Visible;
+        try
+        {
+            KnowledgeIndexService.Rebuild();
+            RefreshList();
+            _ = EmbeddingRagService.RebuildIfConfiguredAsync(default);
+            NexusShell.Log("Knowledge reindex → index + chunks; embeddings in background (if configured).");
+        }
+        finally
+        {
+            _knowledgeBusyState.Visibility = Visibility.Collapsed;
+        }
     }
 
     private async Task SuggestRitualAsync()

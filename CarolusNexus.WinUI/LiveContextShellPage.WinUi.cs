@@ -78,13 +78,21 @@ public sealed class LiveContextShellPage : Page
         var inspectorRow = new Grid();
         inspectorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         inspectorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        inspectorRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         inspectorRow.Children.Add(_inspectorAction);
+        var observe = new Button { Content = "Observe only", Margin = new Thickness(8, 0, 0, 0) };
+        WinUiFluentChrome.StyleActionButton(observe);
+        WinUiFluentChrome.SetIconButton(observe, "Observe foreground only", "\uE8F2", "Ctrl+O");
+        WinUiFluentChrome.AddShortcut(observe, VirtualKey.O, VirtualKeyModifiers.Control, "Ctrl+O");
+        observe.Click += (_, _) => ObserveForegroundOnly();
+        Grid.SetColumn(observe, 1);
+        inspectorRow.Children.Add(observe);
         var run = new Button { Content = "Run", Margin = new Thickness(8, 0, 0, 0) };
         WinUiFluentChrome.StyleActionButton(run, accent: true);
         WinUiFluentChrome.SetIconButton(run, "Run", "\uE768", "F9");
         WinUiFluentChrome.AddShortcut(run, VirtualKey.F9, tooltip: "F9");
         run.Click += (_, _) => RunInspectorCustom();
-        Grid.SetColumn(run, 1);
+        Grid.SetColumn(run, 2);
         inspectorRow.Children.Add(run);
         root.Children.Add(inspectorRow);
 
@@ -286,6 +294,28 @@ public sealed class LiveContextShellPage : Page
                 WaitMs = 300
             });
             NexusShell.Log("Teach: inspector step captured.");
+        }
+    }
+
+    private void ObserveForegroundOnly()
+    {
+        try
+        {
+            var snapshot = ComputerUseLoopService.ObserveOnly(WinUiShellState.Settings);
+            _snapActive.Text = ComputerUseLoopService.FormatObserveOnly(snapshot);
+            _snapCross.Text =
+                $"Observe-only captured {snapshot.ForegroundProcess} · {snapshot.AdapterFamily}\r\n" +
+                $"Suggested safe action: {snapshot.SuggestedAction}\r\n" +
+                $"Risk posture: {snapshot.Risk}";
+            _activeApp.Text = $"{snapshot.ForegroundProcess}\n{snapshot.ForegroundTitle}";
+            _activeAdapter.Text = snapshot.AdapterFamily;
+            _safeNext.Text = snapshot.SuggestedAction;
+            NexusShell.Log($"Live Context observe-only: {snapshot.ForegroundProcess} · {snapshot.AdapterFamily}");
+        }
+        catch (Exception ex)
+        {
+            _snapActive.Text = ex.ToString();
+            NexusShell.Log("Live Context observe-only failed: " + ex.Message);
         }
     }
 

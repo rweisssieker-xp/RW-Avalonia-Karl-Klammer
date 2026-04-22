@@ -21,6 +21,7 @@ public sealed class HistoryShellPage : Page
     private readonly StackPanel _leftPane = new() { Spacing = 8 };
     private readonly StackPanel _rightPane = new() { Spacing = 6 };
     private readonly StackPanel _historyStatus = new() { Orientation = Orientation.Horizontal, Spacing = 10 };
+    private readonly Border _historyBusyState = WinUiFluentChrome.BusyState("Action history", "Loading action history...");
 
     private readonly TextBox _histFilter = new() { Header = "Search", PlaceholderText = "Filter by label, summary, kind…" };
     private readonly ListView _histList = new() { SelectionMode = ListViewSelectionMode.Single, MinHeight = 120 };
@@ -35,6 +36,8 @@ public sealed class HistoryShellPage : Page
 
     public HistoryShellPage()
     {
+        _historyBusyState.Visibility = Visibility.Collapsed;
+
         var selfHeal = new Button { Content = "Self-heal hint (last audit)" };
         WinUiFluentChrome.StyleActionButton(selfHeal);
         selfHeal.Click += (_, _) =>
@@ -59,13 +62,13 @@ public sealed class HistoryShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(histHint);
         _leftPane.Children.Add(histHint);
-        _leftPane.Children.Add(_historyStatus);
+        _leftPane.Children.Add(WinUiFluentChrome.WrapCard(_historyStatus, new Thickness(12, 10, 12, 10)));
+        _leftPane.Children.Add(_historyBusyState);
         _leftPane.Children.Add(_histFilter);
         _leftPane.Children.Add(WinUiFluentChrome.ActionGroup("Audit actions", selfHeal, createRitual, refresh));
-        _leftPane.Children.Add(_histList);
+        _leftPane.Children.Add(WinUiFluentChrome.SectionCard("Action entries", "Filter and inspect history entries", _histList));
 
-        _rightPane.Children.Add(WinUiFluentChrome.ColumnCaption("Detail"));
-        _rightPane.Children.Add(_histDetail);
+        _rightPane.Children.Add(WinUiFluentChrome.SectionCard("Detail", "Selected audit entry JSON or action status", _histDetail));
 
         _histFilter.TextChanged += (_, _) => ApplyFilter();
         _histList.SelectionChanged += OnSelectionChanged;
@@ -140,6 +143,7 @@ public sealed class HistoryShellPage : Page
     /// <summary>Reload JSON from disk and refresh the list (same as Avalonia <c>Refresh</c>).</summary>
     public void Refresh()
     {
+        _historyBusyState.Visibility = Visibility.Visible;
         var doc = ActionHistoryService.Load();
         _entries = doc.Entries.OrderByDescending(e => e.UtcAt).ToList();
         RefreshHistoryStatus();
@@ -147,10 +151,12 @@ public sealed class HistoryShellPage : Page
         {
             RebuildListPlaceholder("(no entries in action-history.json yet — run a plan or operator flow)");
             _histDetail.Text = "";
+            _historyBusyState.Visibility = Visibility.Collapsed;
             return;
         }
 
         ApplyFilter();
+        _historyBusyState.Visibility = Visibility.Collapsed;
     }
 
     private void RefreshHistoryStatus()
@@ -188,7 +194,12 @@ public sealed class HistoryShellPage : Page
     private void RebuildListPlaceholder(string message)
     {
         _histList.Items.Clear();
-        _histList.Items.Add(new ListViewItem { Content = message, Tag = message });
+        var placeholder = new ListViewItem
+        {
+            Content = WinUiFluentChrome.EmptyState("No history", message, "Run a plan or check the workflow logs to seed entries."),
+            IsHitTestVisible = false
+        };
+        _histList.Items.Add(placeholder);
     }
 
     private void RebuildListEntries(IReadOnlyList<ActionHistoryEntry> list)

@@ -101,7 +101,7 @@ public sealed class SetupShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(setupHint);
         sp.Children.Add(setupHint);
-        sp.Children.Add(_setupStatus);
+        sp.Children.Add(WinUiFluentChrome.WrapCard(_setupStatus, new Thickness(12, 10, 12, 10)));
         sp.Children.Add(_bar);
 
         var actionRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
@@ -289,6 +289,17 @@ public sealed class SetupShellPage : Page
 
 public sealed class ExperimentsShellPage : Page
 {
+    private readonly TextBlock _observeStatus = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBox _observeOutput = new()
+    {
+        IsReadOnly = true,
+        AcceptsReturn = true,
+        MinHeight = 280,
+        TextWrapping = TextWrapping.Wrap,
+        FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+        FontSize = 12
+    };
+
     public ExperimentsShellPage()
     {
         var sp = new StackPanel { Spacing = 16, Margin = new Thickness(20, 16, 20, 20) };
@@ -308,7 +319,56 @@ public sealed class ExperimentsShellPage : Page
         };
         WinUiFluentChrome.ApplyBodyTextStyle(body);
         sp.Children.Add(WinUiFluentChrome.WrapCard(body));
+        sp.Children.Add(WinUiFluentChrome.StatusTile("Computer-use reality", "observe-only", "foreground + adapter + UIA + risk; no clicks or writes"));
+
+        _observeStatus.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        WinUiFluentChrome.ApplyCaptionTextStyle(_observeStatus);
+        _observeStatus.Text = "Ready. Observe-only does not execute model actions.";
+
+        var observe = new Button { Content = "Observe foreground only" };
+        WinUiFluentChrome.StyleActionButton(observe, accent: true);
+        observe.Click += (_, _) => RunObserveOnly();
+
+        var promote = new Button { Content = "Copy summary to log" };
+        WinUiFluentChrome.StyleActionButton(promote);
+        promote.Click += (_, _) =>
+        {
+            if (!string.IsNullOrWhiteSpace(_observeOutput.Text))
+                NexusShell.Log("computer-use observe summary: " + _observeOutput.Text.Split('\n').FirstOrDefault());
+        };
+
+        sp.Children.Add(WinUiFluentChrome.SectionCard("Computer-use observe-only", "Safe local computer-use surface before any closed-loop automation", new StackPanel
+        {
+            Spacing = 10,
+            Children =
+            {
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 8,
+                    Children = { observe, promote }
+                },
+                _observeStatus,
+                _observeOutput
+            }
+        }));
         Content = new ScrollViewer { Content = sp };
+    }
+
+    private void RunObserveOnly()
+    {
+        try
+        {
+            var snapshot = ComputerUseLoopService.ObserveOnly(WinUiShellState.Settings);
+            _observeOutput.Text = ComputerUseLoopService.FormatObserveOnly(snapshot);
+            _observeStatus.Text = $"Observed {snapshot.ForegroundProcess} · {snapshot.AdapterFamily} · risk {snapshot.Risk}";
+        }
+        catch (Exception ex)
+        {
+            _observeStatus.Text = "Observe-only failed: " + ex.Message;
+            _observeOutput.Text = ex.ToString();
+            NexusShell.Log("computer-use observe-only failed: " + ex.Message);
+        }
     }
 }
 

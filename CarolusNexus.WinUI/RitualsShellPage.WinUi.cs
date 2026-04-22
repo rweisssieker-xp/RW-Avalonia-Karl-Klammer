@@ -23,6 +23,12 @@ public sealed class RitualsShellPage : Page
     private int _stepCursor;
     private CancellationTokenSource? _runCts;
     private ResponsiveBand? _ritualsLayoutBand;
+    private string _executionState = "idle";
+    private string _executionMode = "none";
+    private string _executionError = "";
+    private int _executionDoneSteps;
+    private int _executionTotalSteps;
+    private string _executionLastStep = "";
 
     private readonly Grid _root = new() { Margin = new Thickness(20, 16, 20, 16) };
     private readonly StackPanel _libraryPane = new() { Spacing = 8 };
@@ -54,11 +60,21 @@ public sealed class RitualsShellPage : Page
         FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas")
     };
     private readonly TextBlock _queueStatusLine = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
+    private readonly TextBlock _executionStatusLine = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
     private readonly TextBox _jobQueueDetail = new()
     {
         IsReadOnly = true,
         AcceptsReturn = true,
         MinHeight = 72,
+        TextWrapping = TextWrapping.Wrap,
+        FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+        FontSize = 11
+    };
+    private readonly TextBox _executionDetail = new()
+    {
+        IsReadOnly = true,
+        AcceptsReturn = true,
+        MinHeight = 86,
         TextWrapping = TextWrapping.Wrap,
         FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
         FontSize = 11
@@ -93,7 +109,7 @@ public sealed class RitualsShellPage : Page
         };
         WinUiFluentChrome.ApplyCaptionTextStyle(flowHint);
         _libraryPane.Children.Add(flowHint);
-        _libraryPane.Children.Add(WinUiFluentChrome.StatusTile("Runtime reality", "simulation/guarded", "flow editing is real; run path is safety-gated and may simulate"));
+        _libraryPane.Children.Add(WinUiFluentChrome.StatusTile("Runtime reality", "local execution state", "flow editing and run state are real; external actions remain safety-gated"));
         _nextBestActionBar = BuildNextBestActionBar();
         _libraryPane.Children.Add(_nextBestActionBar);
         _libraryPane.Children.Add(_flowStatus);
@@ -145,6 +161,13 @@ public sealed class RitualsShellPage : Page
 
         _queueStatusLine.Foreground = WinUiFluentChrome.SecondaryTextBrush;
         WinUiFluentChrome.ApplyCaptionTextStyle(_queueStatusLine);
+        _executionStatusLine.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        WinUiFluentChrome.ApplyCaptionTextStyle(_executionStatusLine);
+        _builderPane.Children.Add(WinUiFluentChrome.SectionCard("Execution state", "Local state machine for dry-run, run, approval and next-step", new StackPanel
+        {
+            Spacing = 8,
+            Children = { _executionStatusLine, _executionDetail }
+        }));
         _builderPane.Children.Add(_queueStatusLine);
         _builderPane.Children.Add(_jobQueueDetail);
 
@@ -265,6 +288,7 @@ public sealed class RitualsShellPage : Page
 
         RefreshQueueStatus();
         RefreshFlowStatus();
+        RefreshExecutionStatus();
         RefreshNextBestActionBar();
     }
 
@@ -330,8 +354,45 @@ public sealed class RitualsShellPage : Page
         _flowStatus.Children.Add(WinUiFluentChrome.StatusTile("Selected flow", selected, "library selection"));
         _flowStatus.Children.Add(WinUiFluentChrome.StatusTile("Risk", risk, "governance"));
         _flowStatus.Children.Add(WinUiFluentChrome.StatusTile("Approval", approval, "execution gate"));
+        _flowStatus.Children.Add(WinUiFluentChrome.StatusTile("Execution", _executionState, _executionMode));
         _flowStatus.Children.Add(WinUiFluentChrome.StatusTile("Queue", queue, "pending jobs"));
         _flowStatus.Children.Add(WinUiFluentChrome.StatusTile("Teach", teach, "capture mode"));
+    }
+
+    private void SetExecutionState(string state, string mode, int doneSteps, int totalSteps, string? error = null)
+    {
+        _executionState = state;
+        _executionMode = mode;
+        _executionDoneSteps = Math.Max(0, doneSteps);
+        _executionTotalSteps = Math.Max(0, totalSteps);
+        _executionError = error ?? "";
+        RefreshExecutionStatus();
+        RefreshFlowStatus();
+    }
+
+    private void SetExecutionLastStep(string? lastStep)
+    {
+        _executionLastStep = (lastStep ?? "").Trim();
+        RefreshExecutionStatus();
+        RefreshFlowStatus();
+    }
+
+    private void RefreshExecutionStatus()
+    {
+        var selected = _selected?.Name ?? (_ritualName.Text?.Trim() ?? "unsaved flow");
+        _executionStatusLine.Text =
+            $"State: {_executionState} · Mode: {_executionMode} · Steps: {_executionDoneSteps}/{_executionTotalSteps}";
+        _executionDetail.Text =
+            $"flow: {selected}\n" +
+            $"state: {_executionState}\n" +
+            $"mode: {_executionMode}\n" +
+            $"cursor: {_stepCursor}\n" +
+            $"steps: {_executionDoneSteps}/{_executionTotalSteps}\n" +
+            $"approval: {_approvalMode.SelectedItem ?? "manual"}\n" +
+            $"risk: {_riskLevel.SelectedItem ?? "medium"}\n" +
+            (string.IsNullOrWhiteSpace(_executionError) ? "error: none" : $"error: {_executionError}") +
+            "\n" +
+            $"last step: {(_executionLastStep.Length == 0 ? "none" : _executionLastStep)}";
     }
 
     private Border BuildNextBestActionBar()
@@ -504,6 +565,7 @@ public sealed class RitualsShellPage : Page
         if (_selected == null)
         {
             NexusShell.Log("Queue: no flow selected — save or pick one first.");
+            SetExecutionState("blocked", "queue", 0, 0, "No flow selected");
             RefreshQueueStatus();
             return;
         }
@@ -513,6 +575,7 @@ public sealed class RitualsShellPage : Page
         if (_selected!.Archived)
         {
             NexusShell.Log("Queue: archived flows are not enqueued.");
+            SetExecutionState("blocked", "queue", 0, _selected.Steps.Count, "Archived flows are not enqueued");
             RefreshQueueStatus();
             return;
         }
@@ -520,6 +583,7 @@ public sealed class RitualsShellPage : Page
         RitualJobQueueStore.Enqueue(_selected.Id, _selected.Name);
         var n = RitualJobQueueStore.GetPendingCount();
         NexusShell.Log($"Enqueued: {_selected.Name} (pending: {n}).");
+        SetExecutionState("queued", "approval queue", 0, _selected.Steps.Count);
         RefreshQueueStatus();
     }
 
@@ -530,6 +594,7 @@ public sealed class RitualsShellPage : Page
             if (!RitualJobQueueStore.TryDequeuePending(out var job) || job == null)
             {
                 NexusShell.Log("Job queue: no pending jobs.");
+                SetExecutionState("idle", "queue", 0, 0);
                 return;
             }
 
@@ -539,6 +604,7 @@ public sealed class RitualsShellPage : Page
             {
                 RitualJobQueueStore.RecordHistory(job, "failed", "Recipe not found");
                 NexusShell.Log($"Job cancelled: recipe {job.RecipeId} missing.");
+                SetExecutionState("failed", "queue", 0, 0, "Recipe not found");
                 return;
             }
 
@@ -546,29 +612,37 @@ public sealed class RitualsShellPage : Page
             {
                 RitualJobQueueStore.RecordHistory(job, "failed", "Recipe archived");
                 NexusShell.Log($"Job skipped: {recipe.Name} is archived.");
+                SetExecutionState("blocked", "queue", 0, recipe.Steps.Count, "Recipe archived");
                 return;
             }
 
             _runCts?.Cancel();
             _runCts = new CancellationTokenSource();
             NexusShell.Log($"Job approved — run: {recipe.Name} …");
+            SetExecutionState("running", "approved queue", 0, recipe.Steps.Count);
             try
             {
-                await SimplePlanSimulator
+                var log = await SimplePlanSimulator
                     .RunAsync(recipe.Steps, false, Settings(), recipe, _runCts.Token)
                     .ConfigureAwait(true);
                 RitualJobQueueStore.RecordHistory(job, "completed", null);
                 NexusShell.Log($"Job completed: {recipe.Name}");
+                SetExecutionState("completed", "approved queue", recipe.Steps.Count, recipe.Steps.Count);
+                SetExecutionLastStep(LastResultFromSimulator(log));
             }
             catch (OperationCanceledException)
             {
                 RitualJobQueueStore.RecordHistory(job, "cancelled", null);
                 NexusShell.Log("Job cancelled.");
+                SetExecutionState("cancelled", "approved queue", 0, recipe.Steps.Count);
+                SetExecutionLastStep("cancelled");
             }
             catch (Exception ex)
             {
                 RitualJobQueueStore.RecordHistory(job, "failed", ex.Message);
                 NexusShell.Log("Job failed: " + ex.Message);
+                SetExecutionState("failed", "approved queue", 0, recipe.Steps.Count, ex.Message);
+                SetExecutionLastStep(ex.Message);
             }
         }
         finally
@@ -650,6 +724,7 @@ public sealed class RitualsShellPage : Page
         if (steps.Count == 0)
         {
             NexusShell.Log("No steps to run.");
+            SetExecutionState("blocked", dryRun ? "dry-run" : "run", 0, 0, "No steps to run");
             return;
         }
 
@@ -660,15 +735,36 @@ public sealed class RitualsShellPage : Page
         {
             NexusShell.Log(
                 "Direct run blocked: flow is „published“ with approval „manual“ — use „queue for run“ and „approve next job“.");
+            SetExecutionState("blocked", "run", 0, steps.Count, "Published manual flow requires queue approval");
             return;
         }
 
         _runCts = new CancellationTokenSource();
         _stepCursor = 0;
-        NexusShell.Log(dryRun ? "Dry-run starting …" : "Plan run starting (simulated) …");
-        await SimplePlanSimulator.RunAsync(steps, dryRun, Settings(), _selected, _runCts.Token)
-            .ConfigureAwait(true);
-        NexusShell.Log(dryRun ? "Dry-run done." : "Run done.");
+        var mode = dryRun ? "dry-run" : "guarded run";
+        NexusShell.Log(dryRun ? "Dry-run starting …" : "Plan run starting (guarded) …");
+        SetExecutionState("running", mode, 0, steps.Count);
+        try
+        {
+            var log = await SimplePlanSimulator.RunAsync(steps, dryRun, Settings(), _selected, _runCts.Token)
+                .ConfigureAwait(true);
+            _stepCursor = steps.Count;
+            SetExecutionState("completed", mode, steps.Count, steps.Count);
+            SetExecutionLastStep(LastResultFromSimulator(log));
+            NexusShell.Log(dryRun ? "Dry-run done." : "Run done.");
+        }
+        catch (OperationCanceledException)
+        {
+            SetExecutionState("cancelled", mode, _stepCursor, steps.Count);
+            SetExecutionLastStep("cancelled");
+            NexusShell.Log("Run cancelled.");
+        }
+        catch (Exception ex)
+        {
+            SetExecutionState("failed", mode, _stepCursor, steps.Count, ex.Message);
+            SetExecutionLastStep(ex.Message);
+            NexusShell.Log("Run failed: " + ex.Message);
+        }
     }
 
     private async Task RunNextStepAsync()
@@ -677,6 +773,7 @@ public sealed class RitualsShellPage : Page
         if (_stepCursor >= steps.Count)
         {
             NexusShell.Log("No further step.");
+            SetExecutionState("completed", "next-step", steps.Count, steps.Count);
             return;
         }
 
@@ -686,15 +783,34 @@ public sealed class RitualsShellPage : Page
         {
             NexusShell.Log(
                 "Step blocked: published flow + manual approval — use queue + approve.");
+            SetExecutionState("blocked", "next-step", _stepCursor, steps.Count, "Published manual flow requires queue approval");
             return;
         }
 
         _runCts ??= new CancellationTokenSource();
         var one = new List<RecipeStep> { steps[_stepCursor] };
         NexusShell.Log($"Next step {_stepCursor + 1}/{steps.Count}");
-        await SimplePlanSimulator.RunAsync(one, false, Settings(), _selected, _runCts.Token)
-            .ConfigureAwait(true);
-        _stepCursor++;
+        SetExecutionState("running", "next-step", _stepCursor, steps.Count);
+        try
+        {
+            var log = await SimplePlanSimulator.RunAsync(one, false, Settings(), _selected, _runCts.Token)
+                .ConfigureAwait(true);
+            _stepCursor++;
+            SetExecutionLastStep(LastResultFromSimulator(log));
+            SetExecutionState(_stepCursor >= steps.Count ? "completed" : "paused", "next-step", _stepCursor, steps.Count);
+        }
+        catch (OperationCanceledException)
+        {
+            SetExecutionState("cancelled", "next-step", _stepCursor, steps.Count);
+            SetExecutionLastStep("cancelled");
+            NexusShell.Log("Step cancelled.");
+        }
+        catch (Exception ex)
+        {
+            SetExecutionState("failed", "next-step", _stepCursor, steps.Count, ex.Message);
+            SetExecutionLastStep(ex.Message);
+            NexusShell.Log("Step failed: " + ex.Message);
+        }
     }
 
     private void PromoteFromHistory()
@@ -796,6 +912,24 @@ public sealed class RitualsShellPage : Page
         var arg = $"context|{fam}|{d.Value.ProcessName}|{d.Value.Title}";
         RitualsTeachSession.Append(new RecipeStep { ActionType = "token", ActionArgument = arg, WaitMs = 200 });
         NexusShell.Log($"Teach: step {RitualsTeachSession.BufferedCount} — {d.Value.ProcessName} ({fam}).");
+    }
+
+    private static string LastResultFromSimulator(string? logText)
+    {
+        if (string.IsNullOrWhiteSpace(logText))
+            return "";
+
+        var lines = logText.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        for (var i = lines.Length - 1; i >= 0; i--)
+        {
+            var line = lines[i].Trim();
+            if (line.Length == 0)
+                continue;
+            if (line.StartsWith("→", StringComparison.Ordinal) || line.Contains("→", StringComparison.Ordinal))
+                return line;
+        }
+
+        return lines.Length > 0 ? lines[^1].Trim() : "";
     }
 
     private void StopTeach()

@@ -25,6 +25,9 @@ public sealed partial class MainWindow
     private DispatcherQueueTimer? _statusActivityTimer;
     private bool _pollFallbackDown;
     private bool _exitRequested;
+    private bool _isDashboardRefreshing;
+    private DateTime _lastDashboardRefresh = DateTime.MinValue;
+    private const int DashboardRefreshMinIntervalMs = 3500;
     private int _pttVk = PushToTalkKey.DefaultVirtualKey;
     private AppWindow? _appW;
 
@@ -93,8 +96,7 @@ public sealed partial class MainWindow
         _statusActivityTimer.Tick += (_, _) => ActivityStatusHub.RefreshFromStores();
 
         SetupPushToTalk();
-        // Disabled for stability: dashboard refresh mutates dense WinUI visual trees after startup.
-        // Manual refresh still works through the Dashboard page button.
+        _dashTimer.Start();
         _statusActivityTimer.Start();
         NexusShell.Log("WinUI: tray · companion · PTT · cached pages · dashboard timer.");
     }
@@ -170,7 +172,7 @@ public sealed partial class MainWindow
                 {
                     WinUiShellState.RaisePttPressed();
                     if (WinUiShellState.PttAwaitsHotkeyRelease?.Invoke() == true)
-                        _releasePollTimer.Start();
+                        _releasePollTimer?.Start();
                 });
             });
 
@@ -187,7 +189,7 @@ public sealed partial class MainWindow
 
         _hotkeyWindow?.Dispose();
         _hotkeyWindow = null;
-        _pollFallbackTimer.Start();
+            _pollFallbackTimer?.Start();
         NexusShell.Log("PTT: fallback polling");
     }
 
@@ -200,13 +202,13 @@ public sealed partial class MainWindow
             return;
         if (WinUiShellState.PttAwaitsHotkeyRelease?.Invoke() != true)
         {
-            _releasePollTimer.Stop();
+            _releasePollTimer?.Stop();
             return;
         }
 
         if ((Win32AsyncKey.GetAsyncKeyState(_pttVk) & 0x8000) == 0)
         {
-            _releasePollTimer.Stop();
+            _releasePollTimer?.Stop();
             _ = WinUiShellState.OnPttReleasedAsync?.Invoke();
         }
     }
@@ -226,8 +228,36 @@ public sealed partial class MainWindow
 
     private void OnDashboardTick(DispatcherQueueTimer sender, object args)
     {
-        if (_pageCache.TryGetValue(typeof(DashboardShellPage), out var p) && p is DashboardShellPage d)
-            d.RefreshFull();
+        if (_isDashboardRefreshing)
+            return;
+
+        if ((DateTime.UtcNow - _lastDashboardRefresh).TotalMilliseconds < DashboardRefreshMinIntervalMs)
+            return;
+
+        if (_frame.Content is not DashboardShellPage activeDashboard)
+            return;
+
+        if (!_pageCache.TryGetValue(typeof(DashboardShellPage), out var cached) || cached is not DashboardShellPage cachedDashboard)
+            return;
+
+        if (!ReferenceEquals(activeDashboard, cachedDashboard))
+            return;
+
+        _isDashboardRefreshing = true;
+        _lastDashboardRefresh = DateTime.UtcNow;
+
+        try
+        {
+            cachedDashboard.RefreshFull();
+        }
+        catch (Exception ex)
+        {
+            NexusShell.Log($"WinUI dashboard auto refresh failed: {ex.Message}");
+        }
+        finally
+        {
+            _isDashboardRefreshing = false;
+        }
     }
 
     private const int SwHide = 0;

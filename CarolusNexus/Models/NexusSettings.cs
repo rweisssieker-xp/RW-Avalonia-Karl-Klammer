@@ -45,6 +45,23 @@ public sealed class NexusSettings
     [JsonPropertyName("uiTheme")]
     public string UiTheme { get; set; } = "Dark";
 
+    /// <summary>Erweiterte UI-Präferenz.
+    /// Werte: <c>system</c>, <c>light</c>, <c>dark</c>, <c>highContrast</c>.</summary>
+    [JsonPropertyName("uiThemeMode")]
+    public string UiThemeMode { get; set; } = "system";
+
+    /// <summary>Shell-Dichte: <c>comfortable</c> oder <c>compact</c>.</summary>
+    [JsonPropertyName("uiDensity")]
+    public string UiDensity { get; set; } = "comfortable";
+
+    /// <summary>Weniger Animationen für reduzierte Bewegung.</summary>
+    [JsonPropertyName("reduceMotion")]
+    public bool ReduceMotion { get; set; }
+
+    /// <summary>Pins für Command-Palette-Einträge als persistente IDs (z. B. <c>page:dashboard</c>).</summary>
+    [JsonPropertyName("commandPalettePinned")]
+    public string[] CommandPalettePinned { get; set; } = [];
+
     /// <summary>Bei Ask: gekürzten UIA-Baum des Vordergrundfensters in den Prompt einfügen (Windows).</summary>
     [JsonPropertyName("includeUiaContextInAsk")]
     public bool IncludeUiaContextInAsk { get; set; }
