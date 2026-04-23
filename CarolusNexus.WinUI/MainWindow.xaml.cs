@@ -191,6 +191,7 @@ public sealed partial class MainWindow : Window
         _nav.MenuItems.Add(Mk("History", typeof(HistoryShellPage), Symbol.Clock));
         _nav.MenuItems.Add(Mk("Diagnostics", typeof(DiagnosticsShellPage), Symbol.Remote));
         _nav.MenuItems.Add(Mk("USP Studio", typeof(UspStudioShellPage), Symbol.World));
+        _nav.MenuItems.Add(Mk("UI Lab", typeof(UiLabShellPage), Symbol.View));
         _nav.MenuItems.Add(Mk("Console", typeof(ConsoleShellPage), Symbol.Keyboard));
         _nav.MenuItems.Add(Mk("Live Context", typeof(LiveContextShellPage), Symbol.View));
         _nav.MenuItems.Add(Mk("Experiments (Tier C)", typeof(ExperimentsShellPage), Symbol.Important));
@@ -1493,6 +1494,7 @@ public sealed partial class MainWindow : Window
         "RitualsShellPage" => "Operator flows",
         "HistoryShellPage" => "History",
         "DiagnosticsShellPage" => "Diagnostics",
+        "UiLabShellPage" => "UI Lab",
         "ConsoleShellPage" => "Console",
         "LiveContextShellPage" => "Live Context",
         "ExperimentsShellPage" => "Experiments",
@@ -1516,6 +1518,7 @@ public sealed partial class MainWindow : Window
             command("Page", "Open Operator flows", null, "\uE8FD", () => NavigateFromPaletteAsync(typeof(RitualsShellPage))),
             command("Page", "Open History", null, "\uE8C0", () => NavigateFromPaletteAsync(typeof(HistoryShellPage))),
             command("Page", "Open Diagnostics", null, "\uE8C8", () => NavigateFromPaletteAsync(typeof(DiagnosticsShellPage))),
+            command("Page", "Open UI Lab", null, "\uE890", () => NavigateFromPaletteAsync(typeof(UiLabShellPage))),
             command("Page", "Open Console", "Ctrl+`", "\uE756", () => NavigateFromPaletteAsync(typeof(ConsoleShellPage))),
             command("Page", "Open Live Context", null, "\uE8A7", () => NavigateFromPaletteAsync(typeof(LiveContextShellPage))),
             command("Page", "Open Experiments (Tier C)", null, "\uE9A9", () => NavigateFromPaletteAsync(typeof(ExperimentsShellPage))),

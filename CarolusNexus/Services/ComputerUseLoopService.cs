@@ -78,7 +78,7 @@ public static class ComputerUseLoopService
         return sb.ToString().TrimEnd();
     }
 
-    /// <summary>Harmless sample steps — in dry-run they only produce <see cref="SimplePlanSimulator"/> log + <see cref="RitualStepAudit"/> lines.</summary>
+    /// <summary>Harmless fallback steps — kept only when no foreground observation can produce a better guarded plan.</summary>
     public static IReadOnlyList<RecipeStep> SampleTierCPlanSteps() =>
     [
         new()
@@ -101,6 +101,37 @@ public static class ComputerUseLoopService
         }
     ];
 
+    public static IReadOnlyList<RecipeStep> BuildObservedPlanSteps(NexusSettings? settings)
+    {
+        settings ??= new NexusSettings();
+        var snapshot = ObserveOnly(settings);
+        var steps = new List<RecipeStep>
+        {
+            new()
+            {
+                ActionType = "token",
+                ActionArgument = snapshot.AdapterFamily == "ax2012" ? "ax.read_context" : "[ACTION:hotkey|Ctrl+L]",
+                WaitMs = 50,
+                Checkpoint = true
+            }
+        };
+
+        if (snapshot.AdapterFamily == "browser")
+        {
+            steps.Add(new RecipeStep
+            {
+                ActionType = "token",
+                ActionArgument = "[ACTION:hotkey|Ctrl+L]",
+                WaitMs = 50,
+                Checkpoint = true
+            });
+        }
+
+        if (steps.Count == 0)
+            return SampleTierCPlanSteps();
+        return steps;
+    }
+
     /// <summary>
     /// Runs up to <paramref name="maxSteps"/> steps through <see cref="SimplePlanSimulator"/> (AgentRunState + <see cref="RitualStepAudit"/> + action history).
     /// </summary>
@@ -111,7 +142,7 @@ public static class ComputerUseLoopService
         NexusSettings? settings,
         CancellationToken ct = default)
     {
-        var list = steps is { Count: > 0 } ? steps : SampleTierCPlanSteps();
+        var list = steps is { Count: > 0 } ? steps : BuildObservedPlanSteps(settings);
         var cap = Math.Clamp(maxSteps, 1, 64);
         var slice = list.Take(Math.Min(cap, list.Count)).ToList();
         NexusShell.Log($"[computer-use] RunThroughSimulator: {slice.Count} step(s), dryRun={dryRun}");

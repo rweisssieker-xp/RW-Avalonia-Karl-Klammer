@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- WinUI 3 XamlCompiler.exe currently fails on net10 SDK in this environment; WinUI app targets net9. -->
-    <TargetFrameworks>net9.0-windows;net10.0-windows</TargetFrameworks>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>CarolusNexus</RootNamespace>
     <AssemblyName>CarolusNexus.Core</AssemblyName>
     <Nullable>enable</Nullable>
@@ -10,6 +9,8 @@
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <!-- Known local PdfPig package mix: root package is 0.1.9-alpha, transitive assemblies resolve to 1.7.0-custom-5. -->
+    <NoWarn>$(NoWarn);NU1603;MSB3277</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />

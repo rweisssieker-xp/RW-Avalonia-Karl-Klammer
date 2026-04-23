@@ -807,7 +807,7 @@ public sealed class AskShellPage : Page
                 ? ActionPlanExtractor.FormatPreview(tokens)
                 : FormatStepsForPreview(_planSteps);
             RefreshPlanTable();
-            _planExec.Text = $"({_planSteps.Count} steps — run plan / run next)";
+            _planExec.Text = BuildReadinessPanel(_planSteps, WinUiShellState.Settings);
             SetExecutionState("ready", "parsed", _planSteps.Count, _planSteps.Count);
             SetExecutionLastStep(_planSteps.Count == 0 ? "No executable plan detected." : $"Parsed {_planSteps.Count} step(s).");
             RefreshPlanRiskPreview();
@@ -965,9 +965,10 @@ public sealed class AskShellPage : Page
         SetExecutionState("running", dryRun ? "dry-run" : "run", 0, steps.Count);
         try
         {
+            _planExec.Text = BuildReadinessPanel(steps, WinUiShellState.Settings) + "\n\n--- run log ---\n";
             var log = await SimplePlanSimulator.RunAsync(steps, dryRun, WinUiShellState.Settings, null, _cts.Token)
                 .ConfigureAwait(true);
-            _planExec.Text = log;
+            _planExec.Text += log;
             SetExecutionLastStep(LastResultFromSimulator(log));
             _planStepIndex = steps.Count;
             SetExecutionState("completed", dryRun ? "dry-run" : "run", steps.Count, steps.Count);
@@ -1030,6 +1031,7 @@ public sealed class AskShellPage : Page
         SetExecutionState("running", "next-step", _planStepIndex, steps.Count);
         try
         {
+            _planExec.Text += "\n\n" + BuildReadinessPanel(slice, WinUiShellState.Settings) + "\n--- next-step log ---";
             var line = await SimplePlanSimulator.RunAsync(slice, false, WinUiShellState.Settings, null, _cts.Token)
                 .ConfigureAwait(true);
             _planExec.Text += "\n" + line;
@@ -1054,6 +1056,13 @@ public sealed class AskShellPage : Page
 
         if (_planExec.Text.Length > 14000)
             _planExec.Text = _planExec.Text[^14000..];
+    }
+
+    private static string BuildReadinessPanel(IReadOnlyList<RecipeStep> steps, NexusSettings settings)
+    {
+        if (steps.Count == 0)
+            return "(0 steps — run ask first)";
+        return $"({steps.Count} steps — preflight readiness)\n" + AutomationTokenReadiness.BuildReport(steps, settings);
     }
 
     private List<RecipeStep> ActivePlanSteps()

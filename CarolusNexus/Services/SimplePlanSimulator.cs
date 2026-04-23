@@ -55,6 +55,11 @@ public static class SimplePlanSimulator
                     $"{prefix} step {i + 1}/{steps.Count}: {s.ActionType} · {s.ActionArgument} (wait {s.WaitMs}ms)";
                 sb.AppendLine(lineStart);
                 NexusShell.Log(lineStart);
+                var readiness = AutomationTokenReadiness.Classify(s.ActionArgument, safety ?? new NexusSettings(), s.Channel);
+                var readinessLine =
+                    $"  → readiness: {readiness.Mode}/{readiness.Capability} · executable={readiness.IsExecutable} · {readiness.Reason}";
+                sb.AppendLine(readinessLine);
+                NexusShell.Log(readinessLine);
 
                 if (!dryRun && safety != null && !PlanGuard.IsForegroundFamilyAllowed(safety))
                 {

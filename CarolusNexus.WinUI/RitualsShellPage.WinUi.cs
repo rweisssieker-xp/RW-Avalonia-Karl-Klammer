@@ -746,6 +746,7 @@ public sealed class RitualsShellPage : Page
         _stepCursor = 0;
         var mode = dryRun ? "dry-run" : "guarded run";
         NexusShell.Log(dryRun ? "Dry-run starting …" : "Plan run starting (guarded) …");
+        NexusShell.Log("Preflight readiness:\n" + AutomationTokenReadiness.BuildReport(steps, Settings()));
         SetExecutionState("running", mode, 0, steps.Count);
         try
         {
@@ -800,6 +801,7 @@ public sealed class RitualsShellPage : Page
         _stepCursor = start;
         var remaining = steps.Skip(start).ToList();
         NexusShell.Log($"Resume: starting at step {start + 1}/{steps.Count}.");
+        NexusShell.Log("Resume preflight readiness:\n" + AutomationTokenReadiness.BuildReport(remaining, Settings()));
         SetExecutionState("running", "resume", start, steps.Count);
         try
         {
@@ -890,6 +892,7 @@ public sealed class RitualsShellPage : Page
         _runCts ??= new CancellationTokenSource();
         var one = new List<RecipeStep> { steps[_stepCursor] };
         NexusShell.Log($"Next step {_stepCursor + 1}/{steps.Count}");
+        NexusShell.Log("Next-step readiness:\n" + AutomationTokenReadiness.BuildReport(one, Settings()));
         SetExecutionState("running", "next-step", _stepCursor, steps.Count);
         try
         {

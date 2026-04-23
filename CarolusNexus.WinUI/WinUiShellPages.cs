@@ -401,10 +401,10 @@ public sealed class ExperimentsShellPage : Page
         {
             _observeStatus.Text = dryRun
                 ? "Running dry-run simulation through computer-use sample steps..."
-                : "Running sample plan through guarded execution path...";
+                : "Running observed foreground plan through guarded execution path...";
             _observeOutput.Text = "";
             var log = await ComputerUseLoopService.RunThroughSimulatorAsync(
-                ComputerUseLoopService.SampleTierCPlanSteps(),
+                ComputerUseLoopService.BuildObservedPlanSteps(WinUiShellState.Settings),
                 maxSteps: 3,
                 dryRun: dryRun,
                 settings: WinUiShellState.Settings);
@@ -734,38 +734,49 @@ public sealed class DiagnosticsShellPage : Page
             DemoProgressTrackerService.Reset();
             _log.Text = ReleaseReadinessService.BuildPilotModeReport(settings) + "\n\n" + DemoProgressTrackerService.BuildProgressReport();
         };
-        row.Children.Add(clear);
-        row.Children.Add(export);
-        row.Children.Add(report);
-        row.Children.Add(audit);
-        row.Children.Add(usp);
-        row.Children.Add(uspPack);
-        row.Children.Add(evalLab);
-        row.Children.Add(evalPack);
-        row.Children.Add(aiRoi);
-        row.Children.Add(aiRoiPack);
-        row.Children.Add(aiDemo);
-        row.Children.Add(aiDemoPack);
-        row.Children.Add(pilotProof);
-        row.Children.Add(demoProgress);
-        row.Children.Add(releaseReady);
-        row.Children.Add(quality);
-        row.Children.Add(dataset);
-        row.Children.Add(privacy);
-        row.Children.Add(compiler);
-        row.Children.Add(timeline);
-        row.Children.Add(evidence);
-        row.Children.Add(axMemory);
-        row.Children.Add(approvals);
-        row.Children.Add(riskSim);
-        row.Children.Add(flowRoi);
-        row.Children.Add(regression);
-        row.Children.Add(pilotMode);
-        sp.Children.Add(WinUiFluentChrome.WrapCard(row, new Thickness(16, 12, 16, 12)));
-        sp.Children.Add(WinUiFluentChrome.WrapCard(_log, new Thickness(12, 10, 12, 10)));
+        var groupedActions = new StackPanel { Spacing = 12 };
+        groupedActions.Children.Add(DiagnosticsGroup("Runtime", "Local app state, runtime checks and exportable diagnostics.", clear, export, report, audit, releaseReady));
+        groupedActions.Children.Add(DiagnosticsGroup("AI / Evaluation", "USP reporting, evaluation lab, quality badges and dataset builder.", usp, uspPack, evalLab, evalPack, quality, dataset));
+        groupedActions.Children.Add(DiagnosticsGroup("Sales / Pilot", "ROI, demo orchestration, pilot proof and pilot-mode progress.", aiRoi, aiRoiPack, aiDemo, aiDemoPack, pilotProof, demoProgress, pilotMode));
+        groupedActions.Children.Add(DiagnosticsGroup("Enterprise controls", "Privacy, prompt compiler, evidence, AX memory, approvals, risk and regression gates.", privacy, compiler, timeline, evidence, axMemory, approvals, riskSim, flowRoi, regression));
+        sp.Children.Add(new DevWinUI.SettingsExpander
+        {
+            Header = "Diagnostics command deck",
+            Description = "Runtime checks, proof packs, AI evaluation, governance and pilot readiness actions.",
+            IsExpanded = true,
+            Content = groupedActions
+        });
+        sp.Children.Add(new DevWinUI.SettingsCard
+        {
+            Header = "Diagnostics output",
+            Description = "Combined run output, release evidence and exported report summaries.",
+            Content = _log
+        });
         Content = new ScrollViewer { Content = sp };
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+    }
+
+    private static DevWinUI.SettingsCard DiagnosticsGroup(string header, string description, params Button[] buttons)
+    {
+        var wrap = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Margin = new Thickness(0, 6, 0, 0)
+        };
+        foreach (var button in buttons)
+        {
+            button.Margin = new Thickness(0, 0, 8, 8);
+            wrap.Children.Add(button);
+        }
+
+        return new DevWinUI.SettingsCard
+        {
+            Header = header,
+            Description = description,
+            Content = wrap
+        };
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -820,7 +831,12 @@ public sealed class UspStudioShellPage : Page
 
         _status.Foreground = WinUiFluentChrome.SecondaryTextBrush;
         WinUiFluentChrome.ApplyCaptionTextStyle(_status);
-        root.Children.Add(WinUiFluentChrome.WrapCard(_status, new Thickness(14, 10, 14, 10)));
+        root.Children.Add(new DevWinUI.SettingsCard
+        {
+            Header = "Studio readiness",
+            Description = "Release gate, pilot mode and proof-pack status in one native DevWinUI card.",
+            Content = _status
+        });
 
         var hero = new Grid { ColumnSpacing = 12, RowSpacing = 12 };
         hero.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -849,7 +865,13 @@ public sealed class UspStudioShellPage : Page
         AddAction(actions, "Studio pack", ExportStudioPack, accent: true);
         AddAction(actions, "Pilot mode", StartPilotMode);
         AddAction(actions, "Demo progress", ShowDemoProgress);
-        root.Children.Add(WinUiFluentChrome.WrapCard(actions, new Thickness(14, 12, 14, 12)));
+        root.Children.Add(new DevWinUI.SettingsExpander
+        {
+            Header = "Studio actions",
+            Description = "Buyer proof, pilot mode and demo progress actions for live sales and pilot sessions.",
+            IsExpanded = true,
+            Content = actions
+        });
         root.Children.Add(WinUiFluentChrome.WrapCard(_output, new Thickness(12, 10, 12, 10)));
 
         Content = new ScrollViewer { Content = root };
@@ -867,7 +889,13 @@ public sealed class UspStudioShellPage : Page
         panel.Children.Add(titleBlock);
         panel.Children.Add(bodyBlock);
         panel.Children.Add(button);
-        var card = WinUiFluentChrome.WrapCard(panel, new Thickness(18, 16, 18, 16));
+        var card = new DevWinUI.SettingsCard
+        {
+            Header = title,
+            Description = body,
+            Content = button,
+            Padding = new Thickness(14)
+        };
         Grid.SetColumn(card, column);
         host.Children.Add(card);
     }
@@ -881,7 +909,13 @@ public sealed class UspStudioShellPage : Page
         WinUiFluentChrome.StyleActionButton(button, compact: true);
         button.Click += (_, _) => run();
         panel.Children.Add(button);
-        var card = WinUiFluentChrome.WrapCard(panel, new Thickness(16, 14, 16, 14));
+        var card = new DevWinUI.SettingsCard
+        {
+            Header = title,
+            Description = body,
+            Content = button,
+            Padding = new Thickness(12)
+        };
         Grid.SetRow(card, row);
         Grid.SetColumn(card, column);
         host.Children.Add(card);
@@ -942,6 +976,86 @@ public sealed class UspStudioShellPage : Page
     }
 
     private void ShowDemoProgress() => _output.Text = DemoProgressTrackerService.BuildProgressReport();
+}
+
+public sealed class UiLabShellPage : Page
+{
+    public UiLabShellPage()
+    {
+        var root = new Grid
+        {
+            Padding = new Thickness(28),
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+
+        var header = new StackPanel { Spacing = 8, Margin = new Thickness(0, 0, 0, 20) };
+        header.Children.Add(new TextBlock
+        {
+            Text = "UI Lab",
+            FontSize = 34,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+        });
+        header.Children.Add(new TextBlock
+        {
+            Text = "DevWinUI.Controls ist aktiv. Diese Seite zeigt echte DevWinUI-Komponenten isoliert, bevor sie in USP Studio und Diagnostics wandern.",
+            TextWrapping = TextWrapping.Wrap,
+            Opacity = 0.78
+        });
+        Grid.SetRow(header, 0);
+        root.Children.Add(header);
+
+        var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var content = new StackPanel { Spacing = 16 };
+
+        content.Children.Add(new DevWinUI.SettingsCard
+        {
+            Header = "DevWinUI SettingsCard",
+            Description = "Sichtbarer Nachweis: diese Karte kommt aus DevWinUI.Controls und nutzt die globale DevWinUI.Controls Resource.",
+            Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 10,
+                Children =
+                {
+                    new Button { Content = "Primary action" },
+                    new Button { Content = "Secondary" }
+                }
+            }
+        });
+
+        var expander = new DevWinUI.SettingsExpander
+        {
+            Header = "DevWinUI SettingsExpander",
+            Description = "Für USP-Cluster, Diagnosegruppen und KI-Governance-Sektionen.",
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock { Text = "AI ROI, Governance, Privacy Firewall und Regression Suite können hier als gruppierte Controls erscheinen.", TextWrapping = TextWrapping.Wrap },
+                    new ToggleSwitch { Header = "Pilot-safe UX pattern", IsOn = true },
+                    new ToggleSwitch { Header = "Enterprise readiness badges", IsOn = true }
+                }
+            }
+        };
+        content.Children.Add(expander);
+
+        content.Children.Add(new DevWinUI.SettingsCard
+        {
+            Header = "Nächste Übernahme",
+            Description = "Wenn dieses Lab stabil läuft, werden die gleichen Patterns in USP Studio und Diagnostics verwendet.",
+            Content = new ProgressBar { Value = 72, Maximum = 100, MinWidth = 220 }
+        });
+
+        scroll.Content = content;
+        Grid.SetRow(scroll, 1);
+        root.Children.Add(scroll);
+        Content = root;
+    }
 }
 
 public sealed class ConsoleShellPage : Page
