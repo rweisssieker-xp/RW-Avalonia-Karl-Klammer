@@ -518,6 +518,13 @@ public sealed class AskShellPage : Page
     {
         _executionStatusLine.Text =
             $"State: {_executionState} · Mode: {_executionMode} · Steps: {_executionDoneSteps}/{_executionTotalSteps}";
+        var settings = WinUiShellState.Settings;
+        var recovery = _executionLastStep.Length == 0
+            ? "Recovery\nClass: no recovery needed\nResult was not a failure class."
+            : RecoverySuggestionService.BuildSuggestion(
+                new RecipeStep { ActionArgument = _planSteps.Count > 0 && _planStepIndex < _planSteps.Count ? _planSteps[Math.Max(0, Math.Min(_planStepIndex, _planSteps.Count - 1))].ActionArgument : "" },
+                _executionLastStep,
+                settings);
         _executionDetail.Text =
             $"flow state: {_executionState}\n" +
             $"mode: {_executionMode}\n" +
@@ -525,7 +532,15 @@ public sealed class AskShellPage : Page
             $"cursor: {_planStepIndex}\n" +
             (_executionError.Length == 0 ? "error: none" : $"error: {_executionError}") +
             "\n" +
-            $"last step: {(_executionLastStep.Length == 0 ? "none" : _executionLastStep)}";
+            $"last step: {(_executionLastStep.Length == 0 ? "none" : _executionLastStep)}" +
+            "\n\n--- recovery ---\n" +
+            recovery +
+            "\n\n--- evidence ---\n" +
+            ExecutionEvidenceService.BuildReport(4) +
+            "\n\n--- adaptive memory ---\n" +
+            AdaptiveOperatorMemoryService.BuildReport(4) +
+            "\n\n--- mission timeline ---\n" +
+            MissionTimelineService.BuildTimeline(8);
     }
 
     private void SetBusyBar(bool busy)

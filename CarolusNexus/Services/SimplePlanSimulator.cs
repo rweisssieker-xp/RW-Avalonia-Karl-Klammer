@@ -154,6 +154,11 @@ public static class SimplePlanSimulator
                 }
 
                 RitualStepAudit.Append(i + 1, steps.Count, s, dryRun, stepResult);
+                ExecutionEvidenceService.Append(runId, i + 1, steps.Count, s, dryRun, readiness, stepResult);
+                AdaptiveOperatorMemoryService.Record(
+                    OperatingSystem.IsWindows() ? (ForegroundWindowInfo.TryReadDetail() is { } d ? OperatorAdapterRegistry.ResolveFamily(d.ProcessName, d.Title) : "generic") : "generic",
+                    s.ActionArgument ?? "",
+                    stepResult);
                 FlowResumeStore.RecordStep(recipe, i, steps.Count, stepResult);
                 finalResult = stepResult;
 
@@ -175,6 +180,9 @@ public static class SimplePlanSimulator
 
                 if (failed)
                 {
+                    var recovery = RecoverySuggestionService.BuildSuggestion(s, stepResult, safety);
+                    sb.AppendLine(recovery);
+                    NexusShell.Log(recovery.Replace(Environment.NewLine, " | "));
                     if (HandleFailureBranching(s, sb, ref i, steps.Count, failure: true))
                         continue;
                     break;

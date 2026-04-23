@@ -383,6 +383,14 @@ public sealed class RitualsShellPage : Page
     private void RefreshExecutionStatus()
     {
         var selected = _selected?.Name ?? (_ritualName.Text?.Trim() ?? "unsaved flow");
+        var settings = Settings();
+        var activeSteps = _selected != null ? _selected.Steps : ParseStepsEditor();
+        var token = activeSteps.Count > 0 && _stepCursor < activeSteps.Count
+            ? activeSteps[Math.Max(0, Math.Min(_stepCursor, activeSteps.Count - 1))].ActionArgument
+            : "";
+        var recovery = _executionLastStep.Length == 0
+            ? "Recovery\nClass: no recovery needed\nResult was not a failure class."
+            : RecoverySuggestionService.BuildSuggestion(new RecipeStep { ActionArgument = token }, _executionLastStep, settings);
         _executionStatusLine.Text =
             $"State: {_executionState} · Mode: {_executionMode} · Steps: {_executionDoneSteps}/{_executionTotalSteps}";
         _executionDetail.Text =
@@ -395,7 +403,15 @@ public sealed class RitualsShellPage : Page
             $"risk: {_riskLevel.SelectedItem ?? "medium"}\n" +
             (string.IsNullOrWhiteSpace(_executionError) ? "error: none" : $"error: {_executionError}") +
             "\n" +
-            $"last step: {(_executionLastStep.Length == 0 ? "none" : _executionLastStep)}";
+            $"last step: {(_executionLastStep.Length == 0 ? "none" : _executionLastStep)}" +
+            "\n\n--- recovery ---\n" +
+            recovery +
+            "\n\n--- evidence ---\n" +
+            ExecutionEvidenceService.BuildReport(4) +
+            "\n\n--- adaptive memory ---\n" +
+            AdaptiveOperatorMemoryService.BuildReport(4) +
+            "\n\n--- mission timeline ---\n" +
+            MissionTimelineService.BuildTimeline(8);
     }
 
     private Border BuildNextBestActionBar()

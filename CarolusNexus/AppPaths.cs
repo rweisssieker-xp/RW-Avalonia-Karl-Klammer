@@ -30,6 +30,8 @@ public static class AppPaths
     /// <summary>JPEG thumbnails for watch entries (under <see cref="DataDir"/>).</summary>
     public static string WatchThumbnailsDir => Path.Combine(DataDir, "watch-thumbnails");
     public static string RitualStepAudit => Path.Combine(DataDir, "ritual-step-audit.jsonl");
+    public static string ExecutionEvidence => Path.Combine(DataDir, "execution-evidence.jsonl");
+    public static string AdaptiveOperatorMemory => Path.Combine(DataDir, "adaptive-operator-memory.json");
     public static string ConversationMemory => Path.Combine(DataDir, "conversation-memory.jsonl");
     /// <summary>Recent command palette entry ids (<c>tab:N</c> / <c>action:key</c>).</summary>
     public static string CommandPaletteRecent => Path.Combine(DataDir, "command-palette-recent.json");

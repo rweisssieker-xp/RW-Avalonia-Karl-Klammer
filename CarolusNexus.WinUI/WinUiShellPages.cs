@@ -699,6 +699,41 @@ public sealed class DiagnosticsShellPage : Page
             var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
             _log.Text = AiEvidenceAnswerContractService.BuildContract(settings, _log.Text ?? "");
         };
+        var executionEvidence = new Button { Content = "Execution evidence" };
+        WinUiFluentChrome.StyleActionButton(executionEvidence);
+        executionEvidence.Click += (_, _) => _log.Text = ExecutionEvidenceService.BuildReport();
+        var recovery = new Button { Content = "Recovery guide" };
+        WinUiFluentChrome.StyleActionButton(recovery);
+        recovery.Click += (_, _) =>
+            _log.Text = RecoverySuggestionService.BuildSuggestion(
+                new CarolusNexus.Models.RecipeStep { ActionArgument = _log.Text ?? "" },
+                _log.Text ?? "",
+                NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings);
+        var adaptiveMemory = new Button { Content = "Adaptive memory" };
+        WinUiFluentChrome.StyleActionButton(adaptiveMemory);
+        adaptiveMemory.Click += (_, _) => _log.Text = AdaptiveOperatorMemoryService.BuildReport();
+        var missionTimeline = new Button { Content = "Mission timeline" };
+        WinUiFluentChrome.StyleActionButton(missionTimeline);
+        missionTimeline.Click += (_, _) => _log.Text = MissionTimelineService.BuildTimeline();
+        var sop = new Button { Content = "Watch to SOP" };
+        WinUiFluentChrome.StyleActionButton(sop);
+        sop.Click += (_, _) => _log.Text = WatchToSopGeneratorService.BuildSop();
+        var drift = new Button { Content = "Drift detect" };
+        WinUiFluentChrome.StyleActionButton(drift);
+        drift.Click += (_, _) => _log.Text = DriftDetectionService.BuildReport();
+        var missionScore = new Button { Content = "Mission score" };
+        WinUiFluentChrome.StyleActionButton(missionScore);
+        missionScore.Click += (_, _) => _log.Text = MissionControlScoreService.BuildScore();
+        var heatmap = new Button { Content = "Confidence heatmap" };
+        WinUiFluentChrome.StyleActionButton(heatmap);
+        heatmap.Click += (_, _) =>
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+            var latest = ActionHistoryService.GetLatestPlanRunWithSteps();
+            _log.Text = latest == null
+                ? "(no plan run history yet for heatmap)"
+                : ConfidenceHeatmapService.BuildHeatmap(latest.Steps, settings);
+        };
         var axMemory = new Button { Content = "AX memory" };
         WinUiFluentChrome.StyleActionButton(axMemory);
         axMemory.Click += (_, _) =>
@@ -736,9 +771,9 @@ public sealed class DiagnosticsShellPage : Page
         };
         var groupedActions = new StackPanel { Spacing = 12 };
         groupedActions.Children.Add(DiagnosticsGroup("Runtime", "Local app state, runtime checks and exportable diagnostics.", clear, export, report, audit, releaseReady));
-        groupedActions.Children.Add(DiagnosticsGroup("AI / Evaluation", "USP reporting, evaluation lab, quality badges and dataset builder.", usp, uspPack, evalLab, evalPack, quality, dataset));
+        groupedActions.Children.Add(DiagnosticsGroup("AI / Evaluation", "USP reporting, evaluation lab, quality badges, drift and dataset builder.", usp, uspPack, evalLab, evalPack, quality, dataset, missionScore, heatmap, drift));
         groupedActions.Children.Add(DiagnosticsGroup("Sales / Pilot", "ROI, demo orchestration, pilot proof and pilot-mode progress.", aiRoi, aiRoiPack, aiDemo, aiDemoPack, pilotProof, demoProgress, pilotMode));
-        groupedActions.Children.Add(DiagnosticsGroup("Enterprise controls", "Privacy, prompt compiler, evidence, AX memory, approvals, risk and regression gates.", privacy, compiler, timeline, evidence, axMemory, approvals, riskSim, flowRoi, regression));
+        groupedActions.Children.Add(DiagnosticsGroup("Enterprise controls", "Privacy, prompt compiler, evidence, AX memory, approvals, SOP, timeline and recovery.", privacy, compiler, timeline, evidence, executionEvidence, adaptiveMemory, missionTimeline, sop, recovery, axMemory, approvals, riskSim, flowRoi, regression));
         sp.Children.Add(new DevWinUI.SettingsExpander
         {
             Header = "Diagnostics command deck",
@@ -865,6 +900,13 @@ public sealed class UspStudioShellPage : Page
         AddAction(actions, "Studio pack", ExportStudioPack, accent: true);
         AddAction(actions, "Pilot mode", StartPilotMode);
         AddAction(actions, "Demo progress", ShowDemoProgress);
+        AddAction(actions, "Execution evidence", ShowExecutionEvidence);
+        AddAction(actions, "Adaptive memory", ShowAdaptiveMemory);
+        AddAction(actions, "Mission timeline", ShowMissionTimeline);
+        AddAction(actions, "Watch to SOP", ShowWatchToSop);
+        AddAction(actions, "Mission score", ShowMissionScore);
+        AddAction(actions, "Drift detect", ShowDrift);
+        AddAction(actions, "Heatmap", ShowConfidenceHeatmap);
         root.Children.Add(new DevWinUI.SettingsExpander
         {
             Header = "Studio actions",
@@ -967,6 +1009,24 @@ public sealed class UspStudioShellPage : Page
     private void ShowAxMemory() => _output.Text = AxFormMemoryService.BuildMemoryReport(Settings());
 
     private void ShowRiskAndRegression() => _output.Text = AiRiskSimulatorService.BuildRiskSimulation(Settings(), _output.Text ?? "") + "\n\n" + AiRegressionSuiteService.BuildRegressionReport(Settings());
+
+    private void ShowExecutionEvidence() => _output.Text = ExecutionEvidenceService.BuildReport();
+
+    private void ShowAdaptiveMemory() => _output.Text = AdaptiveOperatorMemoryService.BuildReport();
+
+    private void ShowMissionTimeline() => _output.Text = MissionTimelineService.BuildTimeline();
+
+    private void ShowWatchToSop() => _output.Text = WatchToSopGeneratorService.BuildSop();
+
+    private void ShowMissionScore() => _output.Text = MissionControlScoreService.BuildScore();
+
+    private void ShowDrift() => _output.Text = DriftDetectionService.BuildReport();
+
+    private void ShowConfidenceHeatmap()
+    {
+        var latest = ActionHistoryService.GetLatestPlanRunWithSteps();
+        _output.Text = latest == null ? "(no plan run history yet for heatmap)" : ConfidenceHeatmapService.BuildHeatmap(latest.Steps, Settings());
+    }
 
     private void StartPilotMode()
     {
