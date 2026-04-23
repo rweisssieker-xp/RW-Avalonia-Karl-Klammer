@@ -217,6 +217,13 @@ public static class AiUspCommandService
         sb.AppendLine();
         sb.AppendLine("## Executive one-pager");
         sb.AppendLine(BuildExecutiveOnePager(settings, currentPrompt));
+        sb.AppendLine();
+        sb.AppendLine("## AI governance proof");
+        sb.AppendLine(AiGovernanceUspService.BuildEvidenceModeReport(settings, currentPrompt));
+        sb.AppendLine();
+        sb.AppendLine(AiGovernanceUspService.BuildProcessMiningReport(settings));
+        sb.AppendLine();
+        sb.AppendLine(AiGovernanceUspService.BuildAutonomyAndMutationReport(settings));
         File.WriteAllText(path, sb.ToString());
         return path;
     }

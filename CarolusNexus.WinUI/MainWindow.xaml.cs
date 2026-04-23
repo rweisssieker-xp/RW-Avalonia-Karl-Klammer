@@ -190,6 +190,7 @@ public sealed partial class MainWindow : Window
         _nav.MenuItems.Add(Mk("Operator flows", typeof(RitualsShellPage), Symbol.AllApps));
         _nav.MenuItems.Add(Mk("History", typeof(HistoryShellPage), Symbol.Clock));
         _nav.MenuItems.Add(Mk("Diagnostics", typeof(DiagnosticsShellPage), Symbol.Remote));
+        _nav.MenuItems.Add(Mk("USP Studio", typeof(UspStudioShellPage), Symbol.World));
         _nav.MenuItems.Add(Mk("Console", typeof(ConsoleShellPage), Symbol.Keyboard));
         _nav.MenuItems.Add(Mk("Live Context", typeof(LiveContextShellPage), Symbol.View));
         _nav.MenuItems.Add(Mk("Experiments (Tier C)", typeof(ExperimentsShellPage), Symbol.Important));

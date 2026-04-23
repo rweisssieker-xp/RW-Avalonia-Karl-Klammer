@@ -117,6 +117,20 @@ public sealed class AskShellPage : Page
         var bAiGap = WinUiFluentChrome.AppBarCommand("RAG gap", "\uE9D9", (_, _) => BuildAiRagGapReport());
         var bAiOne = WinUiFluentChrome.AppBarCommand("Executive one-pager", "\uE8A7", (_, _) => ExportAiExecutiveOnePager());
         var bAiDemo = WinUiFluentChrome.AppBarCommand("AI demo flow", "\uE8FD", (_, _) => CreateAiDemoFlow());
+        var bEvidence = WinUiFluentChrome.AppBarCommand("Evidence mode", "\uE9D2", (_, _) => BuildAiEvidenceMode());
+        var bMining = WinUiFluentChrome.AppBarCommand("Process mining", "\uE9D9", (_, _) => BuildProcessMining());
+        var bMutation = WinUiFluentChrome.AppBarCommand("Mutation scan", "\uE7BA", (_, _) => BuildSafeMutationScan());
+        var bGovernance = WinUiFluentChrome.AppBarCommand("Governance proof", "\uE8A7", (_, _) => ExportGovernanceProof());
+        var bPilot = WinUiFluentChrome.AppBarCommand("Pilot scorecard", "\uE9D2", (_, _) => BuildPilotScorecard());
+        var bObjections = WinUiFluentChrome.AppBarCommand("Buyer objections", "\uE8F2", (_, _) => BuildBuyerObjections());
+        var bDealRoom = WinUiFluentChrome.AppBarCommand("Pilot deal room", "\uE8A7", (_, _) => ExportPilotDealRoom());
+        var bBattlecard = WinUiFluentChrome.AppBarCommand("Battlecard", "\uE8D4", (_, _) => BuildCompetitiveBattlecard());
+        var bMatrix = WinUiFluentChrome.AppBarCommand("USP matrix", "\uE9D2", (_, _) => BuildUspFeatureMatrix());
+        var bCompetitive = WinUiFluentChrome.AppBarCommand("Competitive pack", "\uE8A7", (_, _) => ExportCompetitivePack());
+        var bRoute = WinUiFluentChrome.AppBarCommand("Model route", "\uE8D4", (_, _) => BuildModelRouterReport());
+        var bPrompt = WinUiFluentChrome.AppBarCommand("Prompt coach", "\uE9D2", (_, _) => BuildPromptQualityReport());
+        var bRedTeam = WinUiFluentChrome.AppBarCommand("Privacy red-team", "\uE7BA", (_, _) => BuildPrivacyRedTeamReport());
+        var bAgentOps = WinUiFluentChrome.AppBarCommand("AgentOps pack", "\uE8A7", (_, _) => ExportAgentOpsPack());
 
         var toolInner = new StackPanel { Spacing = 10 };
         toolInner.Children.Add(WinUiFluentChrome.ColumnCaption("Ask, voice, and plans"));
@@ -124,6 +138,10 @@ public sealed class AskShellPage : Page
         toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Voice", bPtt0, bPtt1, bCancel, bImport, bSpeak));
         toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Plan", bSave, bClr));
         toolInner.Children.Add(WinUiFluentChrome.CommandSurface("AI USP", bAiPack, bAiFlow, bAiBrief, bAiGap, bAiOne, bAiDemo));
+        toolInner.Children.Add(WinUiFluentChrome.CommandSurface("AI Governance", bEvidence, bMining, bMutation, bGovernance));
+        toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Pilot / Sales", bPilot, bObjections, bDealRoom));
+        toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Competitive USP", bBattlecard, bMatrix, bCompetitive));
+        toolInner.Children.Add(WinUiFluentChrome.CommandSurface("AI AgentOps", bRoute, bPrompt, bRedTeam, bAgentOps));
         toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Execution", bRun, bApr, bNext));
         toolInner.Children.Add(WinUiFluentChrome.CommandSurface("Safety", bPanic));
         var opts = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
@@ -320,6 +338,113 @@ public sealed class AskShellPage : Page
             + $"Steps: {recipe.Steps.Count}\n\n"
             + "Open Rituals to review/publish/queue.";
         NexusShell.Log("AI demo flow created: " + recipe.Name);
+    }
+
+    private void BuildAiEvidenceMode()
+    {
+        _assistant.Text = AiGovernanceUspService.BuildEvidenceModeReport(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("AI Evidence Mode report generated.");
+    }
+
+    private void BuildProcessMining()
+    {
+        _retrieval.Text = AiGovernanceUspService.BuildProcessMiningReport(WinUiShellState.Settings);
+        var recipe = AiGovernanceUspService.CreateProcessMiningFlow(WinUiShellState.Settings);
+        _planPreview.Visibility = Visibility.Visible;
+        _planPreview.Text = "Process-mining candidate flow created\n"
+            + $"Name: {recipe.Name}\n"
+            + $"Steps: {recipe.Steps.Count}\n\n"
+            + "Open Rituals to review/publish/queue.";
+        NexusShell.Log("Process mining report and candidate flow generated.");
+    }
+
+    private void BuildSafeMutationScan()
+    {
+        _executionDetail.Text = AiGovernanceUspService.BuildAutonomyAndMutationReport(WinUiShellState.Settings, _planSteps);
+        NexusShell.Log("Safe mutation scan generated.");
+    }
+
+    private void ExportGovernanceProof()
+    {
+        var path = AiGovernanceUspService.ExportGovernanceProofPack(WinUiShellState.Settings, _prompt.Text, _planSteps);
+        _assistant.Text = "AI governance proof exported\n" + path + "\n\n"
+            + AiGovernanceUspService.BuildEvidenceModeReport(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("AI governance proof exported: " + path);
+    }
+
+    private void BuildPilotScorecard()
+    {
+        _assistant.Text = PilotReadinessUspService.BuildPilotScorecard(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("Pilot readiness scorecard generated.");
+    }
+
+    private void BuildBuyerObjections()
+    {
+        _assistant.Text = PilotReadinessUspService.BuildBuyerObjectionPack(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("Buyer objection pack generated.");
+    }
+
+    private void ExportPilotDealRoom()
+    {
+        var path = PilotReadinessUspService.ExportPilotDealRoom(WinUiShellState.Settings, _prompt.Text);
+        _assistant.Text = "Pilot deal room exported\n" + path + "\n\n"
+            + PilotReadinessUspService.BuildPilotScorecard(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("Pilot deal room exported: " + path);
+    }
+
+    private void BuildCompetitiveBattlecard()
+    {
+        _assistant.Text = CompetitiveUspService.BuildBattlecard(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("Competitive battlecard generated.");
+    }
+
+    private void BuildUspFeatureMatrix()
+    {
+        _assistant.Text = CompetitiveUspService.BuildFeatureMatrix(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("USP feature matrix generated.");
+    }
+
+    private void ExportCompetitivePack()
+    {
+        var path = CompetitiveUspService.ExportCompetitivePack(WinUiShellState.Settings, _prompt.Text);
+        _assistant.Text = "Competitive USP pack exported\n" + path + "\n\n"
+            + CompetitiveUspService.BuildWinUiReleaseReadiness(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("Competitive USP pack exported: " + path);
+    }
+
+    private void BuildModelRouterReport()
+    {
+        _assistant.Text = AiAgentOpsUspService.BuildModelRouterReport(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("AI model route report generated.");
+    }
+
+    private void BuildPromptQualityReport()
+    {
+        var report = AiAgentOpsUspService.BuildPromptQualityReport(WinUiShellState.Settings, _prompt.Text);
+        _assistant.Text = report;
+        _prompt.Text = ExtractUpgradedPrompt(report);
+        NexusShell.Log("Prompt quality report generated.");
+    }
+
+    private void BuildPrivacyRedTeamReport()
+    {
+        _executionDetail.Text = AiAgentOpsUspService.BuildPrivacyAndRedTeamReport(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("Privacy red-team report generated.");
+    }
+
+    private void ExportAgentOpsPack()
+    {
+        var path = AiAgentOpsUspService.ExportAgentOpsPack(WinUiShellState.Settings, _prompt.Text);
+        _assistant.Text = "AI AgentOps pack exported\n" + path + "\n\n"
+            + AiAgentOpsUspService.BuildAgentOpsRunbook(WinUiShellState.Settings, _prompt.Text);
+        NexusShell.Log("AI AgentOps pack exported: " + path);
+    }
+
+    private static string ExtractUpgradedPrompt(string report)
+    {
+        const string marker = "Upgraded prompt:";
+        var i = report.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        return i < 0 ? report : report[(i + marker.Length)..].Trim();
     }
 
     private UIElement BuildCommandCenter()

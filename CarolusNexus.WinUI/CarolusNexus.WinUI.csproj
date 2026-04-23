@@ -52,6 +52,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="*" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="*" />
+    <PackageReference Include="DevWinUI" Version="9.9.4" />
   </ItemGroup>
 
   <ItemGroup>

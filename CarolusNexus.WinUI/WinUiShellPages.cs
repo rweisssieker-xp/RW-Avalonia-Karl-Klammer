@@ -508,10 +508,259 @@ public sealed class DiagnosticsShellPage : Page
                 NexusShell.Log("audit package failed: " + ex.Message);
             }
         };
+        var usp = new Button { Content = "USP Studio" };
+        WinUiFluentChrome.StyleActionButton(usp);
+        usp.Click += (_, _) =>
+        {
+            try
+            {
+                var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+                _log.Text = UspStudioService.BuildStudioReport(settings, "");
+                NexusShell.Log("USP Studio report generated.");
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("USP Studio failed: " + ex.Message);
+            }
+        };
+        var uspPack = new Button { Content = "USP Studio pack" };
+        WinUiFluentChrome.StyleActionButton(uspPack);
+        uspPack.Click += (_, _) =>
+        {
+            try
+            {
+                var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+                var path = UspStudioService.ExportStudioPack(settings, "");
+                _log.Text = "USP Studio pack exported:\n" + path + "\n\n" + UspStudioService.BuildStudioReport(settings, "");
+                NexusShell.Log("USP Studio pack → " + path);
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("USP Studio pack failed: " + ex.Message);
+            }
+        };
+        var evalLab = new Button { Content = "AI Eval Lab" };
+        WinUiFluentChrome.StyleActionButton(evalLab);
+        evalLab.Click += (_, _) =>
+        {
+            try
+            {
+                var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+                _log.Text = AiEvaluationLabService.BuildEvalLabReport(settings, "") + "\n\n" + AiEvaluationLabService.BuildHallucinationGuard(settings, "");
+                NexusShell.Log("AI Evaluation Lab report generated.");
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("AI Evaluation Lab failed: " + ex.Message);
+            }
+        };
+        var evalPack = new Button { Content = "AI Eval pack" };
+        WinUiFluentChrome.StyleActionButton(evalPack);
+        evalPack.Click += (_, _) =>
+        {
+            try
+            {
+                var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+                var path = AiEvaluationLabService.ExportEvaluationPack(settings, "");
+                _log.Text = "AI Evaluation Lab pack exported:\n" + path + "\n\n" + AiEvaluationLabService.BuildEvalLabReport(settings, "");
+                NexusShell.Log("AI Evaluation Lab pack → " + path);
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("AI Evaluation Lab pack failed: " + ex.Message);
+            }
+        };
+        var aiRoi = new Button { Content = "AI ROI" };
+        WinUiFluentChrome.StyleActionButton(aiRoi);
+        aiRoi.Click += (_, _) =>
+        {
+            try
+            {
+                var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+                _log.Text = AiRoiOpportunityService.BuildRoiReport(settings, "") + "\n\n" + AiRoiOpportunityService.BuildOpportunityMatrix(settings, "");
+                NexusShell.Log("AI ROI opportunity report generated.");
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("AI ROI failed: " + ex.Message);
+            }
+        };
+        var aiRoiPack = new Button { Content = "AI ROI pack" };
+        WinUiFluentChrome.StyleActionButton(aiRoiPack);
+        aiRoiPack.Click += (_, _) =>
+        {
+            try
+            {
+                var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+                var path = AiRoiOpportunityService.ExportRoiPack(settings, "");
+                _log.Text = "AI ROI opportunity pack exported:\n" + path + "\n\n" + AiRoiOpportunityService.BuildRoiReport(settings, "");
+                NexusShell.Log("AI ROI opportunity pack → " + path);
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("AI ROI pack failed: " + ex.Message);
+            }
+        };
+        var aiDemo = new Button { Content = "AI demo" };
+        WinUiFluentChrome.StyleActionButton(aiDemo);
+        aiDemo.Click += (_, _) =>
+        {
+            try
+            {
+                var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+                _log.Text = AiDemoOrchestratorService.BuildDemoRunbook(settings, "") + "\n\n" + AiDemoOrchestratorService.BuildClickPath(settings);
+                NexusShell.Log("AI Demo Orchestrator report generated.");
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("AI Demo Orchestrator failed: " + ex.Message);
+            }
+        };
+        var aiDemoPack = new Button { Content = "AI demo pack" };
+        WinUiFluentChrome.StyleActionButton(aiDemoPack);
+        aiDemoPack.Click += (_, _) =>
+        {
+            try
+            {
+                var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+                var path = AiDemoOrchestratorService.ExportDemoPack(settings, "");
+                _log.Text = "AI Demo Orchestrator pack exported:\n" + path + "\n\n" + AiDemoOrchestratorService.BuildDemoRunbook(settings, "");
+                NexusShell.Log("AI Demo Orchestrator pack → " + path);
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("AI Demo Orchestrator pack failed: " + ex.Message);
+            }
+        };
+        var pilotProof = new Button { Content = "Pilot proof pack" };
+        WinUiFluentChrome.StyleActionButton(pilotProof, accent: true);
+        pilotProof.Click += (_, _) =>
+        {
+            try
+            {
+                var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+                DemoProgressTrackerService.Mark("buyer-pack-exported");
+                var path = PilotProofPackService.ExportMasterPack(settings, "");
+                _log.Text = "Pilot Proof Master Pack exported:\n" + path + "\n\n" + PilotProofPackService.BuildPilotSummary(settings, "");
+                NexusShell.Log("Pilot Proof Master Pack → " + path);
+            }
+            catch (Exception ex)
+            {
+                NexusShell.Log("Pilot Proof Master Pack failed: " + ex.Message);
+            }
+        };
+        var demoProgress = new Button { Content = "Demo progress" };
+        WinUiFluentChrome.StyleActionButton(demoProgress);
+        demoProgress.Click += (_, _) => _log.Text = DemoProgressTrackerService.BuildProgressReport();
+        var releaseReady = new Button { Content = "Release ready" };
+        WinUiFluentChrome.StyleActionButton(releaseReady);
+        releaseReady.Click += (_, _) =>
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+            _log.Text = ReleaseReadinessService.BuildReadinessReport(settings) + "\n\n" + ReleaseReadinessService.BuildPilotModeReport(settings);
+        };
+        var quality = new Button { Content = "Quality badges" };
+        WinUiFluentChrome.StyleActionButton(quality);
+        quality.Click += (_, _) =>
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+            _log.Text = AiAnswerQualityBadgeService.BuildQualityBadge(settings, "");
+        };
+        var dataset = new Button { Content = "Eval dataset" };
+        WinUiFluentChrome.StyleActionButton(dataset);
+        dataset.Click += (_, _) =>
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+            var path = AiEvaluationDatasetBuilderService.ExportSeedDataset(settings, "");
+            _log.Text = "AI evaluation dataset exported:\n" + path;
+            NexusShell.Log("AI evaluation dataset → " + path);
+        };
+        var privacy = new Button { Content = "Privacy firewall" };
+        WinUiFluentChrome.StyleActionButton(privacy);
+        privacy.Click += (_, _) =>
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+            _log.Text = AiPrivacyFirewallService.BuildFirewallReport(settings, _log.Text ?? "");
+        };
+        var compiler = new Button { Content = "Prompt compiler" };
+        WinUiFluentChrome.StyleActionButton(compiler);
+        compiler.Click += (_, _) =>
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+            _log.Text = PromptToFlowCompilerService.BuildCompiledFlow(settings, _log.Text ?? "");
+        };
+        var timeline = new Button { Content = "Process timeline" };
+        WinUiFluentChrome.StyleActionButton(timeline);
+        timeline.Click += (_, _) => _log.Text = AiProcessMiningTimelineService.BuildTimeline();
+        var evidence = new Button { Content = "Evidence contract" };
+        WinUiFluentChrome.StyleActionButton(evidence);
+        evidence.Click += (_, _) =>
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+            _log.Text = AiEvidenceAnswerContractService.BuildContract(settings, _log.Text ?? "");
+        };
+        var axMemory = new Button { Content = "AX memory" };
+        WinUiFluentChrome.StyleActionButton(axMemory);
+        axMemory.Click += (_, _) =>
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+            _log.Text = AxFormMemoryService.BuildMemoryReport(settings);
+        };
+        var approvals = new Button { Content = "Approval center" };
+        WinUiFluentChrome.StyleActionButton(approvals);
+        approvals.Click += (_, _) => _log.Text = HumanApprovalCenterService.SeedDemoApproval();
+        var riskSim = new Button { Content = "Risk sim" };
+        WinUiFluentChrome.StyleActionButton(riskSim);
+        riskSim.Click += (_, _) =>
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+            _log.Text = AiRiskSimulatorService.BuildRiskSimulation(settings, _log.Text ?? "");
+        };
+        var flowRoi = new Button { Content = "Flow ROI" };
+        WinUiFluentChrome.StyleActionButton(flowRoi);
+        flowRoi.Click += (_, _) => _log.Text = FlowRoiTelemetryService.BuildReport();
+        var regression = new Button { Content = "AI regression" };
+        WinUiFluentChrome.StyleActionButton(regression);
+        regression.Click += (_, _) =>
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+            _log.Text = AiRegressionSuiteService.BuildRegressionReport(settings);
+        };
+        var pilotMode = new Button { Content = "Pilot mode" };
+        WinUiFluentChrome.StyleActionButton(pilotMode, accent: true);
+        pilotMode.Click += (_, _) =>
+        {
+            var settings = NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+            DemoProgressTrackerService.Reset();
+            _log.Text = ReleaseReadinessService.BuildPilotModeReport(settings) + "\n\n" + DemoProgressTrackerService.BuildProgressReport();
+        };
         row.Children.Add(clear);
         row.Children.Add(export);
         row.Children.Add(report);
         row.Children.Add(audit);
+        row.Children.Add(usp);
+        row.Children.Add(uspPack);
+        row.Children.Add(evalLab);
+        row.Children.Add(evalPack);
+        row.Children.Add(aiRoi);
+        row.Children.Add(aiRoiPack);
+        row.Children.Add(aiDemo);
+        row.Children.Add(aiDemoPack);
+        row.Children.Add(pilotProof);
+        row.Children.Add(demoProgress);
+        row.Children.Add(releaseReady);
+        row.Children.Add(quality);
+        row.Children.Add(dataset);
+        row.Children.Add(privacy);
+        row.Children.Add(compiler);
+        row.Children.Add(timeline);
+        row.Children.Add(evidence);
+        row.Children.Add(axMemory);
+        row.Children.Add(approvals);
+        row.Children.Add(riskSim);
+        row.Children.Add(flowRoi);
+        row.Children.Add(regression);
+        row.Children.Add(pilotMode);
         sp.Children.Add(WinUiFluentChrome.WrapCard(row, new Thickness(16, 12, 16, 12)));
         sp.Children.Add(WinUiFluentChrome.WrapCard(_log, new Thickness(12, 10, 12, 10)));
         Content = new ScrollViewer { Content = sp };
@@ -539,6 +788,160 @@ public sealed class DiagnosticsShellPage : Page
             _log.Text = _sb.ToString();
         });
     }
+}
+
+public sealed class UspStudioShellPage : Page
+{
+    private readonly TextBox _output = new()
+    {
+        IsReadOnly = true,
+        AcceptsReturn = true,
+        TextWrapping = TextWrapping.Wrap,
+        MinHeight = 280,
+        FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+        FontSize = 12
+    };
+
+    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap };
+
+    public UspStudioShellPage()
+    {
+        var root = new StackPanel { Spacing = 16, Margin = new Thickness(20, 16, 20, 24) };
+        root.Children.Add(WinUiFluentChrome.PageTitle("USP Studio"));
+
+        var intro = new TextBlock
+        {
+            Text = "Buyer-ready AI/KI proof cockpit: Pilot Proof, ROI, Governance, Privacy, AX Memory, Risk and Release Readiness.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        };
+        WinUiFluentChrome.ApplyBodyTextStyle(intro);
+        root.Children.Add(intro);
+
+        _status.Foreground = WinUiFluentChrome.SecondaryTextBrush;
+        WinUiFluentChrome.ApplyCaptionTextStyle(_status);
+        root.Children.Add(WinUiFluentChrome.WrapCard(_status, new Thickness(14, 10, 14, 10)));
+
+        var hero = new Grid { ColumnSpacing = 12, RowSpacing = 12 };
+        hero.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        hero.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        hero.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        AddTile(hero, 0, "Pilot Proof", "Master pack, demo runbook, buyer summary", "Export pack", ExportPilotProof);
+        AddTile(hero, 1, "AI ROI", "Flow inventory, watch evidence, annualized value", "Run ROI", ShowRoi);
+        AddTile(hero, 2, "Governance", "Evidence, autonomy, mutation and approval controls", "Show proof", ShowGovernance);
+        root.Children.Add(hero);
+
+        var grid = new Grid { ColumnSpacing = 12, RowSpacing = 12 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        AddSmallTile(grid, 0, 0, "Privacy Firewall", "Redaction and block decision before model calls.", "Scan", ShowPrivacy);
+        AddSmallTile(grid, 0, 1, "Prompt-to-Flow", "Compile free text into a guarded flow draft.", "Compile", ShowPromptCompiler);
+        AddSmallTile(grid, 1, 0, "AX/Form Memory", "Known operator forms from watch sessions.", "Show memory", ShowAxMemory);
+        AddSmallTile(grid, 1, 1, "Risk + Regression", "Execution risk, eval dataset and release gate.", "Run checks", ShowRiskAndRegression);
+        root.Children.Add(grid);
+
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        AddAction(actions, "USP Studio report", ShowStudio);
+        AddAction(actions, "Studio pack", ExportStudioPack, accent: true);
+        AddAction(actions, "Pilot mode", StartPilotMode);
+        AddAction(actions, "Demo progress", ShowDemoProgress);
+        root.Children.Add(WinUiFluentChrome.WrapCard(actions, new Thickness(14, 12, 14, 12)));
+        root.Children.Add(WinUiFluentChrome.WrapCard(_output, new Thickness(12, 10, 12, 10)));
+
+        Content = new ScrollViewer { Content = root };
+        Loaded += (_, _) => RefreshStatus();
+    }
+
+    private void AddTile(Grid host, int column, string title, string body, string action, Action run)
+    {
+        var panel = new StackPanel { Spacing = 10 };
+        var titleBlock = new TextBlock { Text = title, FontSize = 22, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap };
+        var bodyBlock = new TextBlock { Text = body, Foreground = WinUiFluentChrome.SecondaryTextBrush, TextWrapping = TextWrapping.Wrap };
+        var button = new Button { Content = action, HorizontalAlignment = HorizontalAlignment.Left };
+        WinUiFluentChrome.StyleActionButton(button, accent: column == 0);
+        button.Click += (_, _) => run();
+        panel.Children.Add(titleBlock);
+        panel.Children.Add(bodyBlock);
+        panel.Children.Add(button);
+        var card = WinUiFluentChrome.WrapCard(panel, new Thickness(18, 16, 18, 16));
+        Grid.SetColumn(card, column);
+        host.Children.Add(card);
+    }
+
+    private void AddSmallTile(Grid host, int row, int column, string title, string body, string action, Action run)
+    {
+        var panel = new StackPanel { Spacing = 8 };
+        panel.Children.Add(new TextBlock { Text = title, FontSize = 17, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(new TextBlock { Text = body, Foreground = WinUiFluentChrome.SecondaryTextBrush, TextWrapping = TextWrapping.Wrap });
+        var button = new Button { Content = action, HorizontalAlignment = HorizontalAlignment.Left };
+        WinUiFluentChrome.StyleActionButton(button, compact: true);
+        button.Click += (_, _) => run();
+        panel.Children.Add(button);
+        var card = WinUiFluentChrome.WrapCard(panel, new Thickness(16, 14, 16, 14));
+        Grid.SetRow(card, row);
+        Grid.SetColumn(card, column);
+        host.Children.Add(card);
+    }
+
+    private void AddAction(StackPanel host, string label, Action run, bool accent = false)
+    {
+        var button = new Button { Content = label };
+        WinUiFluentChrome.StyleActionButton(button, accent: accent);
+        button.Click += (_, _) => run();
+        host.Children.Add(button);
+    }
+
+    private NexusSettings Settings() => NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+
+    private void RefreshStatus()
+    {
+        var settings = Settings();
+        _status.Text = ReleaseReadinessService.BuildReadinessReport(settings).Split('\n').Take(3).Aggregate((a, b) => a + " · " + b);
+    }
+
+    private void ShowStudio() => _output.Text = UspStudioService.BuildStudioReport(Settings(), "");
+
+    private void ExportStudioPack()
+    {
+        var path = UspStudioService.ExportStudioPack(Settings(), "");
+        _output.Text = "USP Studio pack exported:\n" + path + "\n\n" + UspStudioService.BuildStudioReport(Settings(), "");
+        NexusShell.Log("USP Studio pack → " + path);
+        RefreshStatus();
+    }
+
+    private void ExportPilotProof()
+    {
+        DemoProgressTrackerService.Mark("buyer-pack-exported");
+        var path = PilotProofPackService.ExportMasterPack(Settings(), "");
+        _output.Text = "Pilot Proof Master Pack exported:\n" + path + "\n\n" + PilotProofPackService.BuildPilotSummary(Settings(), "");
+        NexusShell.Log("Pilot Proof Master Pack → " + path);
+        RefreshStatus();
+    }
+
+    private void ShowRoi() => _output.Text = AiRoiOpportunityService.BuildRoiReport(Settings(), "") + "\n\n" + FlowRoiTelemetryService.BuildReport();
+
+    private void ShowGovernance() => _output.Text = AiGovernanceUspService.BuildEvidenceModeReport(Settings(), "") + "\n\n" + HumanApprovalCenterService.SeedDemoApproval();
+
+    private void ShowPrivacy() => _output.Text = AiPrivacyFirewallService.BuildFirewallReport(Settings(), _output.Text ?? "");
+
+    private void ShowPromptCompiler() => _output.Text = PromptToFlowCompilerService.BuildCompiledFlow(Settings(), _output.Text ?? "");
+
+    private void ShowAxMemory() => _output.Text = AxFormMemoryService.BuildMemoryReport(Settings());
+
+    private void ShowRiskAndRegression() => _output.Text = AiRiskSimulatorService.BuildRiskSimulation(Settings(), _output.Text ?? "") + "\n\n" + AiRegressionSuiteService.BuildRegressionReport(Settings());
+
+    private void StartPilotMode()
+    {
+        DemoProgressTrackerService.Reset();
+        _output.Text = ReleaseReadinessService.BuildPilotModeReport(Settings()) + "\n\n" + DemoProgressTrackerService.BuildProgressReport();
+        RefreshStatus();
+    }
+
+    private void ShowDemoProgress() => _output.Text = DemoProgressTrackerService.BuildProgressReport();
 }
 
 public sealed class ConsoleShellPage : Page

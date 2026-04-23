@@ -11,6 +11,29 @@
               ToolTip.Tip="Loads the latest lines from ritual-step-audit.jsonl (operator-flow step log)." />
       <Button x:Name="BtnRuntimeReport" Content="runtime report" Margin="0,0,8,8" />
       <Button x:Name="BtnAuditPackage" Content="audit package" Margin="0,0,8,8" />
+      <Button x:Name="BtnUspStudio" Content="USP studio" Margin="0,0,8,8" />
+      <Button x:Name="BtnUspStudioPack" Content="USP studio pack" Margin="0,0,8,8" />
+      <Button x:Name="BtnAiEvalLab" Content="AI eval lab" Margin="0,0,8,8" />
+      <Button x:Name="BtnAiEvalPack" Content="AI eval pack" Margin="0,0,8,8" />
+      <Button x:Name="BtnAiRoi" Content="AI ROI" Margin="0,0,8,8" />
+      <Button x:Name="BtnAiRoiPack" Content="AI ROI pack" Margin="0,0,8,8" />
+      <Button x:Name="BtnAiDemoOrchestrator" Content="AI demo" Margin="0,0,8,8" />
+      <Button x:Name="BtnAiDemoPack" Content="AI demo pack" Margin="0,0,8,8" />
+      <Button x:Name="BtnPilotProofPack" Content="pilot proof pack" Margin="0,0,8,8" />
+      <Button x:Name="BtnDemoProgress" Content="demo progress" Margin="0,0,8,8" />
+      <Button x:Name="BtnReleaseReady" Content="release ready" Margin="0,0,8,8" />
+      <Button x:Name="BtnQualityBadges" Content="quality badges" Margin="0,0,8,8" />
+      <Button x:Name="BtnEvalDataset" Content="eval dataset" Margin="0,0,8,8" />
+      <Button x:Name="BtnPrivacyFirewall" Content="privacy firewall" Margin="0,0,8,8" />
+      <Button x:Name="BtnPromptCompiler" Content="prompt compiler" Margin="0,0,8,8" />
+      <Button x:Name="BtnProcessTimeline" Content="process timeline" Margin="0,0,8,8" />
+      <Button x:Name="BtnEvidenceContract" Content="evidence contract" Margin="0,0,8,8" />
+      <Button x:Name="BtnAxFormMemory" Content="AX memory" Margin="0,0,8,8" />
+      <Button x:Name="BtnApprovalCenter" Content="approval center" Margin="0,0,8,8" />
+      <Button x:Name="BtnRiskSim" Content="risk sim" Margin="0,0,8,8" />
+      <Button x:Name="BtnFlowRoi" Content="flow ROI" Margin="0,0,8,8" />
+      <Button x:Name="BtnAiRegression" Content="AI regression" Margin="0,0,8,8" />
+      <Button x:Name="BtnPilotMode" Content="pilot mode" Margin="0,0,8,8" />
     </WrapPanel>
     <TextBox x:Name="DiagLog" AcceptsReturn="True" IsReadOnly="True" FontFamily="Consolas,Courier New,monospace"
              TextWrapping="Wrap" />

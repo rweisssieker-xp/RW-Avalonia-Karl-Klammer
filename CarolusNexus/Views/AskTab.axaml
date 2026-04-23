@@ -70,6 +70,34 @@
                     ToolTip.Tip="Exports a pilot/sales-ready one-pager." />
             <Button x:Name="BtnAiDemoFlow" Content="AI demo flow" Margin="0,0,6,6" Padding="10,6"
                     ToolTip.Tip="Creates a low-risk demo flow with RAG proof, executive one-pager and checkpoint." />
+            <Button x:Name="BtnAiEvidenceMode" Content="Evidence mode" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Shows evidence, assumptions, risks and approval boundaries for the current AI task." />
+            <Button x:Name="BtnProcessMining" Content="Process mining" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Finds repeated app/process patterns from watch history." />
+            <Button x:Name="BtnSafeMutation" Content="Safe mutation scan" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Explains autonomy level and flags write/send/post/delete-like plan steps." />
+            <Button x:Name="BtnGovernanceProof" Content="Export governance proof" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Exports Evidence Mode, Process Mining, and Autonomy/Mutation proof." />
+            <Button x:Name="BtnPilotScorecard" Content="Pilot scorecard" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Scores pilot readiness across AI, RAG, flows, AX, governance, and watch history." />
+            <Button x:Name="BtnBuyerObjections" Content="Buyer objections" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Generates concise sales answers for common AI/agent concerns." />
+            <Button x:Name="BtnPilotDealRoom" Content="Export pilot deal room" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Exports a stakeholder-ready markdown package for pilot/demo decisions." />
+            <Button x:Name="BtnBattlecard" Content="Competitive battlecard" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Explains differentiation versus chatbots, Copilot, RPA, and BI." />
+            <Button x:Name="BtnFeatureMatrix" Content="USP feature matrix" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Shows demo-ready status of the most important product capabilities." />
+            <Button x:Name="BtnCompetitivePack" Content="Export competitive pack" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Exports battlecard, matrix, and WinUI release readiness." />
+            <Button x:Name="BtnModelRouter" Content="Model route control" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Explains which AI route fits the current task: fast, evidence, planner, vision, or high-control." />
+            <Button x:Name="BtnPromptQuality" Content="Prompt quality coach" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Scores and upgrades the current prompt for enterprise-grade AI output." />
+            <Button x:Name="BtnPrivacyRedTeam" Content="Privacy red-team" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Checks secret-like content and action-risk questions before AI execution." />
+            <Button x:Name="BtnAgentOpsPack" Content="Export AgentOps pack" Margin="0,0,6,6" Padding="10,6"
+                    ToolTip.Tip="Exports model routing, prompt quality, privacy/red-team, and runbook." />
           </WrapPanel>
           <TextBlock Text="Quick prompts" FontSize="11" Foreground="{DynamicResource NexusMutedForegroundBrush}" />
           <WrapPanel Orientation="Horizontal">

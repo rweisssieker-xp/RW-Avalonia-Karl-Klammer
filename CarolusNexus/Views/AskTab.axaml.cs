@@ -247,6 +247,20 @@ public partial class AskTab : Avalonia.Controls.UserControl
         BtnAiRagGap.Click += (_, _) => BuildAiRagGapReport();
         BtnAiExecutiveOnePager.Click += (_, _) => ExportAiExecutiveOnePager();
         BtnAiDemoFlow.Click += (_, _) => CreateAiDemoFlow();
+        BtnAiEvidenceMode.Click += (_, _) => BuildAiEvidenceMode();
+        BtnProcessMining.Click += (_, _) => BuildProcessMining();
+        BtnSafeMutation.Click += (_, _) => BuildSafeMutationScan();
+        BtnGovernanceProof.Click += (_, _) => ExportGovernanceProof();
+        BtnPilotScorecard.Click += (_, _) => BuildPilotScorecard();
+        BtnBuyerObjections.Click += (_, _) => BuildBuyerObjections();
+        BtnPilotDealRoom.Click += (_, _) => ExportPilotDealRoom();
+        BtnBattlecard.Click += (_, _) => BuildCompetitiveBattlecard();
+        BtnFeatureMatrix.Click += (_, _) => BuildUspFeatureMatrix();
+        BtnCompetitivePack.Click += (_, _) => ExportCompetitivePack();
+        BtnModelRouter.Click += (_, _) => BuildModelRouterReport();
+        BtnPromptQuality.Click += (_, _) => BuildPromptQualityReport();
+        BtnPrivacyRedTeam.Click += (_, _) => BuildPrivacyRedTeamReport();
+        BtnAgentOpsPack.Click += (_, _) => ExportAgentOpsPack();
         BtnChipSummary.Click += (_, _) => AppendPromptLine("Summarize the key points briefly in clear language.");
         BtnChipNext.Click += (_, _) =>
             AppendPromptLine("What concrete next steps do you recommend? Number them and make them actionable.");
@@ -313,6 +327,126 @@ public partial class AskTab : Avalonia.Controls.UserControl
             + $"Steps: {recipe.Steps.Count}\n\n"
             + "Open Rituals to review/publish/queue.";
         NexusShell.Log("AI demo flow created: " + recipe.Name);
+    }
+
+    private void BuildAiEvidenceMode()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        AssistantOut.Text = AiGovernanceUspService.BuildEvidenceModeReport(settings, PromptBox.Text);
+        NexusShell.Log("AI Evidence Mode report generated.");
+    }
+
+    private void BuildProcessMining()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        RetrievalOut.Text = AiGovernanceUspService.BuildProcessMiningReport(settings);
+        var recipe = AiGovernanceUspService.CreateProcessMiningFlow(settings);
+        PlanPreview.Text = "Process-mining candidate flow created\n"
+            + $"Name: {recipe.Name}\n"
+            + $"Steps: {recipe.Steps.Count}\n\n"
+            + "Open Rituals to review/publish/queue.";
+        NexusShell.Log("Process mining report and candidate flow generated.");
+    }
+
+    private void BuildSafeMutationScan()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        SafetyOut.Text = AiGovernanceUspService.BuildAutonomyAndMutationReport(settings, _planSteps);
+        NexusShell.Log("Safe mutation scan generated.");
+    }
+
+    private void ExportGovernanceProof()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        var path = AiGovernanceUspService.ExportGovernanceProofPack(settings, PromptBox.Text, _planSteps);
+        AssistantOut.Text = "AI governance proof exported\n" + path + "\n\n"
+            + AiGovernanceUspService.BuildEvidenceModeReport(settings, PromptBox.Text);
+        NexusShell.Log("AI governance proof exported: " + path);
+    }
+
+    private void BuildPilotScorecard()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        AssistantOut.Text = PilotReadinessUspService.BuildPilotScorecard(settings, PromptBox.Text);
+        NexusShell.Log("Pilot readiness scorecard generated.");
+    }
+
+    private void BuildBuyerObjections()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        AssistantOut.Text = PilotReadinessUspService.BuildBuyerObjectionPack(settings, PromptBox.Text);
+        NexusShell.Log("Buyer objection pack generated.");
+    }
+
+    private void ExportPilotDealRoom()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        var path = PilotReadinessUspService.ExportPilotDealRoom(settings, PromptBox.Text);
+        AssistantOut.Text = "Pilot deal room exported\n" + path + "\n\n"
+            + PilotReadinessUspService.BuildPilotScorecard(settings, PromptBox.Text);
+        NexusShell.Log("Pilot deal room exported: " + path);
+    }
+
+    private void BuildCompetitiveBattlecard()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        AssistantOut.Text = CompetitiveUspService.BuildBattlecard(settings, PromptBox.Text);
+        NexusShell.Log("Competitive battlecard generated.");
+    }
+
+    private void BuildUspFeatureMatrix()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        AssistantOut.Text = CompetitiveUspService.BuildFeatureMatrix(settings, PromptBox.Text);
+        NexusShell.Log("USP feature matrix generated.");
+    }
+
+    private void ExportCompetitivePack()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        var path = CompetitiveUspService.ExportCompetitivePack(settings, PromptBox.Text);
+        AssistantOut.Text = "Competitive USP pack exported\n" + path + "\n\n"
+            + CompetitiveUspService.BuildWinUiReleaseReadiness(settings, PromptBox.Text);
+        NexusShell.Log("Competitive USP pack exported: " + path);
+    }
+
+    private void BuildModelRouterReport()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        AssistantOut.Text = AiAgentOpsUspService.BuildModelRouterReport(settings, PromptBox.Text);
+        NexusShell.Log("AI model route report generated.");
+    }
+
+    private void BuildPromptQualityReport()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        var report = AiAgentOpsUspService.BuildPromptQualityReport(settings, PromptBox.Text);
+        AssistantOut.Text = report;
+        PromptBox.Text = ExtractUpgradedPrompt(report);
+        NexusShell.Log("Prompt quality report generated.");
+    }
+
+    private void BuildPrivacyRedTeamReport()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        SafetyOut.Text = AiAgentOpsUspService.BuildPrivacyAndRedTeamReport(settings, PromptBox.Text);
+        NexusShell.Log("Privacy red-team report generated.");
+    }
+
+    private void ExportAgentOpsPack()
+    {
+        var settings = _getSettings?.Invoke() ?? new NexusSettings();
+        var path = AiAgentOpsUspService.ExportAgentOpsPack(settings, PromptBox.Text);
+        AssistantOut.Text = "AI AgentOps pack exported\n" + path + "\n\n"
+            + AiAgentOpsUspService.BuildAgentOpsRunbook(settings, PromptBox.Text);
+        NexusShell.Log("AI AgentOps pack exported: " + path);
+    }
+
+    private static string ExtractUpgradedPrompt(string report)
+    {
+        const string marker = "Upgraded prompt:";
+        var i = report.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        return i < 0 ? report : report[(i + marker.Length)..].Trim();
     }
 
     /// <summary>Cancel in-flight ask/plan work (same as Panic button).</summary>
