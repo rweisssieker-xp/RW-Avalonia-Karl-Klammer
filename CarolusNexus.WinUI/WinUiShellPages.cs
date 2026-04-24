@@ -935,7 +935,7 @@ public sealed class UspStudioShellPage : Page
         {
             Header = title,
             Description = body,
-            Content = button,
+            Content = panel,
             Padding = new Thickness(14)
         };
         Grid.SetColumn(card, column);
@@ -955,7 +955,7 @@ public sealed class UspStudioShellPage : Page
         {
             Header = title,
             Description = body,
-            Content = button,
+            Content = panel,
             Padding = new Thickness(12)
         };
         Grid.SetRow(card, row);
@@ -1115,6 +1115,116 @@ public sealed class UiLabShellPage : Page
         Grid.SetRow(scroll, 1);
         root.Children.Add(scroll);
         Content = root;
+    }
+}
+
+public sealed class BackendCoverageShellPage : Page
+{
+    private readonly TextBox _output = new()
+    {
+        IsReadOnly = true,
+        AcceptsReturn = true,
+        TextWrapping = TextWrapping.NoWrap,
+        FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+        MinHeight = 520
+    };
+
+    public BackendCoverageShellPage()
+    {
+        var root = WinUiFluentChrome.CreatePageStack();
+        root.Children.Add(WinUiFluentChrome.PageTitle("Backend Coverage"));
+        root.Children.Add(new TextBlock
+        {
+            Text = "Runtime coverage across WinUI surfaces, backend services, adapters and guarded execution.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        });
+
+        var summary = new Grid { ColumnSpacing = 12, RowSpacing = 12 };
+        summary.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        summary.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        summary.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        AddSummaryCard(summary, 0, "Coverage", "Surface map for backend capabilities.", "Open", ShowCoverage, accent: true);
+        AddSummaryCard(summary, 1, "Gaps", "Guarded, disabled and report-only capabilities.", "Inspect", ShowGaps);
+        AddSummaryCard(summary, 2, "AX Workbench", "AX status, token readiness and foreground probe.", "Probe", ShowAxWorkbench);
+        root.Children.Add(summary);
+
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        AddAction(actions, "Service inventory", ShowServices);
+        AddAction(actions, "Runtime files", ShowRuntimeFiles);
+        AddAction(actions, "Token matrix", ShowTokenMatrix);
+        AddAction(actions, "Refresh foreground", ShowAxWorkbench);
+        root.Children.Add(new DevWinUI.SettingsExpander
+        {
+            Header = "Backend actions",
+            Description = "Direct reports for runtime coverage, adapters, persisted data and known executable tokens.",
+            IsExpanded = true,
+            Content = actions
+        });
+
+        root.Children.Add(WinUiFluentChrome.WrapCard(_output, new Thickness(12, 10, 12, 10)));
+        Content = new ScrollViewer { Content = root };
+        Loaded += (_, _) => ShowCoverage();
+    }
+
+    private static NexusSettings Settings() => NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+
+    private void AddSummaryCard(Grid host, int column, string title, string body, string action, Action run, bool accent = false)
+    {
+        var button = new Button { Content = action, HorizontalAlignment = HorizontalAlignment.Left };
+        WinUiFluentChrome.StyleActionButton(button, accent: accent);
+        button.Click += (_, _) => run();
+        var panel = new StackPanel { Spacing = 8 };
+        panel.Children.Add(new TextBlock { Text = title, FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(new TextBlock { Text = body, Foreground = WinUiFluentChrome.SecondaryTextBrush, TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(button);
+        var card = new DevWinUI.SettingsCard
+        {
+            Header = title,
+            Description = body,
+            Content = panel,
+            Padding = new Thickness(14)
+        };
+        Grid.SetColumn(card, column);
+        host.Children.Add(card);
+    }
+
+    private void AddAction(StackPanel host, string label, Action run)
+    {
+        var button = new Button { Content = label };
+        WinUiFluentChrome.StyleActionButton(button);
+        button.Click += (_, _) => run();
+        host.Children.Add(button);
+    }
+
+    private void ShowCoverage() => _output.Text = BackendCoverageService.BuildCoverageReport(Settings());
+
+    private void ShowGaps() => _output.Text = BackendCoverageService.BuildGapReport(Settings());
+
+    private void ShowAxWorkbench() => _output.Text = BackendCoverageService.BuildAxWorkbenchReport(Settings());
+
+    private void ShowServices() => _output.Text = BackendCoverageService.BuildServiceInventoryReport();
+
+    private void ShowRuntimeFiles() => _output.Text = BackendCoverageService.BuildRuntimeFilesReport();
+
+    private void ShowTokenMatrix()
+    {
+        var settings = Settings();
+        var steps = new[]
+        {
+            new RecipeStep { Title = "Win32 hotkey", Channel = "ui", ActionArgument = "[ACTION:hotkey|Ctrl+L]" },
+            new RecipeStep { Title = "Win32 type", Channel = "ui", ActionArgument = "[ACTION:type|demo]" },
+            new RecipeStep { Title = "Browser open", Channel = "ui", ActionArgument = "browser.open:https://example.com" },
+            new RecipeStep { Title = "Explorer path", Channel = "ui", ActionArgument = "explorer.open_path:C:\\\\" },
+            new RecipeStep { Title = "UIA invoke", Channel = "ui", ActionArgument = "uia.invoke:OK" },
+            new RecipeStep { Title = "AX context", Channel = "ui", ActionArgument = "ax.read_context" },
+            new RecipeStep { Title = "AX write", Channel = "ui", ActionArgument = "ax.setvalue:Field=Value" },
+            new RecipeStep { Title = "API get", Channel = "api", ActionArgument = "api.get:https://example.com" },
+            new RecipeStep { Title = "Script", Channel = "script", ActionArgument = "powershell:Get-Date" },
+            new RecipeStep { Title = "Unknown", Channel = "ui", ActionArgument = "[ACTION:unknown|x]" }
+        };
+        _output.Text = AutomationTokenReadiness.BuildReport(steps, settings);
     }
 }
 

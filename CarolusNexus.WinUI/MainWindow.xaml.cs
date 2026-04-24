@@ -191,6 +191,7 @@ public sealed partial class MainWindow : Window
         _nav.MenuItems.Add(Mk("History", typeof(HistoryShellPage), Symbol.Clock));
         _nav.MenuItems.Add(Mk("Diagnostics", typeof(DiagnosticsShellPage), Symbol.Remote));
         _nav.MenuItems.Add(Mk("USP Studio", typeof(UspStudioShellPage), Symbol.World));
+        _nav.MenuItems.Add(Mk("Backend Coverage", typeof(BackendCoverageShellPage), Symbol.ReportHacked));
         _nav.MenuItems.Add(Mk("UI Lab", typeof(UiLabShellPage), Symbol.View));
         _nav.MenuItems.Add(Mk("Console", typeof(ConsoleShellPage), Symbol.Keyboard));
         _nav.MenuItems.Add(Mk("Live Context", typeof(LiveContextShellPage), Symbol.View));
@@ -1494,6 +1495,8 @@ public sealed partial class MainWindow : Window
         "RitualsShellPage" => "Operator flows",
         "HistoryShellPage" => "History",
         "DiagnosticsShellPage" => "Diagnostics",
+        "UspStudioShellPage" => "USP Studio",
+        "BackendCoverageShellPage" => "Backend Coverage",
         "UiLabShellPage" => "UI Lab",
         "ConsoleShellPage" => "Console",
         "LiveContextShellPage" => "Live Context",
@@ -1518,6 +1521,7 @@ public sealed partial class MainWindow : Window
             command("Page", "Open Operator flows", null, "\uE8FD", () => NavigateFromPaletteAsync(typeof(RitualsShellPage))),
             command("Page", "Open History", null, "\uE8C0", () => NavigateFromPaletteAsync(typeof(HistoryShellPage))),
             command("Page", "Open Diagnostics", null, "\uE8C8", () => NavigateFromPaletteAsync(typeof(DiagnosticsShellPage))),
+            command("Page", "Open Backend Coverage", null, "\uE9F9", () => NavigateFromPaletteAsync(typeof(BackendCoverageShellPage))),
             command("Page", "Open UI Lab", null, "\uE890", () => NavigateFromPaletteAsync(typeof(UiLabShellPage))),
             command("Page", "Open Console", "Ctrl+`", "\uE756", () => NavigateFromPaletteAsync(typeof(ConsoleShellPage))),
             command("Page", "Open Live Context", null, "\uE8A7", () => NavigateFromPaletteAsync(typeof(LiveContextShellPage))),
@@ -2198,6 +2202,7 @@ public sealed partial class MainWindow : Window
         dlg = new ContentDialog
         {
             Title = "Befehlspalette",
+            RequestedTheme = ElementTheme.Dark,
             Content = new Border
             {
                 BorderThickness = new Thickness(1),
