@@ -37,6 +37,7 @@ public static class BackendCoverageService
             new("API/Script", "HTTP hooks and script hooks", "Ask, Operator flows, Diagnostics", string.Equals(safety, "power-user", StringComparison.OrdinalIgnoreCase) ? "real" : "guarded", "ApiHookRunner, ScriptHookRunner"),
             new("Trust", "Evidence, recovery, adaptive memory, timeline", "Ask, Operator flows, Diagnostics, USP Studio", "real", "ExecutionEvidenceService, RecoverySuggestionService, AdaptiveOperatorMemoryService, MissionTimelineService"),
             new("USPs", "ROI, proof packs, drift, heatmap, Watch-to-SOP", "USP Studio, Diagnostics, Backend Coverage", "real/report", "PilotProofPackService, MissionControlScoreService, DriftDetectionService, ConfidenceHeatmapService"),
+            new("AX+Excel", "Read-only Excel list validation against AX 2012", "Excel + AX Check, Backend Coverage", settings.AxIntegrationEnabled ? "real/read-only" : "guarded", "ExcelAxValidationService, Ax2012ODataClient, AxClientAutomationService"),
             new("Voice", "PTT, recording, STT, TTS", "Header/Ask/Setup", "configured/gated", "PushToTalkHotkeyWindow, WindowsMicRecorder, SpeechTranscriptionService, TextToSpeechService"),
             new("Companion", "Tray, companion window, reduce motion, shell commands", "Header, Tray", "real", "WinUI shell, WinUiTrayHelper, KarlCompanionWinUiWindow"),
             new("Evaluation", "Eval dataset, regression, answer quality", "Diagnostics, USP Studio", "real/report", "AiEvaluationLabService, AiRegressionSuiteService, AiAnswerQualityBadgeService")

@@ -1,0 +1,5 @@
+﻿runId,rowNumber,key,status,carolusOwner,carolusPriority,carolusFix,carolusConfidence,carolusEvidence
+"excel-ax-20260503-055654",2,"1000","AxUnavailable","AX/IT owner","P1","Enable AX integration, configure OData, or open AX foreground context for UIA evidence.",90,"AX integration disabled in Setup."
+"excel-ax-20260503-055654",3,"1000","DuplicateInExcel","Business data owner","P2","Decide which Excel row is authoritative and remove or merge duplicates.",75,"Duplicate detected before AX lookup."
+"excel-ax-20260503-055654",4,"","MissingKey","Excel owner","P1","Fill 'AccountNum' before reconciliation.",90,"Empty Excel key cell."
+"excel-ax-20260503-055654",5,"2000","AxUnavailable","AX/IT owner","P1","Enable AX integration, configure OData, or open AX foreground context for UIA evidence.",90,"AX integration disabled in Setup."

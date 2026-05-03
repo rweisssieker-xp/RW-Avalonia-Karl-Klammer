@@ -1,5 +1,11 @@
 # Carolus Nexus – Benutzerhandbuch
 
+> **Aktueller Einstieg:** Für den heutigen WinUI/.NET-10-Stand siehe zuerst
+> [README](../README.md), [WinUI-Handbook](WinUI-Handbook.md) und
+> [AX-Excel-Operator-Guide](AX-Excel-Operator-Guide.md). Dieses Dokument bleibt
+> das ausführliche Produkt- und Zielbild-Handbuch und enthält noch historische
+> Avalonia-Bezüge.
+
 > **Karl Klammer** ist die Companion-Persona, **Carolus Nexus** das Produkt:
 > ein Windows-Operator-Desktop auf Avalonia (.NET 10), der Sprache, Vision-LLMs,
 > lokales Wissen, Ritual-Automation und Fat-Client-Steuerung in einer Oberfläche bündelt.

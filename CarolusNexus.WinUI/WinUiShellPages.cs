@@ -1131,7 +1131,7 @@ public sealed class BackendCoverageShellPage : Page
 
     public BackendCoverageShellPage()
     {
-        var root = WinUiFluentChrome.CreatePageStack();
+        var root = new StackPanel { Spacing = 14, Padding = new Thickness(28, 24, 28, 28) };
         root.Children.Add(WinUiFluentChrome.PageTitle("Backend Coverage"));
         root.Children.Add(new TextBlock
         {
@@ -1213,18 +1213,405 @@ public sealed class BackendCoverageShellPage : Page
         var settings = Settings();
         var steps = new[]
         {
-            new RecipeStep { Title = "Win32 hotkey", Channel = "ui", ActionArgument = "[ACTION:hotkey|Ctrl+L]" },
-            new RecipeStep { Title = "Win32 type", Channel = "ui", ActionArgument = "[ACTION:type|demo]" },
-            new RecipeStep { Title = "Browser open", Channel = "ui", ActionArgument = "browser.open:https://example.com" },
-            new RecipeStep { Title = "Explorer path", Channel = "ui", ActionArgument = "explorer.open_path:C:\\\\" },
-            new RecipeStep { Title = "UIA invoke", Channel = "ui", ActionArgument = "uia.invoke:OK" },
-            new RecipeStep { Title = "AX context", Channel = "ui", ActionArgument = "ax.read_context" },
-            new RecipeStep { Title = "AX write", Channel = "ui", ActionArgument = "ax.setvalue:Field=Value" },
-            new RecipeStep { Title = "API get", Channel = "api", ActionArgument = "api.get:https://example.com" },
-            new RecipeStep { Title = "Script", Channel = "script", ActionArgument = "powershell:Get-Date" },
-            new RecipeStep { Title = "Unknown", Channel = "ui", ActionArgument = "[ACTION:unknown|x]" }
+            new RecipeStep { ActionType = "Win32 hotkey", Channel = "ui", ActionArgument = "[ACTION:hotkey|Ctrl+L]" },
+            new RecipeStep { ActionType = "Win32 type", Channel = "ui", ActionArgument = "[ACTION:type|demo]" },
+            new RecipeStep { ActionType = "Browser open", Channel = "ui", ActionArgument = "browser.open:https://example.com" },
+            new RecipeStep { ActionType = "Explorer path", Channel = "ui", ActionArgument = "explorer.open_path:C:\\\\" },
+            new RecipeStep { ActionType = "UIA invoke", Channel = "ui", ActionArgument = "uia.invoke:OK" },
+            new RecipeStep { ActionType = "AX context", Channel = "ui", ActionArgument = "ax.read_context" },
+            new RecipeStep { ActionType = "AX write", Channel = "ui", ActionArgument = "ax.setvalue:Field=Value" },
+            new RecipeStep { ActionType = "API get", Channel = "api", ActionArgument = "api.get:https://example.com" },
+            new RecipeStep { ActionType = "Script", Channel = "script", ActionArgument = "powershell:Get-Date" },
+            new RecipeStep { ActionType = "Unknown", Channel = "ui", ActionArgument = "[ACTION:unknown|x]" }
         };
         _output.Text = AutomationTokenReadiness.BuildReport(steps, settings);
+    }
+}
+
+public sealed class ExcelAxCheckShellPage : Page
+{
+    private readonly TextBox _filePath = new() { Header = "Excel/CSV file", PlaceholderText = "Select .xlsx or .csv" };
+    private readonly ComboBox _preset = new() { Header = "AX preset" };
+    private readonly ComboBox _keyColumn = new() { Header = "Excel key column" };
+    private readonly TextBox _axEntity = new() { Header = "AX OData entity" };
+    private readonly TextBox _axKeyField = new() { Header = "AX key field" };
+    private readonly TextBox _maxRows = new() { Header = "Max rows", Text = "500" };
+    private readonly TextBox _runQuestion = new() { Header = "Ask latest run", PlaceholderText = "Which rows block the AX check?" };
+    private readonly TextBox _preview = new()
+    {
+        IsReadOnly = true,
+        AcceptsReturn = true,
+        TextWrapping = TextWrapping.NoWrap,
+        FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+        MinHeight = 220
+    };
+    private readonly TextBox _result = new()
+    {
+        IsReadOnly = true,
+        AcceptsReturn = true,
+        TextWrapping = TextWrapping.NoWrap,
+        FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+        MinHeight = 360
+    };
+    private ExcelAxSourcePreview? _loaded;
+    private ExcelAxValidationRun? _lastRun;
+
+    public ExcelAxCheckShellPage()
+    {
+        foreach (var p in ExcelAxValidationService.Presets)
+            _preset.Items.Add(p);
+        _preset.SelectedIndex = 0;
+        _preset.SelectionChanged += (_, _) => ApplyDefaultPreset();
+
+        var root = new StackPanel { Spacing = 14, Margin = new Thickness(20, 16, 20, 20) };
+        root.Children.Add(WinUiFluentChrome.PageTitle("Excel + AX Check"));
+        root.Children.Add(new TextBlock
+        {
+            Text = "Read-only workbench for checking Excel lists against AX 2012 R3 CU13. No AX write/post/book action is executed here.",
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = WinUiFluentChrome.SecondaryTextBrush
+        });
+
+        var pick = new Button { Content = "Select file" };
+        WinUiFluentChrome.StyleActionButton(pick, accent: true);
+        pick.Click += (_, _) => SelectFile();
+        var load = new Button { Content = "Load preview" };
+        WinUiFluentChrome.StyleActionButton(load);
+        load.Click += (_, _) => LoadPreview();
+        var validate = new Button { Content = "Run read-only check" };
+        WinUiFluentChrome.StyleActionButton(validate, accent: true);
+        validate.Click += (_, _) => RunValidation();
+        var copilot = new Button { Content = "AI reconciliation" };
+        WinUiFluentChrome.StyleActionButton(copilot);
+        copilot.Click += (_, _) => ShowCopilotReport();
+        var inbox = new Button { Content = "Exception inbox" };
+        WinUiFluentChrome.StyleActionButton(inbox);
+        inbox.Click += (_, _) => ShowExceptionInbox();
+        var pilotPack = new Button { Content = "Create pilot pack" };
+        WinUiFluentChrome.StyleActionButton(pilotPack);
+        pilotPack.Click += (_, _) => CreatePilotPack();
+        var diff = new Button { Content = "Smart diff" };
+        WinUiFluentChrome.StyleActionButton(diff);
+        diff.Click += (_, _) => ShowSmartDiff();
+        var safeMode = new Button { Content = "Safe-mode cert" };
+        WinUiFluentChrome.StyleActionButton(safeMode);
+        safeMode.Click += (_, _) => CreateSafeModeCertificate();
+        var ask = new Button { Content = "Ask run" };
+        WinUiFluentChrome.StyleActionButton(ask, accent: true);
+        ask.Click += (_, _) => AskLatestRun();
+        var previewAi = new Button { Content = "Preview AI" };
+        WinUiFluentChrome.StyleActionButton(previewAi);
+        previewAi.Click += (_, _) => ShowPreviewIntelligence();
+        var taskBoard = new Button { Content = "Task board" };
+        WinUiFluentChrome.StyleActionButton(taskBoard);
+        taskBoard.Click += (_, _) => ShowTaskBoard();
+        var roi = new Button { Content = "ROI/process" };
+        WinUiFluentChrome.StyleActionButton(roi);
+        roi.Click += (_, _) => ShowRoiAndProcess();
+        var fixExport = new Button { Content = "Fix export" };
+        WinUiFluentChrome.StyleActionButton(fixExport);
+        fixExport.Click += (_, _) => CreateFixExport();
+        var bundle = new Button { Content = "Evidence ZIP" };
+        WinUiFluentChrome.StyleActionButton(bundle);
+        bundle.Click += (_, _) => CreateEvidenceBundle();
+        var dashboard = new Button { Content = "Run dashboard" };
+        WinUiFluentChrome.StyleActionButton(dashboard);
+        dashboard.Click += (_, _) => ShowRunDashboard();
+        var openFolder = new Button { Content = "Open exports" };
+        WinUiFluentChrome.StyleActionButton(openFolder);
+        openFolder.Click += (_, _) => System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(AppPaths.ExcelAxChecksDir) { UseShellExecute = true });
+
+        var actionRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Children = { pick, load, validate, previewAi, copilot, inbox, taskBoard, roi, fixExport, bundle, dashboard, pilotPack, diff, safeMode, openFolder } };
+        root.Children.Add(WinUiFluentChrome.WrapCard(new StackPanel
+        {
+            Spacing = 12,
+            Children = { _filePath, actionRow }
+        }));
+
+        var config = new Grid { ColumnSpacing = 12, RowSpacing = 12 };
+        config.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        config.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        config.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        config.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        config.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+        AddToGrid(config, _preset, 0);
+        AddToGrid(config, _keyColumn, 1);
+        AddToGrid(config, _axEntity, 2);
+        AddToGrid(config, _axKeyField, 3);
+        AddToGrid(config, _maxRows, 4);
+        root.Children.Add(WinUiFluentChrome.WrapCard(config));
+
+        var askRow = new Grid { ColumnSpacing = 10 };
+        askRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        askRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(_runQuestion, 0);
+        Grid.SetColumn(ask, 1);
+        askRow.Children.Add(_runQuestion);
+        askRow.Children.Add(ask);
+        root.Children.Add(WinUiFluentChrome.WrapCard(askRow));
+
+        var status = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        var settings = Settings();
+        status.Children.Add(WinUiFluentChrome.StatusTile("Mode", "read-only", "AX mutations disabled"));
+        status.Children.Add(WinUiFluentChrome.StatusTile("AX", settings.AxIntegrationEnabled ? "enabled" : "disabled", string.IsNullOrWhiteSpace(settings.AxODataBaseUrl) ? "UIA fallback" : "OData first"));
+        status.Children.Add(WinUiFluentChrome.StatusTile("Evidence", AppPaths.ExcelAxChecksDir, "csv + json"));
+        root.Children.Add(WinUiFluentChrome.WrapCard(status));
+
+        root.Children.Add(WinUiFluentChrome.ColumnCaption("Preview"));
+        root.Children.Add(WinUiFluentChrome.WrapCard(_preview, new Thickness(12, 10, 12, 10)));
+        root.Children.Add(WinUiFluentChrome.ColumnCaption("Result"));
+        root.Children.Add(WinUiFluentChrome.WrapCard(_result, new Thickness(12, 10, 12, 10)));
+
+        Content = new ScrollViewer { Content = root };
+    }
+
+    private static NexusSettings Settings() => NexusContext.GetSettings?.Invoke() ?? WinUiShellState.Settings;
+
+    private static void AddToGrid(Grid grid, FrameworkElement element, int column)
+    {
+        Grid.SetColumn(element, column);
+        grid.Children.Add(element);
+    }
+
+    private void SelectFile()
+    {
+        using var dlg = new System.Windows.Forms.OpenFileDialog
+        {
+            Filter = "Excel/CSV (*.xlsx;*.csv)|*.xlsx;*.csv|All files (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+        {
+            _filePath.Text = dlg.FileName;
+            LoadPreview();
+        }
+    }
+
+    private void LoadPreview()
+    {
+        try
+        {
+            _loaded = ExcelAxValidationService.LoadPreview(_filePath.Text.Trim(), 60);
+            _keyColumn.Items.Clear();
+            foreach (var c in _loaded.Columns)
+                _keyColumn.Items.Add(c);
+            _keyColumn.SelectedItem = _loaded.SuggestedKeyColumn;
+            ApplyDefaultPreset();
+            _preview.Text = BuildPreviewText(_loaded);
+            _result.Text = "Preview loaded. Run read-only check to create evidence export.";
+        }
+        catch (Exception ex)
+        {
+            _preview.Text = ex.ToString();
+            _result.Text = "";
+        }
+    }
+
+    private void ApplyDefaultPreset()
+    {
+        if (_loaded == null)
+            return;
+        var opt = ExcelAxValidationService.BuildDefaultOptions(_loaded, _preset.SelectedItem?.ToString());
+        if (_keyColumn.SelectedItem == null)
+            _keyColumn.SelectedItem = opt.KeyColumn;
+        _axEntity.Text = opt.AxEntity;
+        _axKeyField.Text = opt.AxKeyField;
+        _maxRows.Text = opt.MaxRows.ToString();
+    }
+
+    private void RunValidation()
+    {
+        try
+        {
+            if (_loaded == null)
+                LoadPreview();
+            if (_loaded == null)
+                return;
+            var opt = CurrentOptions();
+            _lastRun = ExcelAxValidationService.Validate(_loaded.FilePath, opt, Settings());
+            _result.Text = ExcelAxValidationService.BuildRunReport(_lastRun);
+            NexusShell.Log("Excel + AX check exported: " + _lastRun.ExportPath);
+        }
+        catch (Exception ex)
+        {
+            _result.Text = ex.ToString();
+        }
+    }
+
+    private void ShowCopilotReport()
+    {
+        if (_lastRun == null)
+        {
+            _result.Text = "Run read-only check first. The AI Reconciliation Copilot uses the latest validation evidence.";
+            return;
+        }
+
+        _result.Text = ExcelAxValidationService.BuildReconciliationCopilotReport(_lastRun);
+    }
+
+    private void ShowExceptionInbox()
+    {
+        if (_lastRun == null)
+        {
+            _result.Text = "Run read-only check first. The AI Exception Inbox uses the latest validation evidence.";
+            return;
+        }
+
+        _result.Text = ExcelAxValidationService.BuildReadinessScoreReport(_lastRun)
+            + "\n\n"
+            + ExcelAxValidationService.BuildExceptionInboxReport(_lastRun);
+    }
+
+    private void CreatePilotPack()
+    {
+        if (_lastRun == null)
+        {
+            _result.Text = "Run read-only check first. The pilot pack is generated from the latest validation evidence.";
+            return;
+        }
+
+        var pack = ExcelAxValidationService.CreatePilotPack(_lastRun);
+        _result.Text = pack.Summary
+            + "\n\nMarkdown: " + pack.MarkdownPath
+            + "\nCSV: " + pack.CsvPath
+            + "\nJSON: " + pack.JsonPath
+            + "\n\n" + ExcelAxValidationService.BuildExceptionInboxReport(_lastRun);
+        NexusShell.Log("Excel + AX pilot pack created: " + pack.MarkdownPath);
+    }
+
+    private void ShowSmartDiff()
+    {
+        if (_lastRun == null)
+        {
+            _result.Text = "Run read-only check first. Smart Diff compares the latest validation evidence with the previous run for the same file.";
+            return;
+        }
+
+        _result.Text = ExcelAxValidationService.BuildRunDiffReport(_lastRun);
+    }
+
+    private void CreateSafeModeCertificate()
+    {
+        if (_lastRun == null)
+        {
+            _result.Text = "Run read-only check first. The safe-mode certificate is generated from the latest validation evidence.";
+            return;
+        }
+
+        var cert = ExcelAxValidationService.CreateSafeModeCertificate(_lastRun);
+        _result.Text = ExcelAxValidationService.BuildSafeModeCertificateReport(_lastRun)
+            + "\n\nCertificate: " + cert.CertificatePath;
+        NexusShell.Log("Excel + AX safe-mode certificate created: " + cert.CertificatePath);
+    }
+
+    private void AskLatestRun()
+    {
+        if (_lastRun == null)
+        {
+            _result.Text = "Run read-only check first. Natural-language answers use the latest validation evidence.";
+            return;
+        }
+
+        _result.Text = ExcelAxValidationService.AnswerRunQuestion(_lastRun, _runQuestion.Text);
+    }
+
+    private void ShowPreviewIntelligence()
+    {
+        if (_loaded == null)
+        {
+            LoadPreview();
+            if (_loaded == null)
+                return;
+        }
+
+        _result.Text = ExcelAxValidationService.BuildPreviewIntelligenceReport(_loaded, CurrentOptions(), _lastRun);
+    }
+
+    private void ShowTaskBoard()
+    {
+        if (_lastRun == null)
+        {
+            _result.Text = "Run read-only check first. The operator task board uses the latest validation evidence.";
+            return;
+        }
+
+        _result.Text = ExcelAxValidationService.BuildOperatorTaskBoardReport(_lastRun)
+            + "\n\n"
+            + ExcelAxValidationService.BuildFixProposalPackReport(_lastRun);
+    }
+
+    private void ShowRoiAndProcess()
+    {
+        if (_lastRun == null)
+        {
+            _result.Text = "Run read-only check first. ROI and Process Twin use the latest validation evidence.";
+            return;
+        }
+
+        _result.Text = ExcelAxValidationService.BuildProcessTwinReport(_lastRun)
+            + "\n\n"
+            + ExcelAxValidationService.BuildRoiEstimatorReport(_lastRun)
+            + "\n\n"
+            + ExcelAxValidationService.BuildEvidenceTimelineReport(_lastRun);
+    }
+
+    private void CreateFixExport()
+    {
+        if (_lastRun == null)
+        {
+            _result.Text = "Run read-only check first. The fix export is generated from the latest validation evidence.";
+            return;
+        }
+
+        var export = ExcelAxValidationService.CreateFixExportCsv(_lastRun);
+        _result.Text = export.Summary + "\n\nCSV: " + export.CsvPath;
+        NexusShell.Log("Excel + AX fix export created: " + export.CsvPath);
+    }
+
+    private void CreateEvidenceBundle()
+    {
+        if (_lastRun == null)
+        {
+            _result.Text = "Run read-only check first. The evidence ZIP is generated from the latest validation evidence.";
+            return;
+        }
+
+        var zip = ExcelAxValidationService.CreateEvidenceBundleZip(_lastRun);
+        _result.Text = zip.Summary
+            + "\n\nZIP: " + zip.ZipPath
+            + "\n\nIncluded:\n- " + string.Join("\n- ", zip.IncludedFiles);
+        NexusShell.Log("Excel + AX evidence bundle created: " + zip.ZipPath);
+    }
+
+    private void ShowRunDashboard()
+    {
+        _result.Text = ExcelAxValidationService.BuildRunDashboardReport();
+    }
+
+    private ExcelAxValidationOptions CurrentOptions() =>
+        new(
+            _preset.SelectedItem?.ToString() ?? ExcelAxValidationService.Presets[0],
+            _keyColumn.SelectedItem?.ToString() ?? _loaded?.SuggestedKeyColumn ?? "",
+            _axEntity.Text.Trim(),
+            _axKeyField.Text.Trim(),
+            int.TryParse(_maxRows.Text.Trim(), out var maxRows) ? Math.Clamp(maxRows, 1, 10000) : 500);
+
+    private static string BuildPreviewText(ExcelAxSourcePreview preview)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("File: " + preview.FilePath);
+        sb.AppendLine("Sheet: " + preview.SheetName);
+        sb.AppendLine("Suggested key: " + preview.SuggestedKeyColumn);
+        sb.AppendLine();
+        sb.AppendLine("Columns");
+        foreach (var p in preview.Profiles)
+            sb.AppendLine($"- {p.Index + 1}: {p.Name}; non-empty={p.NonEmptyCount}; key-candidate={p.LooksLikeKey}");
+        sb.AppendLine();
+        sb.AppendLine(string.Join(" | ", preview.Columns));
+        foreach (var row in preview.Rows.Take(20))
+            sb.AppendLine(string.Join(" | ", row.Select(v => v.Length > 32 ? v[..32] + "..." : v)));
+        return sb.ToString().TrimEnd();
     }
 }
 

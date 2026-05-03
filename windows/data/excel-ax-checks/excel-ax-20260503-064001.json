@@ -1,0 +1,72 @@
+{
+  "RunId": "excel-ax-20260503-064001",
+  "CreatedUtc": "2026-05-03T06:40:01.8328539+00:00",
+  "FilePath": "C:\\Users\\reinerw\\AppData\\Local\\Temp\\carolus-excel-ax-tests\\customers.csv",
+  "Options": {
+    "Preset": "Debitor/Kunde",
+    "KeyColumn": "AccountNum",
+    "AxEntity": "Customers",
+    "AxKeyField": "AccountNum",
+    "MaxRows": 20
+  },
+  "Rows": [
+    {
+      "RowNumber": 2,
+      "Key": "1000",
+      "Status": "AxUnavailable",
+      "AxEvidence": "",
+      "Note": "AX integration disabled in Setup.",
+      "Insight": {
+        "Category": "AxConnectivity",
+        "Severity": "blocked",
+        "Explanation": "AX could not be queried with the current setup.",
+        "NextAction": "Enable AX integration, configure OData, or open AX foreground context for UIA evidence.",
+        "EvidenceHint": "AX integration disabled in Setup."
+      }
+    },
+    {
+      "RowNumber": 3,
+      "Key": "1000",
+      "Status": "DuplicateInExcel",
+      "AxEvidence": "",
+      "Note": "Key appears more than once in the Excel list.",
+      "Insight": {
+        "Category": "Duplicate",
+        "Severity": "warning",
+        "Explanation": "The same key appears multiple times in the Excel list.",
+        "NextAction": "Decide which Excel row is authoritative and remove or merge duplicates.",
+        "EvidenceHint": "Duplicate detected before AX lookup."
+      }
+    },
+    {
+      "RowNumber": 4,
+      "Key": "",
+      "Status": "MissingKey",
+      "AxEvidence": "",
+      "Note": "Excel key is empty.",
+      "Insight": {
+        "Category": "ExcelDataQuality",
+        "Severity": "blocked",
+        "Explanation": "The Excel row has no usable key, so AX cannot be queried safely.",
+        "NextAction": "Fill \u0027AccountNum\u0027 before reconciliation.",
+        "EvidenceHint": "Empty Excel key cell."
+      }
+    },
+    {
+      "RowNumber": 5,
+      "Key": "2000",
+      "Status": "AxUnavailable",
+      "AxEvidence": "",
+      "Note": "AX integration disabled in Setup.",
+      "Insight": {
+        "Category": "AxConnectivity",
+        "Severity": "blocked",
+        "Explanation": "AX could not be queried with the current setup.",
+        "NextAction": "Enable AX integration, configure OData, or open AX foreground context for UIA evidence.",
+        "EvidenceHint": "AX integration disabled in Setup."
+      }
+    }
+  ],
+  "Summary": "Rows: 4; Mode: AX disabled; AxUnavailable: 2; DuplicateInExcel: 1; MissingKey: 1",
+  "ExportPath": "C:\\tmp\\RW-Avalonia-Karl-Klammer\\windows\\data\\excel-ax-checks\\excel-ax-20260503-064001.csv"
+}

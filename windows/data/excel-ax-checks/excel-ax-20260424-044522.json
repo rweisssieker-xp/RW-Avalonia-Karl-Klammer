@@ -1,0 +1,44 @@
+{
+  "RunId": "excel-ax-20260424-044522",
+  "CreatedUtc": "2026-04-24T04:45:22.3032766+00:00",
+  "FilePath": "C:\\Users\\reinerw\\AppData\\Local\\Temp\\carolus-excel-ax-tests\\customers.csv",
+  "Options": {
+    "Preset": "Debitor/Kunde",
+    "KeyColumn": "AccountNum",
+    "AxEntity": "Customers",
+    "AxKeyField": "AccountNum",
+    "MaxRows": 20
+  },
+  "Rows": [
+    {
+      "RowNumber": 2,
+      "Key": "1000",
+      "Status": "AxUnavailable",
+      "AxEvidence": "",
+      "Note": "AX integration disabled in Setup."
+    },
+    {
+      "RowNumber": 3,
+      "Key": "1000",
+      "Status": "DuplicateInExcel",
+      "AxEvidence": "",
+      "Note": "Key appears more than once in the Excel list."
+    },
+    {
+      "RowNumber": 4,
+      "Key": "",
+      "Status": "MissingKey",
+      "AxEvidence": "",
+      "Note": "Excel key is empty."
+    },
+    {
+      "RowNumber": 5,
+      "Key": "2000",
+      "Status": "AxUnavailable",
+      "AxEvidence": "",
+      "Note": "AX integration disabled in Setup."
+    }
+  ],
+  "Summary": "Rows: 4; Mode: AX disabled; AxUnavailable: 2; DuplicateInExcel: 1; MissingKey: 1",
+  "ExportPath": "C:\\tmp\\RW-Avalonia-Karl-Klammer\\windows\\data\\excel-ax-checks\\excel-ax-20260424-044522.csv"
+}
